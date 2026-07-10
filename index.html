@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UKMLA Remote Notes</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f6f7fb;color:#111827}
+    main{max-width:980px;margin:0 auto;padding:24px}
+    .card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+    textarea{width:100%;min-height:60vh;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid #d1d5db;border-radius:12px;padding:12px;box-sizing:border-box}
+    button,input{font:inherit;border-radius:10px;border:1px solid #cbd5e1;padding:10px 12px;background:white}
+    button{cursor:pointer;background:#111827;color:white;border-color:#111827}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+    .muted{color:#6b7280;font-size:14px}
+    code{background:#eef2ff;padding:2px 5px;border-radius:6px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>UKMLA Remote Notes</h1>
+  <p class="muted">Starter page for shared JSON-style notes. Add Firebase config to make it live across devices.</p>
+  <section class="card">
+    <div class="row">
+      <label>Pad ID <input id="padId" value="ukmla-main" /></label>
+      <button id="loadBtn">Load</button>
+      <button id="saveBtn">Save</button>
+      <button id="copyBtn">Copy JSON</button>
+    </div>
+    <textarea id="jsonBox" spellcheck="false">{
+  "notes": "Paste or type UKMLA decision-layer JSON here.",
+  "conditions": {}
+}</textarea>
+    <p id="status" class="muted">Local mode. Firebase is not configured yet.</p>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Firebase hook</h2>
+    <p class="muted">Replace <code>firebaseConfig</code> in this file, uncomment the Firebase imports/script logic, then saves can sync remotely.</p>
+  </section>
+</main>
+<script>
+const box = document.getElementById('jsonBox');
+const padInput = document.getElementById('padId');
+const statusEl = document.getElementById('status');
+
+function key(){ return 'ukmlaRemotePad:' + (padInput.value || 'ukmla-main'); }
+function setStatus(text){ statusEl.textContent = text; }
+function loadLocal(){ box.value = localStorage.getItem(key()) || box.value; setStatus('Loaded from this browser.'); }
+function saveLocal(){ localStorage.setItem(key(), box.value); setStatus('Saved in this browser.'); }
+
+document.getElementById('loadBtn').onclick = loadLocal;
+document.getElementById('saveBtn').onclick = saveLocal;
+document.getElementById('copyBtn').onclick = async () => { await navigator.clipboard.writeText(box.value); setStatus('Copied.'); };
+box.addEventListener('input', () => { localStorage.setItem(key(), box.value); setStatus('Autosaved locally.'); });
+loadLocal();
+
+/*
+Firebase upgrade sketch:
+1. Create Firebase project -> Realtime Database.
+2. Add web app config here.
+3. Use set(ref(db, 'pads/' + padId), JSON.parse(box.value)) to save.
+4. Use onValue(ref(db, 'pads/' + padId), snap => box.value = JSON.stringify(snap.val(), null, 2)) to live reload.
+*/
+</script>
+</body>
+</html>
