@@ -1,7 +1,3 @@
-Yes, you can absolutely hardcode a permanent API key directly into the script. To do this cleanly, we can declare a constant at the top of the script. If it contains a valid key, the quiz will use it automatically and bypass the requirement to type or paste it into the UI.
-
-Here is the updated code with **`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`** placed prominently at the top:
-
 ```javascript
 /* AI-generated UKMLA quiz interface with permanent API key configuration. */
 (function () {
@@ -9,7 +5,7 @@ Here is the updated code with **`sk-proj-oyNdeO0gQ1s6XKXdEz6WVhss5-baCpOK2eKTSWY
  
   // Put your permanent OpenAI API key here (e.g., "sk-proj-..."). 
   // If left as default, the script will fall back to the UI password input.
-  const PERMANENT_API_KEY = "INSERT API HERE";
+  const PERMANENT_API_KEY = "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";
 
   const KEYS = {
     sets: 'ukmlaAiGeneratedQuizSetsV1',
