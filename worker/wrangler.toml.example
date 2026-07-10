@@ -1,6 +1,0 @@
-name = "ukmla-temporary-key-proxy"
-main = "temporary-key-proxy.js"
-compatibility_date = "2026-07-11"
-
-[vars]
-ALLOWED_ORIGIN = "https://annanpractice.github.io"
