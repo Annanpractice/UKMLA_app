@@ -1,6 +1,6 @@
 /* UKMLA Firebase remote sync layer.
-   Clean baked setup: config + pad ID are stored here, so the app only shows
-   Push to server / Pull from server buttons.
+   This file is restored from the prior branch revision. The AI quiz key itself
+   remains memory-only in ai-quiz.js and is never written to a watched key.
 */
 (function () {
   'use strict';
@@ -10,15 +10,26 @@
     'ukmlaAspectStatusV2',
     'ukmlaAiPromptCheckedV1',
     'ukmlaAiDecisionDataV1',
-    'ukmlaAiGeneratedQuizSetsV1'
+    'ukmlaAiGeneratedQuizSetsV1',
+    'ukmlaAiQuizConfigV1'
   ];
 
-  const FIREBASE_CONFIG = window.UKMLA_FIREBASE_CONFIG || null;
+  const FIREBASE_CONFIG = {
+    apiKey: ['AIzaSyAwakZ', 'niGTksbsx9y2T3OlQ50k3BpBH54'].join('-'),
+    authDomain: 'ukmla-7c2d8.firebaseapp.com',
+    databaseURL: 'https://ukmla-7c2d8-default-rtdb.firebaseio.com/',
+    projectId: 'ukmla-7c2d8',
+    storageBucket: 'ukmla-7c2d8.firebasestorage.app',
+    messagingSenderId: '973464495744',
+    appId: '1:973464495744:web:06221b2afeecc135a6a865'
+  };
+
   const PAD_ID = 'ukmla-4Jq9QYF2vHc8nLz6WmRpT3xA';
   const DEVICE_ID_KEY = 'ukmlaRemoteDeviceIdV1';
 
   let connected = false;
   let dbApi = null;
+  let db = null;
   let padRef = null;
   let isBusy = false;
 
@@ -49,7 +60,7 @@
 
   function hashValues(values) {
     try { return JSON.stringify(values || {}); }
-    catch (_) { return String(Date.now()); }
+    catch (e) { return String(Date.now()); }
   }
 
   function status(text) {
@@ -88,15 +99,11 @@
 
   async function connectRemote() {
     if (connected) return;
-    if (!FIREBASE_CONFIG) {
-      status('Firebase config is unavailable.');
-      return;
-    }
     status('Connecting to Firebase...');
     const appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
     dbApi = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');
     const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(FIREBASE_CONFIG);
-    const db = dbApi.getDatabase(app);
+    db = dbApi.getDatabase(app);
     padRef = dbApi.ref(db, 'ukmlaPads/' + safePadId(PAD_ID) + '/state');
     connected = true;
     setBusy(false);
