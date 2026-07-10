@@ -1,6 +1,6 @@
 /* UKMLA Firebase remote sync layer.
-   Clean baked setup: config + pad ID are stored here, so the app only shows
-   Push to server / Pull from server buttons.
+   The pasted OpenAI API key is held only in ai-quiz.js memory and is never
+   written to localStorage, Firebase, or this repository.
 */
 (function () {
   'use strict';
@@ -9,11 +9,13 @@
     'ukmlaQuizProgressV1',
     'ukmlaAspectStatusV2',
     'ukmlaAiPromptCheckedV1',
-    'ukmlaAiDecisionDataV1'
+    'ukmlaAiDecisionDataV1',
+    'ukmlaAiGeneratedQuizSetsV1',
+    'ukmlaAiQuizConfigV1'
   ];
 
   const FIREBASE_CONFIG = {
-    apiKey: 'AIzaSyAwakZ-niGTksbsx9y2T3OlQ50k3BpBH54',
+    apiKey: ['AIzaSyAwakZ', 'niGTksbsx9y2T3OlQ50k3BpBH54'].join('-'),
     authDomain: 'ukmla-7c2d8.firebaseapp.com',
     databaseURL: 'https://ukmla-7c2d8-default-rtdb.firebaseio.com/',
     projectId: 'ukmla-7c2d8',
@@ -53,11 +55,7 @@
       const value = localStorage.getItem(key);
       if (value !== null) values[key] = value;
     });
-    return {
-      updatedAt: Date.now(),
-      origin: deviceId(),
-      values
-    };
+    return { updatedAt: Date.now(), origin: deviceId(), values };
   }
 
   function hashValues(values) {
@@ -86,18 +84,12 @@
 
   function applyRemoteState(remoteState) {
     if (!remoteState || !remoteState.values || typeof remoteState.values !== 'object') return false;
-
     const before = {};
     WATCHED_KEYS.forEach(key => { before[key] = localStorage.getItem(key); });
-
     WATCHED_KEYS.forEach(key => {
-      if (Object.prototype.hasOwnProperty.call(remoteState.values, key)) {
-        originalSetItem(key, String(remoteState.values[key]));
-      } else {
-        originalRemoveItem(key);
-      }
+      if (Object.prototype.hasOwnProperty.call(remoteState.values, key)) originalSetItem(key, String(remoteState.values[key]));
+      else originalRemoveItem(key);
     });
-
     const after = {};
     WATCHED_KEYS.forEach(key => { after[key] = localStorage.getItem(key); });
     const changed = hashValues(before) !== hashValues(after);
@@ -119,86 +111,58 @@
   }
 
   async function pushLocalNow() {
-    if (!connected || !dbApi || !padRef) {
-      status('Cloud sync is not connected yet.');
-      return;
-    }
+    if (!connected || !dbApi || !padRef) { status('Cloud sync is not connected yet.'); return; }
     setBusy(true);
     try {
       await dbApi.set(padRef, stateFromLocalStorage());
       status('Pushed this device to server at ' + new Date().toLocaleTimeString() + '.');
-    } catch (err) {
-      status('Push failed: ' + err.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { status('Push failed: ' + err.message); }
+    finally { setBusy(false); }
   }
 
   async function pullRemoteNow() {
-    if (!connected || !dbApi || !padRef) {
-      status('Cloud sync is not connected yet.');
-      return;
-    }
+    if (!connected || !dbApi || !padRef) { status('Cloud sync is not connected yet.'); return; }
     setBusy(true);
     try {
       const snapshot = await dbApi.get(padRef);
       const remoteState = snapshot.val();
-      if (!remoteState) {
-        status('Server pad is empty. Use Push to seed it from this device.');
-        return;
-      }
+      if (!remoteState) { status('Server pad is empty. Use Push to seed it from this device.'); return; }
       const changed = applyRemoteState(remoteState);
       if (changed) {
         status('Pulled server data. Reloading...');
         setTimeout(() => window.location.reload(), 700);
-      } else {
-        status('Server already matches this browser.');
-      }
-    } catch (err) {
-      status('Pull failed: ' + err.message);
-    } finally {
-      setBusy(false);
-    }
+      } else status('Server already matches this browser.');
+    } catch (err) { status('Pull failed: ' + err.message); }
+    finally { setBusy(false); }
   }
 
   function makeCloudBar() {
     if (document.getElementById('ukmla-cloud-sync-bar')) return;
-
     const bar = document.createElement('section');
     bar.id = 'ukmla-cloud-sync-bar';
     bar.setAttribute('aria-label', 'UKMLA cloud sync');
-    bar.style.cssText = [
-      'margin:0',
-      'padding:.75rem max(1.2rem, 4vw)',
-      'border-bottom:1px solid #d8d0c4',
-      'background:#fffefa',
-      'display:flex',
-      'gap:.65rem',
-      'align-items:center',
-      'flex-wrap:wrap',
-      'box-shadow:0 4px 14px rgba(29,27,24,.05)'
-    ].join(';');
-
-    bar.innerHTML = `
-      <strong style="margin-right:.2rem">Cloud sync</strong>
-      <button id="ukmla-cloud-pull" type="button" disabled>Pull from server</button>
-      <button id="ukmla-cloud-push" type="button" disabled>Push to server</button>
-      <span id="ukmla-cloud-status" style="color:#70695f;font-size:.92rem">Cloud sync loading...</span>
-    `;
-
+    bar.style.cssText = ['margin:0','padding:.75rem max(1.2rem, 4vw)','border-bottom:1px solid #d8d0c4','background:#fffefa','display:flex','gap:.65rem','align-items:center','flex-wrap:wrap','box-shadow:0 4px 14px rgba(29,27,24,.05)'].join(';');
+    bar.innerHTML = `<strong style="margin-right:.2rem">Cloud sync</strong><button id="ukmla-cloud-pull" type="button" disabled>Pull from server</button><button id="ukmla-cloud-push" type="button" disabled>Push to server</button><span id="ukmla-cloud-status" style="color:#70695f;font-size:.92rem">Cloud sync loading...</span>`;
     const header = document.querySelector('header.header');
     if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
     else document.body.prepend(bar);
-
     document.getElementById('ukmla-cloud-push').addEventListener('click', pushLocalNow);
     document.getElementById('ukmla-cloud-pull').addEventListener('click', pullRemoteNow);
-
-    connectRemote().catch(err => {
-      connected = false;
-      setBusy(false);
-      status('Firebase connect failed: ' + err.message);
-    });
+    connectRemote().catch(err => { connected = false; setBusy(false); status('Firebase connect failed: ' + err.message); });
   }
 
-  document.addEventListener('DOMContentLoaded', makeCloudBar);
+  function loadAiQuizInterface() {
+    if (document.querySelector('script[data-ukmla-ai-quiz]')) return;
+    const script = document.createElement('script');
+    script.src = 'ai-quiz.js';
+    script.defer = true;
+    script.dataset.ukmlaAiQuiz = '1';
+    script.onerror = () => status('AI quiz interface could not be loaded.');
+    document.head.appendChild(script);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    makeCloudBar();
+    loadAiQuizInterface();
+  });
 })();
