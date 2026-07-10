@@ -1,6 +1,6 @@
 /* UKMLA Firebase remote sync layer.
-   This file is restored from the prior branch revision. The AI quiz key itself
-   remains memory-only in ai-quiz.js and is never written to a watched key.
+   The pasted OpenAI API key is held only in ai-quiz.js memory and is never
+   written to localStorage, Firebase, or this repository.
 */
 (function () {
   'use strict';
