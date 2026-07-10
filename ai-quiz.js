@@ -35,7 +35,7 @@
     ['failure_or_deterioration', 'Failure of first-line treatment or deterioration'],
     ['escalation_referral_disposition', 'Escalation, referral, disposition or safety net']
   ];
-  const state = { set: null, index: 0, answers: [], apiKey: '' };
+  const state = { set: null, index: 0, answers: [], apiKey: '', warnings: [] };
 
   function clean(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
   function load(key, fallback) {
@@ -166,6 +166,7 @@ Source material:\n${JSON.stringify(payload)}`;
 
   function validate(set) {
     const errors = [];
+    const warnings = [];
     if (!set || !Array.isArray(set.questions) || set.questions.length !== 10) errors.push('The response must contain exactly ten questions.');
     const seenTypes = new Set();
     const seenStems = new Set();
@@ -182,12 +183,12 @@ Source material:\n${JSON.stringify(payload)}`;
       if (lengths.length === 5) {
         const correct = clean(q.options.find(o => o.id === q.correctOptionId)?.text).length;
         const median = [...lengths].sort((a, b) => a - b)[2];
-        if (correct > median * 1.55 || correct < median * 0.55) errors.push(`Question ${i + 1}: correct option length is conspicuous.`);
+        if (correct > median * 1.55 || correct < median * 0.55) warnings.push(`Question ${i + 1}: correct option length differs noticeably from the distractors.`);
       }
       if (!clean(q.rationale) || !clean(q.strongestDistractorExplanation)) errors.push(`Question ${i + 1}: rationale is incomplete.`);
     });
     if (seenTypes.size !== 10) errors.push('Each prescribed question type must appear exactly once.');
-    return errors;
+    return { errors, warnings };
   }
 
   function ensureTopic(progress, topic) {
@@ -289,13 +290,18 @@ Source material:\n${JSON.stringify(payload)}`;
       const output = extractOutputText(raw);
       if (!output) throw new Error('OpenAI returned no structured quiz.');
       const data = JSON.parse(output);
-      const errors = validate(data);
-      if (errors.length) throw new Error(errors.slice(0, 4).join(' '));
-      state.set = data; state.index = 0; state.answers = [];
+      const validation = validate(data);
+      if (validation.errors.length) throw new Error(validation.errors.slice(0, 4).join(' '));
+      state.set = data;
+      state.index = 0;
+      state.answers = [];
+      state.warnings = validation.warnings;
       const sets = load(KEYS.sets, []);
       sets.unshift(data);
       save(KEYS.sets, sets.slice(0, 30));
-      status.textContent = 'Ten-question set generated and passed local validation.';
+      status.textContent = validation.warnings.length
+        ? `Quiz generated. ${validation.warnings.length} option-length warning${validation.warnings.length === 1 ? '' : 's'} noted, but the set is usable.`
+        : 'Ten-question set generated and passed local validation.';
       renderQuiz();
     } catch (error) {
       status.textContent = `Generation failed: ${error.message}`;
