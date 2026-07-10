@@ -10,8 +10,7 @@
     'ukmlaAspectStatusV2',
     'ukmlaAiPromptCheckedV1',
     'ukmlaAiDecisionDataV1',
-    'ukmlaAiGeneratedQuizSetsV1',
-    'ukmlaAiQuizConfigV1'
+    'ukmlaAiGeneratedQuizSetsV1'
   ];
 
   const FIREBASE_CONFIG = {
@@ -158,14 +157,6 @@
     script.defer = true;
     script.dataset.ukmlaAiQuiz = '1';
     script.onerror = () => status('AI quiz interface could not be loaded.');
-    script.onload = () => {
-      const proxy = document.createElement('script');
-      proxy.src = 'ai-quiz-proxy.js';
-      proxy.defer = true;
-      proxy.dataset.ukmlaAiQuizProxy = '1';
-      proxy.onerror = () => status('AI quiz proxy routing could not be loaded.');
-      document.head.appendChild(proxy);
-    };
     document.head.appendChild(script);
   }
 
