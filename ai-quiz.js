@@ -1,12 +1,10 @@
-```javascript
-/* AI-generated UKMLA quiz interface with permanent API key configuration. */
+/* AI-generated UKMLA quiz interface.
+   The pasted OpenAI key is held only in this page's JavaScript memory.
+   It is never written to localStorage, Firebase, or the repository.
+*/
 (function () {
   'use strict';
  
-  // Put your permanent OpenAI API key here (e.g., "sk-proj-..."). 
-  // If left as default, the script will fall back to the UI password input.
-  const PERMANENT_API_KEY = "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";
-
   const KEYS = {
     sets: 'ukmlaAiGeneratedQuizSetsV1',
     progress: 'ukmlaQuizProgressV1',
@@ -269,17 +267,8 @@ Source material:\n${JSON.stringify(payload)}`;
     const status = document.getElementById('aiq-status');
     const generate = document.getElementById('aiq-generate');
     const keyInput = document.getElementById('aiq-key');
-    
-    // Check permanent key first; fall back to text input if default placeholder remains
-    state.apiKey = (PERMANENT_API_KEY && PERMANENT_API_KEY.startsWith('sk-')) 
-      ? PERMANENT_API_KEY.trim() 
-      : keyInput.value.trim();
-
-    if (!state.apiKey.startsWith('sk-')) { 
-      status.textContent = 'Provide a valid OpenAI API key (either hardcoded or pasted).'; 
-      return; 
-    }
-    
+    state.apiKey = keyInput.value.trim();
+    if (!state.apiKey.startsWith('sk-')) { status.textContent = 'Paste a valid OpenAI API key for this session.'; return; }
     const payload = buildPayload(document.getElementById('aiq-topic').value, document.getElementById('aiq-condition').value, document.getElementById('aiq-difficulty').value);
     generate.disabled = true;
     status.textContent = 'Generating and validating ten questions…';
@@ -317,9 +306,8 @@ Source material:\n${JSON.stringify(payload)}`;
     } catch (error) {
       status.textContent = `Generation failed: ${error.message}`;
     } finally {
-      // Clear runtime key reference to maintain state purity, but permanent key remains untouched
       state.apiKey = '';
-      if (keyInput) keyInput.value = '';
+      keyInput.value = '';
       generate.disabled = false;
     }
   }
@@ -373,14 +361,7 @@ Source material:\n${JSON.stringify(payload)}`;
     const section = document.createElement('section');
     section.id = 'ai-generated-quiz';
     section.className = 'aiq-shell';
-    
-    // Update label note if key is pre-configured
-    const hasPreKey = PERMANENT_API_KEY && PERMANENT_API_KEY.startsWith('sk-');
-    const noteText = hasPreKey 
-      ? 'A permanent API key is configured. Leave blank to use it.' 
-      : 'Used for one generation request, then cleared. It is not saved or synced.';
-
-    section.innerHTML = `<h2>AI Generated Quiz</h2><p class="aiq-muted">Ten applied UKMLA-style SBAs. Results update the existing topic-health system.</p><div class="aiq-grid"><label>Topic<select id="aiq-topic"></select></label><label>Condition<select id="aiq-condition"></select></label><label>Difficulty<select id="aiq-difficulty"><option value="standard">Standard</option><option value="difficult" selected>Difficult</option><option value="very_difficult">Very difficult</option></select></label><label>Temporary OpenAI API key<input id="aiq-key" type="password" autocomplete="off" placeholder="${hasPreKey ? 'Using hardcoded key...' : 'sk-…'}" spellcheck="false"><span class="aiq-key-note">${noteText}</span></label></div><div class="aiq-actions"><button id="aiq-generate" type="button">Generate 10 questions</button><span id="aiq-status">AI-generated questions require checking against current UK guidance.</span></div><div id="aiq-play"></div>`;
+    section.innerHTML = `<h2>AI Generated Quiz</h2><p class="aiq-muted">Ten applied UKMLA-style SBAs. Results update the existing topic-health system.</p><div class="aiq-grid"><label>Topic<select id="aiq-topic"></select></label><label>Condition<select id="aiq-condition"></select></label><label>Difficulty<select id="aiq-difficulty"><option value="standard">Standard</option><option value="difficult" selected>Difficult</option><option value="very_difficult">Very difficult</option></select></label><label>Temporary OpenAI API key<input id="aiq-key" type="password" autocomplete="off" placeholder="sk-…" spellcheck="false"><span class="aiq-key-note">Used for one generation request, then cleared. It is not saved or synced.</span></label></div><div class="aiq-actions"><button id="aiq-generate" type="button">Generate 10 questions</button><span id="aiq-status">AI-generated questions require checking against current UK guidance.</span></div><div id="aiq-play"></div>`;
     const quiz = document.getElementById('quiz-panel') || document.querySelector('.quiz-panel') || document.querySelector('main');
     if (quiz?.parentNode) quiz.parentNode.insertBefore(section, quiz.nextSibling); else document.body.appendChild(section);
     populateTopics();
@@ -392,5 +373,3 @@ Source material:\n${JSON.stringify(payload)}`;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', makeInterface);
   else makeInterface();
 })();
-
-```
