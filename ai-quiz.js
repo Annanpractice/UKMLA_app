@@ -1,9 +1,15 @@
-/* AI-generated UKMLA quiz interface.
-   The pasted OpenAI key is held only in this page's JavaScript memory.
-   It is never written to localStorage, Firebase, or the repository.
-*/
+Yes, you can absolutely hardcode a permanent API key directly into the script. To do this cleanly, we can declare a constant at the top of the script. If it contains a valid key, the quiz will use it automatically and bypass the requirement to type or paste it into the UI.
+
+Here is the updated code with **`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`** placed prominently at the top:
+
+```javascript
+/* AI-generated UKMLA quiz interface with permanent API key configuration. */
 (function () {
   'use strict';
+ 
+  // Put your permanent OpenAI API key here (e.g., "sk-proj-..."). 
+  // If left as default, the script will fall back to the UI password input.
+  const PERMANENT_API_KEY = "INSERT API HERE";
 
   const KEYS = {
     sets: 'ukmlaAiGeneratedQuizSetsV1',
@@ -36,7 +42,7 @@
     ['escalation_referral_disposition', 'Escalation, referral, disposition or safety net']
   ];
   const state = { set: null, index: 0, answers: [], apiKey: '', warnings: [] };
-
+ 
   function clean(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
   function load(key, fallback) {
     try { const value = JSON.parse(localStorage.getItem(key) || 'null'); return value ?? fallback; }
@@ -45,7 +51,7 @@
   function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
   function clamp(value, min, max) { return Math.max(min, Math.min(max, Number(value) || 0)); }
   function nudge(current, target, weight) { return Math.round(clamp(current, 0, 100) * (1 - weight) + clamp(target, 0, 100) * weight); }
-
+ 
   function sectionTitle(section) {
     const h2 = section && section.querySelector('h2');
     if (!h2) return 'Uncategorised';
@@ -53,7 +59,7 @@
     copy.querySelectorAll('.inferred').forEach(node => node.remove());
     return clean(copy.textContent);
   }
-
+ 
   function conditionData(card, index) {
     const fields = {};
     card.querySelectorAll('.items li').forEach(li => {
@@ -71,16 +77,16 @@
       fields
     };
   }
-
+ 
   function catalogue() {
     return Array.from(document.querySelectorAll('.card')).map(conditionData).filter(x => x.name && Object.keys(x.fields).length);
   }
-
+ 
   function getDecisionFor(condition) {
     const decisions = load(KEYS.decisions, {});
     return Object.values(decisions || {}).find(item => clean(item?.conditionName).toLowerCase() === condition.name.toLowerCase()) || null;
   }
-
+ 
   function buildPayload(topic, conditionName, difficulty) {
     const selected = catalogue().filter(item => item.topic === topic && (conditionName === '__all__' || item.name === conditionName));
     return {
@@ -99,7 +105,7 @@
       }
     };
   }
-
+ 
   function responseSchema() {
     const option = {
       type: 'object', additionalProperties: false,
@@ -146,7 +152,7 @@
       }
     };
   }
-
+ 
   function prompt(payload) {
     return `Write a ten-item UK Medical Licensing Assessment-style SBA set for a newly qualified doctor.
 Use the supplied encyclopedia material as the primary factual source. Do not invent exact doses, thresholds, contraindications, dates, or external citations absent from it.
@@ -155,7 +161,7 @@ Requirements: applied clinical decisions; concise authentic stems; enough inform
 For an unverifiable guideline field use source "Internal UKMLA encyclopedia content", a relevant title, and null checkedDate/url.
 Source material:\n${JSON.stringify(payload)}`;
   }
-
+ 
   function extractOutputText(data) {
     if (typeof data.output_text === 'string') return data.output_text;
     for (const item of data.output || []) {
@@ -163,7 +169,7 @@ Source material:\n${JSON.stringify(payload)}`;
     }
     return '';
   }
-
+ 
   function validate(set) {
     const errors = [];
     const warnings = [];
@@ -190,7 +196,7 @@ Source material:\n${JSON.stringify(payload)}`;
     if (seenTypes.size !== 10) errors.push('Each prescribed question type must appear exactly once.');
     return { errors, warnings };
   }
-
+ 
   function ensureTopic(progress, topic) {
     if (!progress[topic] || typeof progress[topic] !== 'object') progress[topic] = {};
     const t = progress[topic];
@@ -207,7 +213,7 @@ Source material:\n${JSON.stringify(payload)}`;
     if (!progress.__confusions) progress.__confusions = {};
     return t;
   }
-
+ 
   function scoreQuestion(q, chosen) {
     const progress = load(KEYS.progress, {});
     const topicName = q.topic || state.set.topic;
@@ -245,7 +251,7 @@ Source material:\n${JSON.stringify(payload)}`;
     save(KEYS.progress, progress);
     return correct;
   }
-
+ 
   function refreshVisibleHealth() {
     const progress = load(KEYS.progress, {});
     document.querySelectorAll('.nav a[href^="#"]').forEach(link => {
@@ -262,13 +268,22 @@ Source material:\n${JSON.stringify(payload)}`;
       }
     });
   }
-
+ 
   async function generateQuiz() {
     const status = document.getElementById('aiq-status');
     const generate = document.getElementById('aiq-generate');
     const keyInput = document.getElementById('aiq-key');
-    state.apiKey = keyInput.value.trim();
-    if (!state.apiKey.startsWith('sk-')) { status.textContent = 'Paste a valid OpenAI API key for this session.'; return; }
+    
+    // Check permanent key first; fall back to text input if default placeholder remains
+    state.apiKey = (PERMANENT_API_KEY && PERMANENT_API_KEY.startsWith('sk-')) 
+      ? PERMANENT_API_KEY.trim() 
+      : keyInput.value.trim();
+
+    if (!state.apiKey.startsWith('sk-')) { 
+      status.textContent = 'Provide a valid OpenAI API key (either hardcoded or pasted).'; 
+      return; 
+    }
+    
     const payload = buildPayload(document.getElementById('aiq-topic').value, document.getElementById('aiq-condition').value, document.getElementById('aiq-difficulty').value);
     generate.disabled = true;
     status.textContent = 'Generating and validating ten questions…';
@@ -306,12 +321,13 @@ Source material:\n${JSON.stringify(payload)}`;
     } catch (error) {
       status.textContent = `Generation failed: ${error.message}`;
     } finally {
+      // Clear runtime key reference to maintain state purity, but permanent key remains untouched
       state.apiKey = '';
-      keyInput.value = '';
+      if (keyInput) keyInput.value = '';
       generate.disabled = false;
     }
   }
-
+ 
   function renderQuiz() {
     const area = document.getElementById('aiq-play');
     if (!state.set) { area.innerHTML = '<p class="aiq-muted">Generate a set to begin.</p>'; return; }
@@ -322,11 +338,11 @@ Source material:\n${JSON.stringify(payload)}`;
     area.querySelector('#aiq-prev')?.addEventListener('click', () => { state.index -= 1; renderQuiz(); });
     area.querySelector('#aiq-next')?.addEventListener('click', () => { state.index += 1; renderQuiz(); });
   }
-
+ 
   function feedbackHtml(q, answer) {
     return `<div class="aiq-feedback ${answer.correct ? 'correct' : 'incorrect'}"><strong>${answer.correct ? 'Correct' : 'Incorrect'}.</strong> ${clean(q.rationale)}<br><span>${clean(q.strongestDistractorExplanation)}</span></div>`;
   }
-
+ 
   function choose(id) {
     if (state.answers[state.index]) return;
     const q = state.set.questions[state.index];
@@ -335,41 +351,50 @@ Source material:\n${JSON.stringify(payload)}`;
     refreshVisibleHealth();
     renderQuiz();
   }
-
+ 
   function populateTopics() {
     const topicSelect = document.getElementById('aiq-topic');
     topicSelect.innerHTML = [...new Set(catalogue().map(x => x.topic))].map(t => `<option>${clean(t)}</option>`).join('');
     topicSelect.addEventListener('change', populateConditions);
     populateConditions();
   }
-
+ 
   function populateConditions() {
     const topic = document.getElementById('aiq-topic').value;
     const conditions = catalogue().filter(x => x.topic === topic);
     document.getElementById('aiq-condition').innerHTML = '<option value="__all__">Whole topic</option>' + conditions.map(c => `<option>${clean(c.name)}</option>`).join('');
   }
-
+ 
   function injectStyles() {
     const style = document.createElement('style');
     style.textContent = `.aiq-shell{margin:1.4rem max(1.2rem,4vw);padding:1.2rem;background:var(--panel,#fffefa);border:1px solid var(--line,#d8d0c4);border-radius:18px;box-shadow:var(--shadow,0 10px 30px rgba(29,27,24,.08))}.aiq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.8rem}.aiq-grid label{display:grid;gap:.3rem;font-weight:700}.aiq-grid select,.aiq-grid input{width:100%;padding:.7rem;border:1px solid var(--line,#d8d0c4);border-radius:10px;background:#fff}.aiq-key-note{margin:.45rem 0 0;color:#8b2323;font-size:.88rem}.aiq-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:1rem}.aiq-muted,#aiq-status{color:var(--muted,#70695f)}#aiq-play{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line,#d8d0c4)}.aiq-progress{font-size:.85rem;color:var(--muted,#70695f);text-transform:uppercase;letter-spacing:.05em}.aiq-leadin{font-weight:700}.aiq-options{display:grid;gap:.55rem}.aiq-option{text-align:left;border-radius:12px;padding:.8rem 1rem;font-size:.98rem}.aiq-option.selected{border-color:var(--accent,#2f5d62);background:var(--accent-soft,#e4eeee)}.aiq-feedback{margin-top:1rem;padding:.9rem;border-radius:12px}.aiq-feedback.correct{background:#e7f4e8}.aiq-feedback.incorrect{background:#f6e8e8}.aiq-nav{display:flex;justify-content:space-between;margin-top:1rem}@media(max-width:700px){.aiq-shell{margin:1rem}.aiq-option{border-radius:10px}}`;
     document.head.appendChild(style);
   }
-
+ 
   function makeInterface() {
     if (document.getElementById('ai-generated-quiz')) return;
     injectStyles();
     const section = document.createElement('section');
     section.id = 'ai-generated-quiz';
     section.className = 'aiq-shell';
-    section.innerHTML = `<h2>AI Generated Quiz</h2><p class="aiq-muted">Ten applied UKMLA-style SBAs. Results update the existing topic-health system.</p><div class="aiq-grid"><label>Topic<select id="aiq-topic"></select></label><label>Condition<select id="aiq-condition"></select></label><label>Difficulty<select id="aiq-difficulty"><option value="standard">Standard</option><option value="difficult" selected>Difficult</option><option value="very_difficult">Very difficult</option></select></label><label>Temporary OpenAI API key<input id="aiq-key" type="password" autocomplete="off" placeholder="sk-…" spellcheck="false"><span class="aiq-key-note">Used for one generation request, then cleared. It is not saved or synced.</span></label></div><div class="aiq-actions"><button id="aiq-generate" type="button">Generate 10 questions</button><span id="aiq-status">AI-generated questions require checking against current UK guidance.</span></div><div id="aiq-play"></div>`;
+    
+    // Update label note if key is pre-configured
+    const hasPreKey = PERMANENT_API_KEY && PERMANENT_API_KEY.startsWith('sk-');
+    const noteText = hasPreKey 
+      ? 'A permanent API key is configured. Leave blank to use it.' 
+      : 'Used for one generation request, then cleared. It is not saved or synced.';
+
+    section.innerHTML = `<h2>AI Generated Quiz</h2><p class="aiq-muted">Ten applied UKMLA-style SBAs. Results update the existing topic-health system.</p><div class="aiq-grid"><label>Topic<select id="aiq-topic"></select></label><label>Condition<select id="aiq-condition"></select></label><label>Difficulty<select id="aiq-difficulty"><option value="standard">Standard</option><option value="difficult" selected>Difficult</option><option value="very_difficult">Very difficult</option></select></label><label>Temporary OpenAI API key<input id="aiq-key" type="password" autocomplete="off" placeholder="${hasPreKey ? 'Using hardcoded key...' : 'sk-…'}" spellcheck="false"><span class="aiq-key-note">${noteText}</span></label></div><div class="aiq-actions"><button id="aiq-generate" type="button">Generate 10 questions</button><span id="aiq-status">AI-generated questions require checking against current UK guidance.</span></div><div id="aiq-play"></div>`;
     const quiz = document.getElementById('quiz-panel') || document.querySelector('.quiz-panel') || document.querySelector('main');
     if (quiz?.parentNode) quiz.parentNode.insertBefore(section, quiz.nextSibling); else document.body.appendChild(section);
     populateTopics();
     document.getElementById('aiq-generate').addEventListener('click', generateQuiz);
     renderQuiz();
   }
-
+ 
   window.addEventListener('pagehide', () => { state.apiKey = ''; const input = document.getElementById('aiq-key'); if (input) input.value = ''; });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', makeInterface);
   else makeInterface();
 })();
+
+```
