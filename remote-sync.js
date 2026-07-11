@@ -153,7 +153,7 @@
   function loadAiQuizInterface() {
     if (document.querySelector('script[data-ukmla-ai-quiz]')) return;
     const script = document.createElement('script');
-    script.src = 'ai-quiz.js';
+    script.src = 'ai-quiz.js?v=2';
     script.defer = true;
     script.dataset.ukmlaAiQuiz = '1';
     script.onerror = () => status('AI quiz interface could not be loaded.');
