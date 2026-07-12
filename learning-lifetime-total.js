@@ -25,11 +25,14 @@
     return value;
   }
   function total(){return baseline()+(window.UKMLA_LEARNING?.stats?.().totalCompleted||0);}
+  function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
   function render(){
     const value=total();
-    const hero=document.querySelector('#learning-analytics .learning-total');if(hero)hero.textContent=String(value);
-    const stat=document.getElementById('learning-total-completed-stat');if(stat)stat.textContent=`${value} questions completed`;
-    const label=document.querySelector('#learning-analytics .learning-total-label');if(label)label.title=`Includes ${baseline()} questions from pre-logger topic-attempt history.`;
+    setText(document.querySelector('#learning-analytics .learning-total'),String(value));
+    setText(document.getElementById('learning-total-completed-stat'),`${value} questions completed`);
+    const label=document.querySelector('#learning-analytics .learning-total-label');
+    const title=`Includes ${baseline()} questions from pre-logger topic-attempt history.`;
+    if(label&&label.title!==title)label.title=title;
   }
   async function copy(text,button){
     try{await navigator.clipboard.writeText(text);}catch(_){const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();}
