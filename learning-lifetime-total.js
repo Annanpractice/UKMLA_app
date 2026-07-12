@@ -6,6 +6,7 @@
   const BASELINE_KEY='ukmlaLearningLegacyCompletedV1';
   const BASELINE_CORRECT_KEY='ukmlaLearningLegacyCorrectV1';
   const PROGRESS_KEY='ukmlaQuizProgressV1';
+  let queued=false;
 
   function progressTotals(){
     try{
@@ -44,6 +45,7 @@
   }
   function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
   function render(){
+    queued=false;
     const all=lifetime();
     setText(document.querySelector('#learning-analytics .learning-total'),String(all.attempts));
     setText(document.getElementById('learning-total-completed-stat'),`${all.attempts} questions completed`);
@@ -52,6 +54,11 @@
     if(label&&label.title!==title)label.title=title;
     const core=window.UKMLA_LEARNING;const ring=document.querySelector('#learning-analytics .learning-coverage-ring');
     if(core&&ring){const stats=core.stats();const catalogue=core.catalogue();const tested=new Set(stats.presentations.filter(event=>event.source!=='knowledge').map(event=>event.conditionId));const text=`${tested.size}/${catalogue.length} conditions tested<br>${all.accuracy}% lifetime accuracy<br>Coverage cycle ${core.coverageState().cycle}`;if(ring.innerHTML!==text)ring.innerHTML=text;}
+  }
+  function schedule(){
+    if(queued)return;
+    queued=true;
+    requestAnimationFrame(render);
   }
   async function copy(text,button){
     try{await navigator.clipboard.writeText(text);}catch(_){const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();}
@@ -69,6 +76,6 @@
     if(all.base.attempts)text=text.replace('BOASTING RIGHTS',`BOASTING RIGHTS\nLegacy questions included: ${all.base.attempts}`);
     copy(text,button);
   },true);
-  function init(){baselines();render();new MutationObserver(render).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener('ukmlaLearningEvent',render);}
+  function init(){baselines();schedule();['ukmlaLearningEvent','ukmlaRemoteDataImported','ukmlaAdditionalTopicReady'].forEach(name=>document.addEventListener(name,schedule));}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
