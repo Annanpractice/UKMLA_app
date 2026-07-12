@@ -6,7 +6,7 @@
 
   const PARAMS=['Ix','Tx','Escalate','Mimics','Red flags'];
   const TYPE_FOR_PARAM={Ix:'first_line_investigation',Tx:'stable_first_line_treatment',Escalate:'escalation_referral_disposition',Mimics:'close_mimic_discrimination','Red flags':'dangerous_diagnosis_priority_exclusion'};
-  const STEM={Ix:'Which investigation is most appropriate for',Tx:'Which treatment is most appropriate for',Escalate:'Which escalation or safety-net action best applies to',Mimics:'Which statement best distinguishes', 'Red flags':'Which danger feature is most important in'};
+  const STEM={Ix:'Which investigation is most appropriate for',Tx:'Which treatment is most appropriate for',Escalate:'Which escalation or safety-net action best applies to',Mimics:'Which statement best distinguishes','Red flags':'Which danger feature is most important in'};
   const letters=['A','B','C','D','E'];
   let active=null;
 
@@ -29,6 +29,8 @@
     });
   }
   function paramPlan(){
+    const selected=document.getElementById('quiz-param')?.value;
+    if(PARAMS.includes(selected))return Array(10).fill(selected);
     const order=weakestParams();
     return [order[0],order[0],order[0],order[1],order[1],order[2],order[2],order[3],order[4],order[4]];
   }
@@ -41,7 +43,7 @@
   }
   function buildQuestion(condition,param,pool,index){
     const correct={text:condition.fields[param],source:condition,isCorrect:true};const wrong=distractors(condition,param,pool);
-    if(wrong.length<4)return null;
+    if(!correct.text||wrong.length<4)return null;
     const options=shuffle([correct,...wrong.map(item=>({...item,isCorrect:false}))]);
     return {index,condition,param,questionType:TYPE_FOR_PARAM[param],stem:`${STEM[param]} ${condition.name}?`,options,correctIndex:options.findIndex(option=>option.isCorrect)};
   }
