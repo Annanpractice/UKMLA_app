@@ -27,22 +27,44 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare deployed app shell
+      - name: Prepare resilient single-page app
         run: |
           mkdir -p _site
           rsync -a --exclude '.git' --exclude '_site' ./ _site/
 
-          # Keep the large encyclopedia document as the iframe content.
-          cp index.html _site/content.html
+          python - <<'PY'
+          from pathlib import Path
 
-          # GitHub Pages opens /index.html by default. Serve the enhanced app
-          # shell there, and point its iframe at the preserved encyclopedia.
-          sed -E 's/src="index\.html\?v=[0-9]+"/src="content.html?v=39"/' app.html > _site/index.html
-          sed -E 's/src="index\.html\?v=[0-9]+"/src="content.html?v=39"/' app.html > _site/app.html
+          page = Path('_site/index.html')
+          text = page.read_text(encoding='utf-8')
+          loader = '<script src="app-boot.js?v=1"></script>'
+
+          if loader not in text:
+              if '</body>' in text:
+                  text = text.replace('</body>', loader + '\n</body>', 1)
+              else:
+                  text += '\n' + loader + '\n'
+
+          page.write_text(text, encoding='utf-8')
+
+          redirect = '''<!doctype html>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Opening UKMLA</title>
+          <script>location.replace('./?v=40');</script>
+          <p><a href="./?v=40">Open the UKMLA app</a></p>
+          '''
+          Path('_site/app.html').write_text(redirect, encoding='utf-8')
+          PY
 
           test -s _site/index.html
-          test -s _site/content.html
-          grep -q 'content.html?v=39' _site/index.html
+          test -s _site/app-boot.js
+          test -s _site/learning-light-badges.js
+          grep -q 'app-boot.js?v=1' _site/index.html
+
+          CARD_COUNT=$(grep -o 'class="card' _site/index.html | wc -l)
+          echo "Card records in deployed page: ${CARD_COUNT}"
+          test "${CARD_COUNT}" -ge 400
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
