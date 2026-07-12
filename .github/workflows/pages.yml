@@ -23,12 +23,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
+      - name: Prepare deployed app shell
+        run: |
+          mkdir -p _site
+          rsync -a --exclude '.git' --exclude '_site' ./ _site/
+
+          # Keep the large encyclopedia document as the iframe content.
+          cp index.html _site/content.html
+
+          # GitHub Pages opens /index.html by default. Serve the enhanced app
+          # shell there, and point its iframe at the preserved encyclopedia.
+          sed -E 's/src="index\.html\?v=[0-9]+"/src="content.html?v=39"/' app.html > _site/index.html
+          sed -E 's/src="index\.html\?v=[0-9]+"/src="content.html?v=39"/' app.html > _site/app.html
+
+          test -s _site/index.html
+          test -s _site/content.html
+          grep -q 'content.html?v=39' _site/index.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: "_site"
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
