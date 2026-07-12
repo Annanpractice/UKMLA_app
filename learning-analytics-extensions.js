@@ -3,8 +3,10 @@
   if(window.__UKMLA_ANALYTICS_EXTENSIONS__)return;
   window.__UKMLA_ANALYTICS_EXTENSIONS__=true;
 
+  let queued=false;
   function pct(row){return row.answered?Math.round(row.correct/row.answered*100):0;}
   function render(){
+    queued=false;
     const section=document.getElementById('learning-analytics');
     const grid=section?.querySelector('.learning-grid');
     const core=window.UKMLA_LEARNING;
@@ -28,6 +30,11 @@
     topicCard.innerHTML=`<h3>Most under-covered topics</h3><ol>${coverage.map(row=>`<li>${row.topicName} — <strong>${row.tested}/${row.total}</strong> conditions · ${row.presented} questions</li>`).join('')}</ol>`;
     grid.appendChild(topicCard);
   }
-  function init(){render();new MutationObserver(render).observe(document.documentElement,{childList:true,subtree:true});}
+  function schedule(){
+    if(queued)return;
+    queued=true;
+    requestAnimationFrame(()=>requestAnimationFrame(render));
+  }
+  function init(){schedule();['ukmlaLearningEvent','ukmlaRemoteDataImported','ukmlaAdditionalTopicReady'].forEach(name=>document.addEventListener(name,schedule));}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
