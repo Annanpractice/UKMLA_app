@@ -29,16 +29,68 @@
     escalation_referral_disposition: 'Escalate'
   };
 
+  const STAGES = {
+    ukmla_ai_quiz: {
+      id: 'quiz',
+      accepted: 'OpenAI accepted the quiz-generation request.',
+      inProgress: 'OpenAI is generating the initial ten-question set.',
+      receiving: 'Receiving the initial structured quiz…',
+      completed: 'Initial ten-question generation completed.'
+    },
+    ukmla_option_normalisation: {
+      id: 'normalisation',
+      start: 'Submitting the short-option normalisation checkpoint…',
+      accepted: 'OpenAI accepted the short-option checkpoint.',
+      inProgress: 'OpenAI is shortening and normalising the answer options.',
+      receiving: 'Receiving shortened option text…',
+      completed: 'Short-option normalisation completed.'
+    },
+    ukmla_hard_sparse_checkpoint: {
+      id: 'hard_sparse',
+      start: 'Submitting the very-difficult sparse-stem checkpoint…',
+      accepted: 'OpenAI accepted the sparse-stem checkpoint.',
+      inProgress: 'Reviewing difficulty, stem leakage and unnecessary detail.',
+      receiving: 'Receiving the sparse-stem review…',
+      completed: 'Very-difficult sparse-stem checkpoint completed.'
+    },
+    ukmla_clinical_category_checkpoint: {
+      id: 'category',
+      start: 'Submitting the clinical-category checkpoint…',
+      accepted: 'OpenAI accepted the clinical-category checkpoint.',
+      inProgress: 'Checking that each lead-in and option set share one clinical category.',
+      receiving: 'Receiving the clinical-category review…',
+      completed: 'Clinical-category checkpoint completed.'
+    },
+    ukmla_distractor_validity_checkpoint: {
+      id: 'distractors',
+      start: 'Submitting the distractor-validity checkpoint…',
+      accepted: 'OpenAI accepted the distractor-validity checkpoint.',
+      inProgress: 'Checking that all distractors are credible clinical competitors.',
+      receiving: 'Receiving the distractor-validity review…',
+      completed: 'Distractor-validity checkpoint completed.'
+    }
+  };
+
   function emit(message, detail) {
-    document.dispatchEvent(new CustomEvent('ukmlaAiGenerationCheckpoint', { detail: { message, detail: detail || null } }));
+    document.dispatchEvent(new CustomEvent('ukmlaAiGenerationCheckpoint', {
+      detail: { message, detail: detail || null }
+    }));
   }
 
-  function labelFor(body) {
+  function stageFor(body) {
     try {
       const parsed = JSON.parse(body || '{}');
-      return parsed?.text?.format?.name === 'ukmla_option_normalisation' ? 'normalisation' : 'quiz';
+      const name = parsed?.text?.format?.name || '';
+      return STAGES[name] || {
+        id: 'internal',
+        start: 'Submitting an internal quiz-quality checkpoint…',
+        accepted: 'OpenAI accepted the internal checkpoint.',
+        inProgress: 'OpenAI is processing the internal checkpoint.',
+        receiving: 'Receiving checkpoint output…',
+        completed: 'Internal checkpoint completed.'
+      };
     } catch (_) {
-      return 'quiz';
+      return STAGES.ukmla_ai_quiz;
     }
   }
 
@@ -105,7 +157,9 @@
   function recentPairs() {
     const pairs = new Set();
     for (const set of load('ukmlaAiGeneratedQuizSetsV1', []).slice(0, 12)) {
-      for (const question of set.questions || []) pairs.add(`${question.targetCondition || ''}|${question.questionType || ''}`);
+      for (const question of set.questions || []) {
+        pairs.add(`${question.targetCondition || ''}|${question.questionType || ''}`);
+      }
     }
     return pairs;
   }
@@ -147,7 +201,11 @@
     HYBRID_POSITIONS.forEach(position => {
       const typeId = QUESTION_TYPE_IDS[position - 1] || '';
       const aspect = TYPE_ASPECT[typeId] || 'Escalate';
-      let condition = ranked.find(item => !usedNames.has(item.name) && item.fields?.[aspect] && !usedPairs.has(`${item.name}|${typeId}`));
+      let condition = ranked.find(item =>
+        !usedNames.has(item.name) &&
+        item.fields?.[aspect] &&
+        !usedPairs.has(`${item.name}|${typeId}`)
+      );
       if (!condition) condition = ranked.find(item => !usedNames.has(item.name) && item.fields?.[aspect]);
       if (!condition) condition = ranked.find(item => !usedNames.has(item.name));
       if (!condition) return;
@@ -165,6 +223,7 @@
 
   function addArchitecturePrompt(body) {
     if (body?.text?.format?.name !== 'ukmla_ai_quiz') return 'none';
+
     for (const item of body.input || []) {
       for (const content of item.content || []) {
         if (item.role !== 'user' || content.type !== 'input_text') continue;
@@ -194,15 +253,16 @@
     try { body = JSON.parse(init.body); }
     catch (_) { return nativeFetch(input, init); }
 
-    const mode = labelFor(init.body);
-    const architecture = mode === 'quiz' ? addArchitecturePrompt(body) : 'normalisation';
+    const stage = stageFor(init.body);
+    const architecture = stage.id === 'quiz' ? addArchitecturePrompt(body) : 'none';
     body.stream = true;
-    if (mode === 'quiz') {
+
+    if (stage.id === 'quiz') {
       emit(architecture === 'random'
         ? 'Submitting the ten-condition random encyclopedia quiz request to OpenAI…'
         : 'Submitting the hybrid 5+5 UKMLA quiz request to OpenAI…');
     } else {
-      emit('Submitting the option-normalisation request to OpenAI…');
+      emit(stage.start);
     }
 
     const response = await nativeFetch(input, { ...init, body: JSON.stringify(body) });
@@ -226,22 +286,22 @@
       buffer = chunks.pop() || '';
 
       for (const chunk of chunks) {
-        const dataLines = chunk.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trim());
+        const dataLines = chunk.split('\n')
+          .filter(line => line.startsWith('data:'))
+          .map(line => line.slice(5).trim());
+
         for (const line of dataLines) {
           if (!line || line === '[DONE]') continue;
           let event;
           try { event = JSON.parse(line); }
           catch (_) { continue; }
 
-          if (event.type === 'response.created') {
-            emit(mode === 'quiz' ? 'OpenAI accepted the quiz request.' : 'OpenAI accepted the normalisation request.');
-          }
-          if (event.type === 'response.in_progress') {
-            emit(mode === 'quiz' ? 'OpenAI is generating the structured quiz output.' : 'OpenAI is generating normalised answer options.');
-          }
+          if (event.type === 'response.created') emit(stage.accepted);
+          if (event.type === 'response.in_progress') emit(stage.inProgress);
+
           if (event.type === 'response.output_text.delta') {
             output += event.delta || '';
-            if (mode === 'quiz') {
+            if (stage.id === 'quiz') {
               const message = questionProgress(output);
               const number = message && Number((message.match(/question (\d+)/) || [])[1]);
               if (message && number > lastQuestion) {
@@ -249,31 +309,43 @@
                 emit(message);
               } else if (output.length - lastChars > 2500) {
                 lastChars = output.length;
-                emit(`Receiving structured quiz output… ${output.length.toLocaleString()} characters received.`);
+                emit(`Receiving the initial structured quiz… ${output.length.toLocaleString()} characters received.`);
               }
-            } else if (output.length - lastChars > 800) {
+            } else if (output.length - lastChars > 1600) {
               lastChars = output.length;
-              emit(`Receiving normalised option text… ${output.length.toLocaleString()} characters received.`);
+              emit(`${stage.receiving} ${output.length.toLocaleString()} characters received.`);
             }
           }
+
           if (event.type === 'response.output_text.done' && event.text) output = event.text;
           if (event.type === 'response.completed') {
             finalEvent = event;
-            emit(mode === 'quiz' ? 'OpenAI completed the structured quiz response.' : 'OpenAI completed the option-normalisation response.');
+            emit(stage.completed);
           }
-          if (event.type === 'response.failed' || event.type === 'error') emit('OpenAI reported an error while generating the response.');
+          if (event.type === 'response.failed' || event.type === 'error') {
+            emit(`OpenAI reported an error during the ${stage.id.replace(/_/g, ' ')} stage.`);
+          }
         }
       }
     }
 
-    const responseObject = finalEvent?.response || { output_text: output, output: [{ content: [{ type: 'output_text', text: output }] }] };
+    const responseObject = finalEvent?.response || {
+      output_text: output,
+      output: [{ content: [{ type: 'output_text', text: output }] }]
+    };
     if (!responseObject.output_text) responseObject.output_text = output;
-    return new Response(JSON.stringify(responseObject), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+    return new Response(JSON.stringify(responseObject), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   window.fetch = function (input, init) {
     const url = typeof input === 'string' ? input : input && input.url;
-    if (url === API && init && init.method === 'POST') return streamRequest(input, init);
+    if (url === API && init && String(init.method || 'GET').toUpperCase() === 'POST') {
+      return streamRequest(input, init);
+    }
     return nativeFetch(input, init);
   };
 })();
