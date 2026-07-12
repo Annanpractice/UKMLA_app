@@ -79,10 +79,12 @@
       candidates=catalogue;
       selected=learning.selectCoverageCandidates(candidates,10,{uniqueTopics:true});
     }else{
+      if((payload.conditions||[]).length<=1) return previousFetch(input,init);
       const topic=String(payload.topic||'');
       candidates=catalogue.filter(item=>item.topic===topic);
       if(candidates.length>10)selected=learning.selectCoverageCandidates(candidates,10,{uniqueTopics:false});
       else selected=candidates;
+      if(selected.length===10){payload.originalMode=payload.mode;payload.mode='random_all_conditions';}
     }
     if(!selected.length)return previousFetch(input,init);
     const oldByName=new Map((payload.conditions||[]).map(item=>[String(item.name||'').toLowerCase(),item]));
