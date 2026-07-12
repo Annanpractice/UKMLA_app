@@ -7,6 +7,7 @@
   const PARAMS=['Ix','Tx','Escalate','Mimics','Red flags'];
   const TYPE_FOR_PARAM={Ix:'first_line_investigation',Tx:'stable_first_line_treatment',Escalate:'escalation_referral_disposition',Mimics:'close_mimic_discrimination','Red flags':'dangerous_diagnosis_priority_exclusion'};
   const STEM={Ix:'Which investigation is most appropriate for',Tx:'Which treatment is most appropriate for',Escalate:'Which escalation or safety-net action best applies to',Mimics:'Which statement best distinguishes','Red flags':'Which danger feature is most important in'};
+  const LAW_STEM={Ix:'Which legal or professional rule best applies to',Tx:'What is the most appropriate lawful action for',Escalate:'What should be recorded or escalated for',Mimics:'Which feature best identifies the issue in','Red flags':'Which action should be avoided in'};
   const letters=['A','B','C','D','E'];
   let active=null;
 
@@ -45,7 +46,9 @@
     const correct={text:condition.fields[param],source:condition,isCorrect:true};const wrong=distractors(condition,param,pool);
     if(!correct.text||wrong.length<4)return null;
     const options=shuffle([correct,...wrong.map(item=>({...item,isCorrect:false}))]);
-    return {index,condition,param,questionType:TYPE_FOR_PARAM[param],stem:`${STEM[param]} ${condition.name}?`,options,correctIndex:options.findIndex(option=>option.isCorrect)};
+    const law=condition.card?.dataset.aiProfile==='ward_law_ethics';
+    const stem=(law?LAW_STEM:STEM)[param]||STEM[param];
+    return {index,condition,param,questionType:TYPE_FOR_PARAM[param],stem:`${stem} ${condition.name}?`,options,correctIndex:options.findIndex(option=>option.isCorrect)};
   }
   function sourcePool(mode,button){
     const catalogue=window.UKMLA_LEARNING?.catalogue()||[];
