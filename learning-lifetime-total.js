@@ -35,6 +35,13 @@
     const attempts=base.attempts+answers.length;const correct=base.correct+answers.filter(event=>event.correct).length;
     return {attempts,correct,accuracy:attempts?Math.round(correct/attempts*1000)/10:0,base};
   }
+  function topicCoverageLines(core){
+    const data=core.stats();const groups=new Map();
+    core.catalogue().forEach(item=>{if(!groups.has(item.topicId))groups.set(item.topicId,{topicId:item.topicId,topicName:item.topicName||item.topic,total:0});groups.get(item.topicId).total+=1;});
+    const presented={},tested={};
+    data.presentations.filter(event=>event.source!=='knowledge').forEach(event=>{presented[event.topicId]=(presented[event.topicId]||0)+1;(tested[event.topicId]||(tested[event.topicId]=new Set())).add(event.conditionId);});
+    return [...groups.values()].map(row=>({...row,presented:presented[row.topicId]||0,tested:tested[row.topicId]?.size||0})).sort((a,b)=>(a.tested/a.total)-(b.tested/b.total)||a.presented-b.presented||a.topicName.localeCompare(b.topicName)).slice(0,10).map((row,index)=>`${index+1}. ${row.topicName} — ${row.tested}/${row.total} conditions — ${row.presented} target questions`);
+  }
   function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
   function render(){
     const all=lifetime();
@@ -58,6 +65,7 @@
     const all=lifetime();let text=core.summaryText();
     text=text.replace(/Total questions completed:\s*\d+/i,`Total questions completed: ${all.attempts}`);
     text=text.replace(/Overall accuracy:\s*[\d.]+%/i,`Overall accuracy: ${all.accuracy}%`);
+    text=text.replace(/UNDERTESTED TOPICS\n[\s\S]*?\n\nRECENT PERFORMANCE/,`UNDERTESTED TOPICS\n${topicCoverageLines(core).join('\n')}\n\nRECENT PERFORMANCE`);
     if(all.base.attempts)text=text.replace('BOASTING RIGHTS',`BOASTING RIGHTS\nLegacy questions included: ${all.base.attempts}`);
     copy(text,button);
   },true);
