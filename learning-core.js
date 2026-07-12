@@ -314,6 +314,8 @@
     return catalogue().filter(item=>item.topic===topicName&&lower.includes(item.name.toLowerCase())).sort((a,b)=>b.name.length-a.name.length)[0]||null;
   }
   function observeBasic(body){
+    const resultText=clean(body.querySelector('.quiz-stem')?.textContent);
+    if(/^Result:/i.test(resultText)){if(currentBasic)currentBasic.active=false;return;}
     const meta=[...body.querySelectorAll('.quiz-meta span')].map(node=>clean(node.textContent));
     const questionMeta=meta.find(text=>/^Question\s+/i.test(text));
     const topic=clean(meta.find(text=>/^Topic:/i.test(text))?.replace(/^Topic:\s*/i,''));
@@ -517,7 +519,7 @@
         const cycleA=covered.has(a.conditionId)?1:0,cycleB=covered.has(b.conditionId)?1:0;
         const timeA=sa.lastPresentedAt?now-new Date(sa.lastPresentedAt).getTime():Number.MAX_SAFE_INTEGER;
         const timeB=sb.lastPresentedAt?now-new Date(sb.lastPresentedAt).getTime():Number.MAX_SAFE_INTEGER;
-        return neverA-neverB||cycleA-cycleB||sa.presented-sb.presented||sb.health-sa.health||timeB-timeA||Math.random()-.5;
+        return neverA-neverB||cycleA-cycleB||sa.presented-sb.presented||sa.health-sb.health||timeB-timeA||Math.random()-.5;
       });
     }
     const selected=[];const used=new Set();
@@ -532,7 +534,14 @@
   }
 
   function initObservers(){
-    const observer=new MutationObserver(()=>{
+    const observer=new MutationObserver(records=>{
+      const relevant=records.some(record=>{
+        const target=record.target?.nodeType===1?record.target:record.target?.parentElement;
+        if(target?.closest?.('#learning-analytics,.learning-condition-count,.learning-topic-count')) return false;
+        if(target?.closest?.('#aiq-play,#quiz-body')) return true;
+        return [...(record.addedNodes||[])].some(node=>node.nodeType===1&&(node.matches?.('.card,.section,#aiq-play,#quiz-body')||node.querySelector?.('.card,.section,#aiq-play,#quiz-body')));
+      });
+      if(!relevant) return;
       ensureIds();
       const ai=document.getElementById('aiq-play');if(ai)observeAi(ai);
       const basic=document.getElementById('quiz-body');if(basic)observeBasic(basic);
