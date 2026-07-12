@@ -6,8 +6,7 @@
   function sanitise(){
     document.querySelectorAll('.learning-condition-count,.learning-topic-count').forEach(badge=>{
       const text=String(badge.textContent||'').trim();
-      if(text)badge.dataset.count=text;
-      badge.textContent='';
+      if(text){badge.dataset.count=text;badge.textContent='';}
       badge.setAttribute('aria-hidden','true');
       if(badge.classList.contains('learning-topic-count')){
         const link=badge.closest('.nav a');
