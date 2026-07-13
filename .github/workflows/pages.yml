@@ -43,6 +43,7 @@ jobs:
             v2/sync.js \
             v2/psa-schema.js \
             v2/psa-engine.js \
+            v2/psa-grounding.js \
             v2/psa-runtime.js \
             v2/psa.js \
             scripts/validate_psa_module.js
@@ -72,7 +73,7 @@ jobs:
           path: validation-diagnostics.txt
           if-no-files-found: error
 
-      - name: Validate PSA blueprint and integration
+      - name: Validate PSA blueprint, source grounding and calculations
         run: node scripts/validate_psa_module.js
 
       - name: Extract and audit all condition cards
@@ -149,8 +150,12 @@ jobs:
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
           test -s _site/v2/psa.js
+          test -s _site/v2/psa-grounding.js
+          test -s _site/v2/psa-grounding.css
           test -s _site/v2/psa-runtime.js
           test -s _site/v2/psa.css
+          grep -q 'psa-grounding.js' _site/index.html
+          grep -q 'psa-grounding.css' _site/index.html
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
 
