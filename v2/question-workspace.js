@@ -16,6 +16,8 @@
   function onQuestionsRoute(){return location.hash.startsWith('#/quiz');}
   function workspace(){return document.getElementById('quiz-workspace');}
   function tabs(){return document.querySelector('#app .tabs');}
+  function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
+  function setAttribute(node,name,value){if(node&&node.getAttribute(name)!==value)node.setAttribute(name,value);}
 
   function persistTab(tab){
     const api=core();
@@ -35,8 +37,8 @@
         button.dataset.quizTab=tab;
         bar.appendChild(button);
       }
-      if(button.textContent!==TAB_LABELS[tab])button.textContent=TAB_LABELS[tab];
-      button.setAttribute('aria-label',TAB_LABELS[tab]);
+      setText(button,TAB_LABELS[tab]);
+      setAttribute(button,'aria-label',TAB_LABELS[tab]);
       button.onclick=event=>{
         event.preventDefault();
         event.stopPropagation();
@@ -51,7 +53,7 @@
     bar.querySelectorAll('[data-quiz-tab]').forEach(button=>{
       const active=button.dataset.quizTab===tab;
       button.classList.toggle('active',active);
-      button.setAttribute('aria-selected',active?'true':'false');
+      setAttribute(button,'aria-selected',active?'true':'false');
     });
   }
 
@@ -102,29 +104,23 @@
   function relabelNavigation(){
     document.querySelectorAll('[data-nav="quiz"]').forEach(button=>{
       const spans=button.querySelectorAll('span');
-      if(spans[1]&&spans[1].textContent!=='Questions')spans[1].textContent='Questions';
-      button.setAttribute('aria-label','Questions');
+      setText(spans[1],'Questions');
+      setAttribute(button,'aria-label','Questions');
     });
-    const homeButton=document.getElementById('home-quiz');
-    if(homeButton)homeButton.textContent='Start UKMLA questions';
+    setText(document.getElementById('home-quiz'),'Start UKMLA questions');
   }
 
   function brandQuestionPage(){
     if(!onQuestionsRoute())return;
-    const pageKicker=document.getElementById('page-kicker');
-    const pageTitle=document.getElementById('page-title');
-    if(pageKicker)pageKicker.textContent='UKMLA';
-    if(pageTitle)pageTitle.textContent='Questions';
-    document.title='UKMLA Questions';
+    setText(document.getElementById('page-kicker'),'UKMLA');
+    setText(document.getElementById('page-title'),'Questions');
+    if(document.title!=='UKMLA Questions')document.title='UKMLA Questions';
 
     const head=document.querySelector('#app .page-head');
     if(head){
-      const eyebrow=head.querySelector('.eyebrow');
-      const title=head.querySelector('h1');
-      const description=head.querySelector('p');
-      if(eyebrow)eyebrow.textContent='GMC content-map practice';
-      if(title)title.textContent='UKMLA question centre';
-      if(description)description.textContent='Clinical question sets are structured around the GMC MLA content map. PSA work uses live BNF/NICE-grounded source checks; other UKMLA questions use the curated card atlas and clinical quality checkpoints.';
+      setText(head.querySelector('.eyebrow'),'GMC content-map practice');
+      setText(head.querySelector('h1'),'UKMLA question centre');
+      setText(head.querySelector('p'),'Clinical question sets are structured around the GMC MLA content map. PSA work uses live BNF/NICE-grounded source checks; other UKMLA questions use the curated card atlas and clinical quality checkpoints.');
       if(!head.querySelector('.question-brand-disclaimer')){
         const note=document.createElement('small');
         note.className='question-brand-disclaimer';
@@ -136,9 +132,8 @@
     const container=workspace();
     if(!container)return;
     const localHeading=container.querySelector('#basic-start')?.closest('.quiz-card')?.querySelector('h2');
-    if(localHeading)localHeading.textContent='Local coverage questions';
-    const basicStart=container.querySelector('#basic-start');
-    if(basicStart)basicStart.textContent='Generate 10 questions';
+    setText(localHeading,'Local coverage questions');
+    setText(container.querySelector('#basic-start'),'Generate 10 questions');
   }
 
   function replaceVisibleTerms(root=document){
@@ -162,7 +157,7 @@
       const trimmed=raw.trim();
       if(!trimmed)continue;
       let replacement=exact.get(trimmed);
-      if(!replacement&&/\bquiz\b/i.test(trimmed))replacement=trimmed.replace(/\bquizzes\b/gi,'question sets').replace(/\bquiz\b/gi,'question set');
+      if(!replacement&&/\bquiz(?:zes)?\b/i.test(trimmed))replacement=trimmed.replace(/\bquizzes\b/gi,'question sets').replace(/\bquiz\b/gi,'question set');
       if(replacement&&replacement!==trimmed){
         const leading=raw.match(/^\s*/)?.[0]||'';
         const trailing=raw.match(/\s*$/)?.[0]||'';
