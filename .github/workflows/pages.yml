@@ -40,6 +40,7 @@ jobs:
             v2/ai-ui.js \
             v2/biomedical.js \
             v2/biomedical-basic.js \
+            v2/question-workspace.js \
             v2/knowledge-pptx.js \
             v2/knowledge.js \
             v2/firebase-config.js \
@@ -83,7 +84,7 @@ jobs:
       - name: Validate PSA blueprint, source grounding and calculations
         run: node scripts/validate_psa_module.js
 
-      - name: Validate biomedical sources, quiz integration and generated data
+      - name: Validate biomedical sources, question integration and generated data
         run: python scripts/validate_biomedical_module.py
 
       - name: Validate Basic HTML profile isolation
@@ -91,6 +92,28 @@ jobs:
           grep -q "\['anatomy','physiology'\].includes(item.profile)" v2/biomedical-basic.js
           grep -q "questions.length!==10" v2/biomedical-basic.js
           grep -q "biomedical-basic.js" v2/app.html
+
+      - name: Validate mobile UKMLA Questions workspace
+        run: |
+          grep -q "ai:'UKMLA Questions'" v2/question-workspace.js
+          grep -q "window.UKMLA_V2_AI.mount(container)" v2/question-workspace.js
+          grep -q "api.App.state.quizTab=tab" v2/question-workspace.js
+          grep -q "GMC content-map practice" v2/question-workspace.js
+          grep -q "BNF/NICE-grounded" v2/question-workspace.js
+          grep -q "Temporary OpenAI API key" v2/ai-ui.js
+          grep -q "inputmode=\"text\"" v2/ai-ui.js
+          grep -q "Session only" v2/ai-ui.js
+          grep -q "Build 10 UKMLA questions" v2/ai-ui.js
+          ! grep -q "AI-generated UKMLA quiz" v2/ai-ui.js
+          ! grep -q "Generate 10-question AI quiz" v2/ai-ui.js
+          grep -q "question-workspace.css" v2/app.html
+          grep -q "question-workspace.js" v2/app.html
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('v2/app.html').read_text(encoding='utf-8')
+          assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
+          assert 'ai-ui.js?v=2' in html
+          PY
 
       - name: Audit complete card dataset
         run: |
@@ -174,10 +197,13 @@ jobs:
           test -s _site/index.html
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
+          test -s _site/v2/ai-ui.js
           test -s _site/v2/biomedical.js
           test -s _site/v2/biomedical-ai.js
           test -s _site/v2/biomedical-basic.js
           test -s _site/v2/biomedical.css
+          test -s _site/v2/question-workspace.js
+          test -s _site/v2/question-workspace.css
           test -s _site/v2/psa.js
           test -s _site/v2/psa-grounding.js
           test -s _site/v2/psa-grounding.css
@@ -187,6 +213,9 @@ jobs:
           grep -q 'biomedical.js' _site/index.html
           grep -q 'biomedical-basic.js' _site/index.html
           grep -q 'biomedical.css' _site/index.html
+          grep -q 'question-workspace.js' _site/index.html
+          grep -q 'question-workspace.css' _site/index.html
+          grep -q 'ai-ui.js?v=2' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
           python - <<'PY'
