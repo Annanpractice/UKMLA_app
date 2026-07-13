@@ -88,6 +88,13 @@ jobs:
           assert any(item['profile'] == 'law' for item in conditions)
           PY
 
+      - name: Upload extracted card dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-card-data
+          path: data/conditions.json
+          if-no-files-found: error
+
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
