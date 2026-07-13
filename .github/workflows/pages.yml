@@ -39,6 +39,7 @@ jobs:
             v2/ai-engine.js \
             v2/ai-ui.js \
             v2/biomedical.js \
+            v2/biomedical-basic.js \
             v2/knowledge-pptx.js \
             v2/knowledge.js \
             v2/firebase-config.js \
@@ -84,6 +85,12 @@ jobs:
 
       - name: Validate biomedical sources, quiz integration and generated data
         run: python scripts/validate_biomedical_module.py
+
+      - name: Validate Basic HTML profile isolation
+        run: |
+          grep -q "\['anatomy','physiology'\].includes(item.profile)" v2/biomedical-basic.js
+          grep -q "questions.length!==10" v2/biomedical-basic.js
+          grep -q "biomedical-basic.js" v2/app.html
 
       - name: Audit complete card dataset
         run: |
@@ -169,6 +176,7 @@ jobs:
           test -s _site/v2/core.js
           test -s _site/v2/biomedical.js
           test -s _site/v2/biomedical-ai.js
+          test -s _site/v2/biomedical-basic.js
           test -s _site/v2/biomedical.css
           test -s _site/v2/psa.js
           test -s _site/v2/psa-grounding.js
@@ -177,6 +185,7 @@ jobs:
           test -s _site/v2/psa.css
           grep -q 'biomedical-ai.js' _site/index.html
           grep -q 'biomedical.js' _site/index.html
+          grep -q 'biomedical-basic.js' _site/index.html
           grep -q 'biomedical.css' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
