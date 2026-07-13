@@ -50,7 +50,8 @@ jobs:
             v2/psa-grounding.js \
             v2/psa-runtime.js \
             v2/psa.js \
-            scripts/validate_psa_module.js
+            scripts/validate_psa_module.js \
+            scripts/validate_question_concision.js
           do
             echo "=== ${FILE} ===" >> validation-diagnostics.txt
             node --check "${FILE}" >> validation-diagnostics.txt 2>&1
@@ -84,6 +85,9 @@ jobs:
       - name: Validate PSA blueprint, source grounding and calculations
         run: node scripts/validate_psa_module.js
 
+      - name: Validate sparse stems and concise answer checkpoints
+        run: node scripts/validate_question_concision.js
+
       - name: Validate biomedical sources, question integration and generated data
         run: python scripts/validate_biomedical_module.py
 
@@ -112,6 +116,9 @@ jobs:
           from pathlib import Path
           html = Path('v2/app.html').read_text(encoding='utf-8')
           assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
+          assert 'ai-schema.js?v=2' in html
+          assert 'biomedical-ai.js?v=2' in html
+          assert 'ai-engine.js?v=2' in html
           assert 'ai-ui.js?v=2' in html
           PY
 
@@ -197,6 +204,8 @@ jobs:
           test -s _site/index.html
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
+          test -s _site/v2/ai-schema.js
+          test -s _site/v2/ai-engine.js
           test -s _site/v2/ai-ui.js
           test -s _site/v2/biomedical.js
           test -s _site/v2/biomedical-ai.js
@@ -215,6 +224,9 @@ jobs:
           grep -q 'biomedical.css' _site/index.html
           grep -q 'question-workspace.js' _site/index.html
           grep -q 'question-workspace.css' _site/index.html
+          grep -q 'ai-schema.js?v=2' _site/index.html
+          grep -q 'biomedical-ai.js?v=2' _site/index.html
+          grep -q 'ai-engine.js?v=2' _site/index.html
           grep -q 'ai-ui.js?v=2' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
