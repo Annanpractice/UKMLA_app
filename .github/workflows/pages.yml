@@ -1,6 +1,8 @@
-name: Deploy static site to GitHub Pages
+name: Validate and deploy UKMLA Cards
 
 on:
+  pull_request:
+    branches: ["main"]
   push:
     branches: ["main"]
   workflow_dispatch:
@@ -11,23 +13,17 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-${{ github.ref }}"
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Validate JavaScript
+      - name: Validate JavaScript and extractor
         run: |
           node --check v2/core.js
           node --check v2/ai-transport.js
@@ -40,19 +36,46 @@ jobs:
           node --check v2/sync.js
           python -m py_compile scripts/build_v2_data.py
 
-      - name: Extract all condition cards
+      - name: Extract and audit all condition cards
         run: |
           python scripts/build_v2_data.py
           python - <<'PY'
           import json
           from pathlib import Path
+
           data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
+          conditions = data['conditions']
+          ids = [item['id'] for item in conditions]
+
           print(f"Extracted conditions: {data['conditionCount']}")
           print(f"Extracted topics: {data['topicCount']}")
+          print(f"Clinical cards: {sum(item['profile'] == 'clinical' for item in conditions)}")
+          print(f"Law cards: {sum(item['profile'] == 'law' for item in conditions)}")
+
           assert data['conditionCount'] >= 480
-          assert len(data['conditions']) == data['conditionCount']
-          assert all(item.get('id') and item.get('topicId') and item.get('fields') for item in data['conditions'])
+          assert len(conditions) == data['conditionCount']
+          assert len(ids) == len(set(ids))
+          assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
+          assert all(len(item.get('fields', {})) >= 3 for item in conditions)
+          assert any(item['profile'] == 'law' for item in conditions)
           PY
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Extract condition dataset
+        run: python scripts/build_v2_data.py
 
       - name: Prepare lightweight routed app
         run: |
@@ -77,7 +100,7 @@ jobs:
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "_site"
