@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate JavaScript and extractor
+      - name: Validate JavaScript and extractors
         id: syntax
         shell: bash
         run: |
@@ -48,10 +48,13 @@ jobs:
             if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
           done
 
-          echo "=== scripts/build_v2_data.py ===" >> validation-diagnostics.txt
-          python -m py_compile scripts/build_v2_data.py >> validation-diagnostics.txt 2>&1
-          CODE=$?
-          if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
+          for FILE in scripts/build_v2_data.py scripts/normalise_v2_data.py
+          do
+            echo "=== ${FILE} ===" >> validation-diagnostics.txt
+            python -m py_compile "${FILE}" >> validation-diagnostics.txt 2>&1
+            CODE=$?
+            if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
+          done
 
           cat validation-diagnostics.txt
           exit ${STATUS}
@@ -67,6 +70,7 @@ jobs:
       - name: Extract and audit all condition cards
         run: |
           python scripts/build_v2_data.py
+          python scripts/normalise_v2_data.py
           python - <<'PY'
           import json
           from pathlib import Path
@@ -74,6 +78,7 @@ jobs:
           data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
           conditions = data['conditions']
           ids = [item['id'] for item in conditions]
+          topics = [item['name'] for item in data['topics']]
 
           print(f"Extracted conditions: {data['conditionCount']}")
           print(f"Extracted topics: {data['topicCount']}")
@@ -86,6 +91,7 @@ jobs:
           assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
           assert all(len(item.get('fields', {})) >= 3 for item in conditions)
           assert any(item['profile'] == 'law' for item in conditions)
+          assert not any(name.lower().endswith(' heading') for name in topics)
           PY
 
       - name: Upload extracted card dataset
@@ -110,7 +116,9 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Extract condition dataset
-        run: python scripts/build_v2_data.py
+        run: |
+          python scripts/build_v2_data.py
+          python scripts/normalise_v2_data.py
 
       - name: Prepare lightweight routed app
         run: |
