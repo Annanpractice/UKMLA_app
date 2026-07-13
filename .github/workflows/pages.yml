@@ -27,44 +27,55 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare resilient single-page app
+      - name: Validate JavaScript
         run: |
-          mkdir -p _site
-          rsync -a --exclude '.git' --exclude '_site' ./ _site/
+          node --check v2/core.js
+          node --check v2/ai-transport.js
+          node --check v2/ai-schema.js
+          node --check v2/ai-engine.js
+          node --check v2/ai-ui.js
+          node --check v2/knowledge-pptx.js
+          node --check v2/knowledge.js
+          node --check v2/firebase-config.js
+          node --check v2/sync.js
+          python -m py_compile scripts/build_v2_data.py
 
+      - name: Extract all condition cards
+        run: |
+          python scripts/build_v2_data.py
           python - <<'PY'
+          import json
           from pathlib import Path
-
-          page = Path('_site/index.html')
-          text = page.read_text(encoding='utf-8')
-          loader = '<script src="app-boot.js?v=1"></script>'
-
-          if loader not in text:
-              if '</body>' in text:
-                  text = text.replace('</body>', loader + '\n</body>', 1)
-              else:
-                  text += '\n' + loader + '\n'
-
-          page.write_text(text, encoding='utf-8')
-
-          redirect = '''<!doctype html>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Opening UKMLA</title>
-          <script>location.replace('./?v=40');</script>
-          <p><a href="./?v=40">Open the UKMLA app</a></p>
-          '''
-          Path('_site/app.html').write_text(redirect, encoding='utf-8')
+          data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
+          print(f"Extracted conditions: {data['conditionCount']}")
+          print(f"Extracted topics: {data['topicCount']}")
+          assert data['conditionCount'] >= 480
+          assert len(data['conditions']) == data['conditionCount']
+          assert all(item.get('id') and item.get('topicId') and item.get('fields') for item in data['conditions'])
           PY
 
-          test -s _site/index.html
-          test -s _site/app-boot.js
-          test -s _site/learning-light-badges.js
-          grep -q 'app-boot.js?v=1' _site/index.html
+      - name: Prepare lightweight routed app
+        run: |
+          rm -rf _site
+          mkdir -p _site/v2 _site/data
+          cp v2/app.html _site/index.html
+          cp v2/*.css v2/*.js _site/v2/
+          cp data/conditions.json _site/data/conditions.json
 
-          CARD_COUNT=$(grep -o 'class="card' _site/index.html | wc -l)
-          echo "Card records in deployed page: ${CARD_COUNT}"
-          test "${CARD_COUNT}" -ge 400
+          cat > _site/app.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Opening UKMLA Cards</title>
+          <script>location.replace('./#/home');</script>
+          <p><a href="./#/home">Open UKMLA Cards</a></p>
+          HTML
+
+          test -s _site/index.html
+          test -s _site/data/conditions.json
+          test -s _site/v2/core.js
+          ! grep -q 'original-pdf-data' _site/index.html
+          ! grep -q '<iframe' _site/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
