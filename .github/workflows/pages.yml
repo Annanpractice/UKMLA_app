@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate JavaScript and extractors
+      - name: Validate JavaScript and Python syntax
         id: syntax
         shell: bash
         run: |
@@ -35,8 +35,10 @@ jobs:
             v2/core.js \
             v2/ai-transport.js \
             v2/ai-schema.js \
+            v2/biomedical-ai.js \
             v2/ai-engine.js \
             v2/ai-ui.js \
+            v2/biomedical.js \
             v2/knowledge-pptx.js \
             v2/knowledge.js \
             v2/firebase-config.js \
@@ -54,7 +56,11 @@ jobs:
             if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
           done
 
-          for FILE in scripts/build_v2_data.py scripts/normalise_v2_data.py
+          for FILE in \
+            scripts/build_v2_data.py \
+            scripts/biomedical_core.py \
+            scripts/normalise_v2_data.py \
+            scripts/validate_biomedical_module.py
           do
             echo "=== ${FILE} ===" >> validation-diagnostics.txt
             python -m py_compile "${FILE}" >> validation-diagnostics.txt 2>&1
@@ -76,10 +82,11 @@ jobs:
       - name: Validate PSA blueprint, source grounding and calculations
         run: node scripts/validate_psa_module.js
 
-      - name: Extract and audit all condition cards
+      - name: Validate biomedical sources, quiz integration and generated data
+        run: python scripts/validate_biomedical_module.py
+
+      - name: Audit complete card dataset
         run: |
-          python scripts/build_v2_data.py
-          python scripts/normalise_v2_data.py
           python - <<'PY'
           import json
           from pathlib import Path
@@ -87,19 +94,30 @@ jobs:
           data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
           conditions = data['conditions']
           ids = [item['id'] for item in conditions]
-          topics = [item['name'] for item in data['topics']]
+          topics = {item['name']: item['count'] for item in data['topics']}
+          profiles = {}
+          for item in conditions:
+              profiles[item['profile']] = profiles.get(item['profile'], 0) + 1
 
-          print(f"Extracted conditions: {data['conditionCount']}")
+          print(f"Extracted cards: {data['conditionCount']}")
           print(f"Extracted topics: {data['topicCount']}")
-          print(f"Clinical cards: {sum(item['profile'] == 'clinical' for item in conditions)}")
-          print(f"Law cards: {sum(item['profile'] == 'law' for item in conditions)}")
+          print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] >= 480
+          assert data['conditionCount'] == 813
+          assert data['topicCount'] == 25
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
+          assert profiles == {
+              'anatomy': 139,
+              'clinical': 415,
+              'law': 69,
+              'physiology': 190,
+          }
+          assert topics['Clinical Anatomy'] == 139
+          assert topics['Clinical Physiology'] == 190
           assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
           assert all(len(item.get('fields', {})) >= 3 for item in conditions)
-          assert any(item['profile'] == 'law' for item in conditions)
+          assert all(len(item['fields']) == 5 for item in conditions if item['profile'] in {'anatomy', 'physiology'})
           assert not any(name.lower().endswith(' heading') for name in topics)
           PY
 
@@ -124,7 +142,7 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Extract condition dataset
+      - name: Extract complete condition dataset
         run: |
           python scripts/build_v2_data.py
           python scripts/normalise_v2_data.py
@@ -149,13 +167,25 @@ jobs:
           test -s _site/index.html
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
+          test -s _site/v2/biomedical.js
+          test -s _site/v2/biomedical-ai.js
+          test -s _site/v2/biomedical.css
           test -s _site/v2/psa.js
           test -s _site/v2/psa-grounding.js
           test -s _site/v2/psa-grounding.css
           test -s _site/v2/psa-runtime.js
           test -s _site/v2/psa.css
+          grep -q 'biomedical-ai.js' _site/index.html
+          grep -q 'biomedical.js' _site/index.html
+          grep -q 'biomedical.css' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
+          python - <<'PY'
+          import json
+          data = json.load(open('_site/data/conditions.json', encoding='utf-8'))
+          assert data['conditionCount'] == 813
+          assert data['topicCount'] == 25
+          PY
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
 
