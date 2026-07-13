@@ -40,7 +40,12 @@ jobs:
             v2/knowledge-pptx.js \
             v2/knowledge.js \
             v2/firebase-config.js \
-            v2/sync.js
+            v2/sync.js \
+            v2/psa-schema.js \
+            v2/psa-engine.js \
+            v2/psa-runtime.js \
+            v2/psa.js \
+            scripts/validate_psa_module.js
           do
             echo "=== ${FILE} ===" >> validation-diagnostics.txt
             node --check "${FILE}" >> validation-diagnostics.txt 2>&1
@@ -66,6 +71,9 @@ jobs:
           name: validation-diagnostics
           path: validation-diagnostics.txt
           if-no-files-found: error
+
+      - name: Validate PSA blueprint and integration
+        run: node scripts/validate_psa_module.js
 
       - name: Extract and audit all condition cards
         run: |
@@ -140,6 +148,9 @@ jobs:
           test -s _site/index.html
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
+          test -s _site/v2/psa.js
+          test -s _site/v2/psa-runtime.js
+          test -s _site/v2/psa.css
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
 
