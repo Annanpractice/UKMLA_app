@@ -1,0 +1,1 @@
+window.UKMLA_V2_FIREBASE_CONFIG={apiKey:['AIzaSyAwakZ','niGTksbsx9y2T3OlQ50k3BpBH54'].join('-'),authDomain:'ukmla-7c2d8.firebaseapp.com',databaseURL:'https://ukmla-7c2d8-default-rtdb.firebaseio.com/',projectId:'ukmla-7c2d8',storageBucket:'ukmla-7c2d8.firebasestorage.app',messagingSenderId:'973464495744',appId:'1:973464495744:web:06221b2afeecc135a6a865'};

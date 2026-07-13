@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#03152b">
+  <title>UKMLA Cards</title>
+  <link rel="stylesheet" href="./v2/app.css?v=2">
+</head>
+<body>
+  <div id="app-shell">
+    <aside class="side-nav" aria-label="Primary navigation">
+      <div class="brand">
+        <span class="brand-mark">UK</span>
+        <div><strong>UKMLA</strong><small>Card atlas</small></div>
+      </div>
+      <nav id="desktop-nav"></nav>
+      <div class="sync-indicator" id="sync-indicator">Local-first</div>
+    </aside>
+
+    <header class="top-bar">
+      <button class="icon-button" id="back-button" aria-label="Back" hidden>←</button>
+      <div class="top-title"><span id="page-kicker">UKMLA</span><strong id="page-title">Home</strong></div>
+      <button class="icon-button" id="quick-search" aria-label="Search">⌕</button>
+    </header>
+
+    <main id="app" tabindex="-1">
+      <section class="loading-screen">
+        <div class="loader-orbit"></div>
+        <h1>Loading card atlas</h1>
+        <p>Preparing the condition index without loading the old PDF.</p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" id="mobile-nav" aria-label="Primary navigation"></nav>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./v2/core.js?v=2"></script>
+  <script src="./v2/ai-transport.js?v=1"></script>
+  <script src="./v2/ai-schema.js?v=1"></script>
+  <script src="./v2/ai-engine.js?v=1"></script>
+  <script src="./v2/ai-ui.js?v=1"></script>
+  <script src="./v2/knowledge-pptx.js?v=1"></script>
+  <script src="./v2/knowledge.js?v=1"></script>
+  <script src="./v2/firebase-config.js?v=1"></script>
+  <script src="./v2/sync.js?v=1"></script>
+</body>
+</html>

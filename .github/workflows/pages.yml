@@ -1,6 +1,8 @@
-name: Deploy static site to GitHub Pages
+name: Validate and deploy UKMLA Cards
 
 on:
+  pull_request:
+    branches: ["main"]
   push:
     branches: ["main"]
   workflow_dispatch:
@@ -11,11 +13,97 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-${{ github.ref }}"
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JavaScript and extractors
+        id: syntax
+        shell: bash
+        run: |
+          set +e
+          : > validation-diagnostics.txt
+          STATUS=0
+
+          for FILE in \
+            v2/core.js \
+            v2/ai-transport.js \
+            v2/ai-schema.js \
+            v2/ai-engine.js \
+            v2/ai-ui.js \
+            v2/knowledge-pptx.js \
+            v2/knowledge.js \
+            v2/firebase-config.js \
+            v2/sync.js
+          do
+            echo "=== ${FILE} ===" >> validation-diagnostics.txt
+            node --check "${FILE}" >> validation-diagnostics.txt 2>&1
+            CODE=$?
+            if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
+          done
+
+          for FILE in scripts/build_v2_data.py scripts/normalise_v2_data.py
+          do
+            echo "=== ${FILE} ===" >> validation-diagnostics.txt
+            python -m py_compile "${FILE}" >> validation-diagnostics.txt 2>&1
+            CODE=$?
+            if [ ${CODE} -ne 0 ]; then STATUS=${CODE}; fi
+          done
+
+          cat validation-diagnostics.txt
+          exit ${STATUS}
+
+      - name: Upload validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-diagnostics
+          path: validation-diagnostics.txt
+          if-no-files-found: error
+
+      - name: Extract and audit all condition cards
+        run: |
+          python scripts/build_v2_data.py
+          python scripts/normalise_v2_data.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
+          conditions = data['conditions']
+          ids = [item['id'] for item in conditions]
+          topics = [item['name'] for item in data['topics']]
+
+          print(f"Extracted conditions: {data['conditionCount']}")
+          print(f"Extracted topics: {data['topicCount']}")
+          print(f"Clinical cards: {sum(item['profile'] == 'clinical' for item in conditions)}")
+          print(f"Law cards: {sum(item['profile'] == 'law' for item in conditions)}")
+
+          assert data['conditionCount'] >= 480
+          assert len(conditions) == data['conditionCount']
+          assert len(ids) == len(set(ids))
+          assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
+          assert all(len(item.get('fields', {})) >= 3 for item in conditions)
+          assert any(item['profile'] == 'law' for item in conditions)
+          assert not any(name.lower().endswith(' heading') for name in topics)
+          PY
+
+      - name: Upload extracted card dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-card-data
+          path: data/conditions.json
+          if-no-files-found: error
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -27,46 +115,35 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare resilient single-page app
+      - name: Extract condition dataset
         run: |
-          mkdir -p _site
-          rsync -a --exclude '.git' --exclude '_site' ./ _site/
+          python scripts/build_v2_data.py
+          python scripts/normalise_v2_data.py
 
-          python - <<'PY'
-          from pathlib import Path
+      - name: Prepare lightweight routed app
+        run: |
+          rm -rf _site
+          mkdir -p _site/v2 _site/data
+          cp v2/app.html _site/index.html
+          cp v2/*.css v2/*.js _site/v2/
+          cp data/conditions.json _site/data/conditions.json
 
-          page = Path('_site/index.html')
-          text = page.read_text(encoding='utf-8')
-          loader = '<script src="app-boot.js?v=1"></script>'
-
-          if loader not in text:
-              if '</body>' in text:
-                  text = text.replace('</body>', loader + '\n</body>', 1)
-              else:
-                  text += '\n' + loader + '\n'
-
-          page.write_text(text, encoding='utf-8')
-
-          redirect = '''<!doctype html>
+          cat > _site/app.html <<'HTML'
+          <!doctype html>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Opening UKMLA</title>
-          <script>location.replace('./?v=40');</script>
-          <p><a href="./?v=40">Open the UKMLA app</a></p>
-          '''
-          Path('_site/app.html').write_text(redirect, encoding='utf-8')
-          PY
+          <title>Opening UKMLA Cards</title>
+          <script>location.replace('./#/home');</script>
+          <p><a href="./#/home">Open UKMLA Cards</a></p>
+          HTML
 
           test -s _site/index.html
-          test -s _site/app-boot.js
-          test -s _site/learning-light-badges.js
-          grep -q 'app-boot.js?v=1' _site/index.html
+          test -s _site/data/conditions.json
+          test -s _site/v2/core.js
+          ! grep -q 'original-pdf-data' _site/index.html
+          ! grep -q '<iframe' _site/index.html
 
-          CARD_COUNT=$(grep -o 'class="card' _site/index.html | wc -l)
-          echo "Card records in deployed page: ${CARD_COUNT}"
-          test "${CARD_COUNT}" -ge 400
-
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "_site"
