@@ -43,6 +43,7 @@ jobs:
             v2/sync.js \
             v2/psa-schema.js \
             v2/psa-engine.js \
+            v2/psa-runtime.js \
             v2/psa.js \
             scripts/validate_psa_module.js
           do
@@ -148,6 +149,7 @@ jobs:
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
           test -s _site/v2/psa.js
+          test -s _site/v2/psa-runtime.js
           test -s _site/v2/psa.css
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
