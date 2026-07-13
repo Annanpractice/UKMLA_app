@@ -35,8 +35,13 @@ for (const section of psa.SECTIONS) {
 }
 
 const html = fs.readFileSync('v2/app.html', 'utf8');
-for (const required of ['psa.css', 'psa-schema.js', 'psa-engine.js', 'psa.js']) {
+for (const required of ['psa.css', 'psa-schema.js', 'psa-engine.js', 'psa-runtime.js', 'psa.js']) {
   if (!html.includes(required)) throw new Error(`v2/app.html does not load ${required}.`);
+}
+
+const runtime = fs.readFileSync('v2/psa-runtime.js', 'utf8');
+for (const safeguard of ['pagehide', 'visibilitychange', '5000', 'itemDescriptors']) {
+  if (!runtime.includes(safeguard)) throw new Error(`PSA runtime safeguard missing: ${safeguard}.`);
 }
 
 const sync = fs.readFileSync('v2/sync.js', 'utf8');
@@ -51,5 +56,6 @@ console.log(JSON.stringify({
   halfItems,
   halfMarks,
   generationCheckpoints: psa.GENERATION_STAGES.length,
-  markingCheckpoints: psa.MARKING_STAGES.length
+  markingCheckpoints: psa.MARKING_STAGES.length,
+  timerWriteIntervalMs: 5000
 }, null, 2));
