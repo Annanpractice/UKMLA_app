@@ -50,6 +50,7 @@
     const questions=selected.map((condition,index)=>buildQuestion(condition,weak[index%weak.length],pool,index+1)).filter(Boolean);
     if(questions.length!==10){core().toast('Could not build ten distinct clinical/law questions.');return;}
     activeQuiz={id:core().uid('basic-compat-quiz'),source:'basic',workspace,questions,index:0,answers:[],correct:0};
+    window.UKMLA_QUESTION_BANK?.storeSet({schemaVersion:'ukmla-local-basic-v1',quizId:activeQuiz.id,topic:'All clinical and law topics',generatedAt:new Date().toISOString(),sourceType:'basic',questions},{sourceType:'basic',title:'Local coverage questions'});
     drawQuestion();
   }
   function drawQuestion(){
@@ -77,7 +78,7 @@
   function drawResult(){
     const quiz=activeQuiz;
     const percent=Math.round(quiz.correct/quiz.questions.length*100);
-    quiz.workspace.innerHTML=`<article class="quiz-card" style="max-width:760px;margin:auto;text-align:center"><div class="eyebrow">Quiz complete</div><div class="boast-number" style="margin:28px 0">${quiz.correct}/${quiz.questions.length}</div><h2>${percent}%</h2><p>Clinical/law topic health, condition coverage and question-type analytics have been updated.</p><div class="card-actions" style="justify-content:center"><button class="btn primary" id="compat-again">Another coverage quiz</button><button class="btn" id="compat-analytics">Open analytics</button></div></article>`;
+    quiz.workspace.innerHTML=`<article class="quiz-card" style="max-width:760px;margin:auto;text-align:center"><div class="eyebrow">Question set complete</div><div class="boast-number" style="margin:28px 0">${quiz.correct}/${quiz.questions.length}</div><h2>${percent}%</h2><p>Clinical/law topic health, condition coverage, Question Bank history and analytics have been updated.</p><div class="card-actions" style="justify-content:center"><button class="btn primary" id="compat-again">Another question set</button><button class="btn" id="compat-analytics">Open analytics</button></div></article>`;
     quiz.workspace.querySelector('#compat-again').onclick=()=>{activeQuiz=null;core().render();};
     quiz.workspace.querySelector('#compat-analytics').onclick=()=>core().go('analytics');
   }
@@ -106,7 +107,7 @@
       const metric=panel.querySelector('.metric-big');if(metric)metric.textContent=`${coveredCount}/${pool.length}`;
       const paragraphs=panel.querySelectorAll('p');
       if(paragraphs[0])paragraphs[0].textContent=`clinical/law cards in coverage cycle ${core().coverageState().cycle}`;
-      if(paragraphs[1])paragraphs[1].textContent=`${Math.ceil(Math.max(0,pool.length-coveredCount)/10)} ten-question quizzes estimated for this part of the atlas. Anatomy and physiology are tested in their dedicated tab.`;
+      if(paragraphs[1])paragraphs[1].textContent=`${Math.ceil(Math.max(0,pool.length-coveredCount)/10)} ten-question sets estimated for this part of the atlas. Anatomy and physiology are tested in their dedicated tab.`;
     }
   }
   function init(){
