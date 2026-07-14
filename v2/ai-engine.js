@@ -118,9 +118,16 @@ async function runPipeline(config){
 }
 
 function storeSet(set){
+  const type=set.sourceType==='knowledge_dump'?'knowledge':'ai';
+  const bankRecord=window.UKMLA_QUESTION_BANK?.storeSet(set,{
+    sourceType:type,
+    title:set.topic&&set.topic!=='All UKMLA topics'?set.topic:undefined,
+    verificationLabel:type==='knowledge'?'Source-fidelity checkpoint passed':'All clinical checkpoints passed'
+  })||null;
   const sets=core().loadJson(core().STORAGE.sets,[]);
   if(!sets.some(item=>item.quizId===set.quizId))sets.unshift(set);
   core().saveJson(core().STORAGE.sets,sets.slice(0,30));
+  return bankRecord;
 }
 
 window.UKMLA_V2_AI_ENGINE={runPipeline,loadJob,clearJob,storeSet};

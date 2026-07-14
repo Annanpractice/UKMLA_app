@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./v2/psa-grounding.css?v=1">
   <link rel="stylesheet" href="./v2/biomedical.css?v=1">
   <link rel="stylesheet" href="./v2/question-workspace.css?v=1">
+  <link rel="stylesheet" href="./v2/question-bank.css?v=1">
 </head>
 <body>
   <div id="app-shell">
@@ -42,22 +43,29 @@
   <div id="toast" role="status" aria-live="polite"></div>
 
   <script src="./v2/core.js?v=2"></script>
+  <script src="./v2/question-bank.js?v=1"></script>
   <script src="./v2/ai-transport.js?v=1"></script>
   <script src="./v2/ai-schema.js?v=2"></script>
   <script src="./v2/biomedical-ai.js?v=2"></script>
-  <script src="./v2/ai-engine.js?v=2"></script>
+  <script src="./v2/ai-engine.js?v=3"></script>
   <script src="./v2/ai-ui.js?v=2"></script>
   <script src="./v2/knowledge-pptx.js?v=1"></script>
   <script src="./v2/knowledge.js?v=1"></script>
   <script src="./v2/firebase-config.js?v=1"></script>
-  <script src="./v2/sync.js?v=2"></script>
+  <script src="./v2/sync.js?v=3"></script>
   <script src="./v2/psa-schema.js?v=1"></script>
   <script src="./v2/psa-engine.js?v=1"></script>
   <script src="./v2/psa-grounding.js?v=1"></script>
   <script src="./v2/psa-runtime.js?v=1"></script>
   <script src="./v2/psa.js?v=1"></script>
-  <script src="./v2/biomedical.js?v=1"></script>
-  <script src="./v2/biomedical-basic.js?v=1"></script>
-  <script src="./v2/question-workspace.js?v=1"></script>
+  <script src="./v2/biomedical.js?v=2"></script>
+  <script src="./v2/biomedical-basic.js?v=2"></script>
+  <script src="./v2/question-workspace.js?v=2"></script>
+  <script src="./v2/question-analytics.js?v=1"></script>
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+    }
+  </script>
 </body>
 </html>

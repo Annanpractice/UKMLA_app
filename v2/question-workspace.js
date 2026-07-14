@@ -1,12 +1,13 @@
 (function(){
   'use strict';
 
-  const TAB_ORDER=['basic','ai','psa','biomedical'];
+  const TAB_ORDER=['basic','ai','psa','biomedical','bank'];
   const TAB_LABELS={
     basic:'Basic HTML',
     ai:'UKMLA Questions',
     psa:'PSA',
-    biomedical:'Anatomy & Physiology'
+    biomedical:'Anatomy & Physiology',
+    bank:'Question Bank'
   };
   let observer=null;
   let scheduled=false;
@@ -59,6 +60,7 @@
 
   function detectedTab(container){
     if(!container)return'';
+    if(container.querySelector('[data-ukmla-question-workspace="bank"],.bank-hero,.bank-player'))return'bank';
     if(container.querySelector('#ai-key,[data-ukmla-question-workspace="ai"]'))return'ai';
     if(container.querySelector('.psa-hero,.psa-exam-shell,[data-ukmla-question-workspace="psa"]'))return'psa';
     if(container.querySelector('.biomedical-hero,[data-ukmla-question-workspace="biomedical"]'))return'biomedical';
@@ -89,6 +91,9 @@
       }else if(tab==='biomedical'){
         if(!window.UKMLA_BIOMEDICAL?.mount)throw new Error('Anatomy and physiology workspace did not initialise.');
         window.UKMLA_BIOMEDICAL.mount(container);
+      }else if(tab==='bank'){
+        if(!window.UKMLA_QUESTION_BANK?.mount)throw new Error('Question Bank did not initialise.');
+        window.UKMLA_QUESTION_BANK.mount(container);
       }
       container.dataset.activeQuestionTab=tab;
       setActiveButton(tab);
