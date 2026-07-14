@@ -38,6 +38,7 @@ jobs:
             v2/ai-transport.js \
             v2/ai-schema.js \
             v2/biomedical-ai.js \
+            v2/ai-pipeline-mode.js \
             v2/ai-targeted-repair.js \
             v2/ai-engine.js \
             v2/ai-ui.js \
@@ -56,6 +57,7 @@ jobs:
             service-worker.js \
             scripts/validate_psa_module.js \
             scripts/validate_question_concision.js \
+            scripts/validate_combined_pipeline.js \
             scripts/validate_question_bank.js \
             scripts/validate_checkpoint_auto_repair.js
           do
@@ -94,6 +96,9 @@ jobs:
       - name: Validate sparse stems and concise answer checkpoints
         run: node scripts/validate_question_concision.js
 
+      - name: Validate combined pipeline and immediate legacy rollback
+        run: node scripts/validate_combined_pipeline.js
+
       - name: Validate targeted checkpoint API repair
         run: node scripts/validate_checkpoint_auto_repair.js
 
@@ -123,6 +128,15 @@ jobs:
           grep -q "inputmode=\"text\"" v2/ai-ui.js
           grep -q "Session only" v2/ai-ui.js
           grep -q "Build 10 UKMLA questions" v2/ai-ui.js
+          grep -q "Faster combined review (trial)" v2/ai-pipeline-mode.js
+          grep -q "Legacy separate reviews" v2/ai-pipeline-mode.js
+          grep -q "id=\"ai-pipeline-mode\"" v2/ai-ui.js
+          grep -q "OPTION NORMALISATION" v2/ai-pipeline-mode.js
+          grep -q "ANSWER-CATEGORY ALIGNMENT" v2/ai-pipeline-mode.js
+          grep -q "Return only atomic text patches" v2/ai-targeted-repair.js
+          grep -q "Affected-question repair" v2/ai-targeted-repair.js
+          grep -q "Full-set fallback repair" v2/ai-targeted-repair.js
+          grep -q "targeted field, affected-question and full-set repair" v2/ai-engine.js
           ! grep -q "AI-generated UKMLA quiz" v2/ai-ui.js
           ! grep -q "Generate 10-question AI quiz" v2/ai-ui.js
           grep -q "question-workspace.css" v2/app.html
@@ -130,19 +144,16 @@ jobs:
           grep -q "question-bank.css" v2/app.html
           grep -q "question-bank.js" v2/app.html
           grep -q "question-analytics.js" v2/app.html
-          grep -q "Return only atomic text patches" v2/ai-targeted-repair.js
-          grep -q "Affected-question repair" v2/ai-targeted-repair.js
-          grep -q "Full-set fallback repair" v2/ai-targeted-repair.js
-          grep -q "targeted field, affected-question and full-set repair" v2/ai-engine.js
           python - <<'PY'
           from pathlib import Path
           html = Path('v2/app.html').read_text(encoding='utf-8')
           assert html.index('question-bank.js') < html.index('ai-engine.js')
-          assert html.index('biomedical-ai.js') < html.index('ai-targeted-repair.js') < html.index('ai-engine.js')
+          assert html.index('biomedical-ai.js') < html.index('ai-pipeline-mode.js') < html.index('ai-targeted-repair.js') < html.index('ai-engine.js')
           assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
-          assert 'ai-targeted-repair.js?v=1' in html
-          assert 'ai-engine.js?v=5' in html
-          assert 'ai-ui.js?v=2' in html
+          assert 'ai-pipeline-mode.js?v=1' in html
+          assert 'ai-targeted-repair.js?v=2' in html
+          assert 'ai-engine.js?v=6' in html
+          assert 'ai-ui.js?v=3' in html
           assert 'sync.js?v=3' in html
           PY
 
@@ -234,6 +245,7 @@ jobs:
           test -s _site/v2/question-analytics.js
           test -s _site/v2/question-bank.css
           test -s _site/v2/ai-schema.js
+          test -s _site/v2/ai-pipeline-mode.js
           test -s _site/v2/ai-targeted-repair.js
           test -s _site/v2/ai-engine.js
           test -s _site/v2/ai-ui.js
@@ -253,18 +265,20 @@ jobs:
           grep -q 'question-bank.css' _site/index.html
           grep -q 'service-worker.js' _site/index.html
           grep -q 'biomedical-ai.js' _site/index.html
-          grep -q 'ai-targeted-repair.js?v=1' _site/index.html
-          grep -q 'ai-engine.js?v=5' _site/index.html
+          grep -q 'ai-pipeline-mode.js?v=1' _site/index.html
+          grep -q 'ai-targeted-repair.js?v=2' _site/index.html
+          grep -q 'ai-engine.js?v=6' _site/index.html
+          grep -q 'ai-ui.js?v=3' _site/index.html
           grep -q 'biomedical.js' _site/index.html
           grep -q 'biomedical-basic.js' _site/index.html
           grep -q 'biomedical.css' _site/index.html
           grep -q 'question-workspace.js' _site/index.html
           grep -q 'question-workspace.css' _site/index.html
-          grep -q 'ai-ui.js?v=2' _site/index.html
           grep -q 'sync.js?v=3' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
-          grep -q 'ukmla-cards-v7-targeted-checkpoint-repair' _site/service-worker.js
+          grep -q 'ukmla-cards-v8-combined-option-category' _site/service-worker.js
+          grep -q 'ai-pipeline-mode.js' _site/service-worker.js
           grep -q 'ai-targeted-repair.js' _site/service-worker.js
           python - <<'PY'
           import json
