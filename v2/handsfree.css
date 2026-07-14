@@ -1,0 +1,139 @@
+.handsfree-controls{
+  position:fixed;
+  right:18px;
+  bottom:24px;
+  z-index:95;
+  display:grid;
+  justify-items:end;
+  gap:8px;
+  font-family:var(--sans);
+}
+.handsfree-toggle{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:48px;
+  padding:10px 15px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:linear-gradient(145deg,rgba(10,48,88,.96),rgba(4,24,48,.98));
+  color:var(--ink);
+  box-shadow:0 14px 36px rgba(0,0,0,.42),0 0 0 1px rgba(75,201,255,.08) inset;
+  backdrop-filter:blur(15px);
+  font-weight:800;
+}
+.handsfree-toggle:hover{border-color:rgba(113,222,255,.58)}
+.handsfree-toggle.active{
+  border-color:rgba(103,227,162,.72);
+  box-shadow:0 14px 36px rgba(0,0,0,.42),0 0 24px rgba(103,227,162,.18);
+}
+.handsfree-mic{
+  display:grid;
+  place-items:center;
+  width:27px;
+  height:27px;
+  border-radius:999px;
+  background:rgba(46,183,255,.2);
+  color:var(--cyan);
+  font-size:.78rem;
+  box-shadow:0 0 14px rgba(46,183,255,.18);
+}
+.handsfree-toggle.active .handsfree-mic{
+  background:rgba(103,227,162,.2);
+  color:var(--green);
+  animation:handsfree-pulse 1.8s ease-in-out infinite;
+}
+.handsfree-status{
+  max-width:min(82vw,350px);
+  padding:8px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(3,18,38,.96);
+  color:var(--muted);
+  box-shadow:var(--shadow);
+  font-size:.78rem;
+  text-align:right;
+}
+.handsfree-status[data-mode="listening"]{color:var(--green);border-color:rgba(103,227,162,.42)}
+.handsfree-status[data-mode="speaking"]{color:var(--cyan);border-color:rgba(139,234,255,.42)}
+.handsfree-status[data-mode="thinking"]{color:#d6c5ff;border-color:rgba(180,148,255,.52)}
+.handsfree-status[data-mode="pending"]{color:var(--amber);border-color:rgba(255,195,90,.5)}
+.handsfree-status[data-mode="error"]{color:#ffc4ce;border-color:rgba(255,102,127,.5)}
+.handsfree-setup{
+  width:min(90vw,390px);
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:19px;
+  background:linear-gradient(155deg,rgba(9,45,82,.98),rgba(2,18,39,.99));
+  box-shadow:0 20px 58px rgba(0,0,0,.5);
+  display:grid;
+  gap:10px;
+  color:var(--ink);
+}
+.handsfree-setup-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.handsfree-setup-head strong{font-size:1.08rem}
+.handsfree-setup-head button{
+  width:34px;
+  height:34px;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(0,12,28,.52);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:1.2rem;
+}
+.handsfree-setup label{
+  font-family:var(--sans);
+  font-size:.69rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:800;
+}
+.handsfree-setup input{
+  width:100%;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:rgba(0,12,28,.72);
+  color:white;
+  outline:none;
+}
+.handsfree-setup input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,183,255,.11)}
+.handsfree-session-note{
+  display:grid;
+  gap:3px;
+  padding:10px 11px;
+  border:1px solid rgba(91,217,255,.18);
+  border-radius:12px;
+  background:rgba(0,11,26,.36);
+  color:var(--muted);
+  font-size:.77rem;
+  line-height:1.35;
+}
+.handsfree-session-note strong{color:var(--cyan);font-family:var(--sans);font-size:.73rem;text-transform:uppercase;letter-spacing:.1em}
+.handsfree-setup .btn{width:100%}
+.option.voice-proposed{
+  border-color:rgba(255,195,90,.88)!important;
+  background:rgba(130,85,11,.26)!important;
+  box-shadow:0 0 0 2px rgba(255,195,90,.13),0 0 22px rgba(255,195,90,.16);
+}
+.option.voice-proposed .letter{
+  background:rgba(255,195,90,.25);
+  color:#fff4cf;
+}
+@keyframes handsfree-pulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 12px rgba(103,227,162,.16)}
+  50%{transform:scale(1.06);box-shadow:0 0 22px rgba(103,227,162,.3)}
+}
+@media(max-width:900px){
+  .handsfree-controls{
+    right:12px;
+    bottom:calc(88px + env(safe-area-inset-bottom));
+  }
+  .handsfree-toggle{min-height:46px;padding:9px 13px}
+}
+@media(prefers-reduced-motion:reduce){
+  .handsfree-toggle.active .handsfree-mic{animation:none}
+}

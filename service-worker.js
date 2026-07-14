@@ -1,9 +1,9 @@
 const CACHE_NAME='ukmla-cards-v8-combined-option-category';
 const CORE_ASSETS=[
   './','./index.html','./app.html','./data/conditions.json',
-  './v2/app.css','./v2/psa.css','./v2/psa-grounding.css','./v2/biomedical.css','./v2/question-workspace.css','./v2/question-bank.css',
+  './v2/app.css','./v2/psa.css','./v2/psa-grounding.css','./v2/biomedical.css','./v2/question-workspace.css','./v2/question-bank.css','./v2/handsfree.css',
   './v2/core.js','./v2/question-bank.js','./v2/question-analytics.js','./v2/ai-transport.js','./v2/ai-schema.js','./v2/biomedical-ai.js','./v2/ai-pipeline-mode.js','./v2/ai-targeted-repair.js','./v2/ai-engine.js','./v2/ai-ui.js',
-  './v2/knowledge-pptx.js','./v2/knowledge.js','./v2/firebase-config.js','./v2/sync.js','./v2/psa-schema.js','./v2/psa-engine.js','./v2/psa-grounding.js','./v2/psa-runtime.js','./v2/psa.js','./v2/biomedical.js','./v2/biomedical-basic.js','./v2/question-workspace.js'
+  './v2/knowledge-pptx.js','./v2/knowledge.js','./v2/firebase-config.js','./v2/sync.js','./v2/psa-schema.js','./v2/psa-engine.js','./v2/psa-grounding.js','./v2/psa-runtime.js','./v2/psa.js','./v2/biomedical.js','./v2/biomedical-basic.js','./v2/question-workspace.js','./v2/handsfree.js'
 ];
 
 self.addEventListener('install',event=>{
