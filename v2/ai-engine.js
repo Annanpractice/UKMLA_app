@@ -18,7 +18,7 @@ function emitJob(job,config,message){
   job.lastMessage=message;
   if(config.persist!==false)saveJob(job);
   else document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));
-  config.onProgress?.(message,job.percent,job.currentStage);
+  config.onProgress?.(message,job.percent,job.currentStage,job.pipelineMode);
 }
 
 async function request(token,body,label,job){
@@ -26,6 +26,7 @@ async function request(token,body,label,job){
   while(true){
     attempt++;
     try{
+      if(job)job.apiCalls=Number(job.apiCalls||0)+1;
       document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:{...job,lastMessage:attempt===1?label:`${label} — reconnecting attempt ${attempt}`}}));
       const data=await transport().send(token,body);
       const raw=schema().outputText(data);
@@ -132,7 +133,7 @@ async function repairCandidate(stage,config,job,candidate,lastValidSet,validatio
     );
     const response=await request(
       config.apiKey,
-      schema().repairRequestBody(prompt,config.knowledge,`ukmla_${validationStage}_${tier}_repair_v3`,tier),
+      schema().repairRequestBody(prompt,config.knowledge,`ukmla_${validationStage}_${tier}_repair_v4`,tier),
       `${stage.label} — ${plan.label}`,
       config.persist===false?null:job
     );
@@ -160,7 +161,7 @@ async function runRemoteStage(stage,config,job){
     :schema().checkpointPrompt(stage.id,{...config,currentSet:lastValidSet});
   const initial=await request(
     config.apiKey,
-    schema().requestBody(initialPrompt,config.knowledge,`ukmla_${stage.id}_v2`),
+    schema().requestBody(initialPrompt,config.knowledge,`ukmla_${stage.id}_v3`),
     stage.label,
     config.persist===false?null:job
   );
@@ -172,10 +173,21 @@ async function runFinalValidation(stage,config,job){
   job.currentSet=await repairCandidate(stage,config,job,job.currentSet,lastValidSet,'final',true);
 }
 
+function recordStageTiming(job,stage,startedAt){
+  job.stageTimings=Array.isArray(job.stageTimings)?job.stageTimings:[];
+  job.stageTimings.push({
+    stageId:stage.id,
+    label:stage.label,
+    durationMs:Math.max(0,Date.now()-startedAt),
+    completedAt:new Date().toISOString()
+  });
+}
+
 async function runPipeline(config){
-  const stages=schema().STAGES.filter(stage=>!stage.knowledgeOnly||config.knowledge);
+  const pipelineMode=schema().resolvePipelineMode(config.job||null);
+  const stages=schema().stagesForPipeline(pipelineMode).filter(stage=>!stage.knowledgeOnly||config.knowledge);
   const job=config.job||{
-    version:4,
+    version:5,
     id:config.jobId||`ai-job-${Date.now().toString(36)}`,
     status:'active',
     sourceType:config.knowledge?'knowledge':'ai',
@@ -185,16 +197,22 @@ async function runPipeline(config){
     knowledge:config.knowledge,
     sourceTitle:config.sourceTitle||'',
     packId:config.packId||null,
+    pipelineMode,
     currentIndex:0,
     currentSet:null,
     percent:5,
+    apiCalls:0,
+    stageTimings:[],
     lastMessage:'Source prepared',
     createdAt:new Date().toISOString()
   };
+  job.pipelineMode=job.pipelineMode||pipelineMode;
+  job.version=Math.max(Number(job.version)||0,5);
   if(config.persist!==false)saveJob(job);
 
   for(let index=job.currentIndex||0;index<stages.length;index++){
     const stage=stages[index];
+    const stageStartedAt=Date.now();
     job.currentIndex=index;
     job.currentStage=stage.id;
     job.percent=Math.max(job.percent||0,index?stages[index-1].percent:5);
@@ -202,7 +220,7 @@ async function runPipeline(config){
     delete job.repair;
     job.lastMessage=stage.label;
     if(config.persist!==false)saveJob(job);
-    config.onProgress?.(stage.label,job.percent,stage.id);
+    config.onProgress?.(stage.label,job.percent,stage.id,job.pipelineMode);
 
     if(stage.local){
       if(stage.id==='shuffle')job.currentSet=schema().balancedShuffle(job.currentSet);
@@ -211,21 +229,35 @@ async function runPipeline(config){
         job.currentSet.schemaVersion='ukmla-ai-quiz-v2';
         job.currentSet.sourceType=config.knowledge?'knowledge_dump':'ai';
         job.currentSet.packId=config.packId||null;
+        job.currentSet.pipelineMode=job.pipelineMode;
+        job.currentSet.buildTelemetry={
+          pipelineMode:job.pipelineMode,
+          apiCalls:Number(job.apiCalls||0),
+          startedAt:job.createdAt,
+          completedAt:new Date().toISOString(),
+          stageTimings:[...(job.stageTimings||[])]
+        };
         job.currentSet.schedulerSnapshot={
           coverageCycle:core().coverageState().cycle,
           selectedConditionIds:config.conditions.map(item=>item.id||item.conditionId),
-          priorityOrder:['topic_coverage','unseen_condition','weak_question_type','low_health','recency']
+          priorityOrder:['topic_coverage','unseen_condition','weak_question_type','low_health','recency'],
+          pipelineMode:job.pipelineMode
         };
       }
     }else{
       await runRemoteStage(stage,config,job);
     }
 
+    recordStageTiming(job,stage,stageStartedAt);
+    if(stage.id==='final'&&job.currentSet?.buildTelemetry){
+      job.currentSet.buildTelemetry.stageTimings=[...(job.stageTimings||[])];
+      job.currentSet.buildTelemetry.completedAt=new Date().toISOString();
+    }
     job.currentIndex=index+1;
     job.percent=stage.percent;
     job.lastMessage=`${stage.label} completed`;
     if(config.persist!==false)saveJob(job);
-    config.onProgress?.(job.lastMessage,job.percent,stage.id);
+    config.onProgress?.(job.lastMessage,job.percent,stage.id,job.pipelineMode);
   }
 
   job.status='complete';
