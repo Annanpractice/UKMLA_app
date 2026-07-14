@@ -1,10 +1,24 @@
 const fs = require('fs');
 const vm = require('vm');
 
-const context = { window: {}, console };
+class MemoryStorage {
+  constructor(){ this.map=new Map(); }
+  getItem(key){ return this.map.has(key)?this.map.get(key):null; }
+  setItem(key,value){ this.map.set(String(key),String(value)); }
+  removeItem(key){ this.map.delete(String(key)); }
+}
+
+const context = {
+  window: {},
+  console,
+  localStorage: new MemoryStorage(),
+  location: { search: '' },
+  URLSearchParams
+};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('v2/ai-schema.js', 'utf8'), context, { filename: 'v2/ai-schema.js' });
 vm.runInContext(fs.readFileSync('v2/biomedical-ai.js', 'utf8'), context, { filename: 'v2/biomedical-ai.js' });
+vm.runInContext(fs.readFileSync('v2/ai-pipeline-mode.js', 'utf8'), context, { filename: 'v2/ai-pipeline-mode.js' });
 
 const schema = context.window.UKMLA_V2_AI_SCHEMA;
 if (!schema) throw new Error('Question schema did not initialise.');
@@ -107,6 +121,10 @@ const optionErrors = schema.validate(explanatoryOption, config, 'options');
 if (!optionErrors.some(error => error.includes('explanatory clause'))) {
   throw new Error(`Option checkpoint did not reject an explanatory option: ${optionErrors.join(' ')}`);
 }
+const combinedErrors = schema.validate(explanatoryOption, config, 'options_category');
+if (!combinedErrors.some(error => error.includes('explanatory clause'))) {
+  throw new Error(`Combined checkpoint did not retain option validation: ${combinedErrors.join(' ')}`);
+}
 
 const longExplanation = makeSet();
 longExplanation.questions[2].strongestDistractorExplanation = 'This answer remains superficially plausible because it belongs to the same pathway and shares several clinical features, but the decisive signal points elsewhere and the added explanation is intentionally much too long for rapid review.';
@@ -131,8 +149,38 @@ for (const stage of ['sparse', 'options', 'category', 'distractors']) {
   if (!prompt.includes('BIOMEDICAL CHECKPOINT')) throw new Error(`${stage}: biomedical checkpoint was removed.`);
 }
 
+const combinedPrompt = schema.checkpointPrompt('options_category', { ...config, currentSet: concise });
+for (const required of [
+  'OPTION NORMALISATION',
+  'ANSWER-CATEGORY ALIGNMENT',
+  'Preserve the correct clinical proposition and answer key',
+  'Do not make stems longer or make distractors more generic',
+  'BIOMEDICAL CHECKPOINT'
+]) {
+  if (!combinedPrompt.includes(required)) throw new Error(`Combined checkpoint prompt is missing: ${required}`);
+}
+const currentSetOccurrences = combinedPrompt.split('"quizId":"concision-test"').length - 1;
+if (currentSetOccurrences !== 1) throw new Error(`Combined checkpoint transmitted the full set ${currentSetOccurrences} times.`);
+
+const combinedMode = schema.PIPELINE_MODES.combined;
+const legacyMode = schema.PIPELINE_MODES.legacy;
+const combinedStages = schema.stagesForPipeline(combinedMode).map(stage => stage.id);
+const legacyStages = schema.stagesForPipeline(legacyMode).map(stage => stage.id);
+if (combinedStages.join(',') !== 'generation,sparse,options_category,distractors,source,shuffle,final') {
+  throw new Error(`Combined stage order changed: ${combinedStages.join(',')}`);
+}
+if (legacyStages.join(',') !== 'generation,sparse,options,category,distractors,source,shuffle,final') {
+  throw new Error(`Legacy stage order changed: ${legacyStages.join(',')}`);
+}
+if (schema.resolvePipelineMode({ currentIndex: 2, currentStage: 'options' }) !== legacyMode) {
+  throw new Error('A pre-trial saved build would not resume on the legacy pipeline.');
+}
+
 console.log(JSON.stringify({
-  checkpointsPreserved: schema.STAGES.map(stage => stage.id),
+  defaultPipeline: schema.resolvePipelineMode(null),
+  combinedCheckpoints: combinedStages,
+  legacyCheckpoints: legacyStages,
+  combinedFullSetOccurrences: currentSetOccurrences,
   stemMaximumWords: schema.LIMITS.stemMaxWords,
   sparseDiagnosisMaximumWords: schema.LIMITS.sparseDiagnosisStemMaxWords,
   biomedicalMaximumWords: 34,
