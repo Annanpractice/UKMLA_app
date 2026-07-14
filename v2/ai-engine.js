@@ -2,7 +2,6 @@
 'use strict';
 
 const JOB_KEY='ukmlaV2AiJobV1';
-const DEFAULT_AUTO_REPAIRS=3;
 
 function core(){return window.UKMLA_V2;}
 function schema(){return window.UKMLA_V2_AI_SCHEMA;}
@@ -12,7 +11,6 @@ function isNetwork(error){return error instanceof TypeError||/network|fetch|offl
 function saveJob(job){job.updatedAt=new Date().toISOString();core().saveJson(JOB_KEY,job);document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));}
 function loadJob(){return core().loadJson(JOB_KEY,null);}
 function clearJob(){localStorage.removeItem(JOB_KEY);}
-function repairLimit(){return Number(schema().AUTO_REPAIR?.maxAttempts)||DEFAULT_AUTO_REPAIRS;}
 function errorLimit(){return Number(schema().AUTO_REPAIR?.maxErrors)||20;}
 function errorSummary(errors,limit=4){return(errors||[]).slice(0,limit).join(' ');}
 
@@ -31,7 +29,7 @@ async function request(token,body,label,job){
       document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:{...job,lastMessage:attempt===1?label:`${label} — reconnecting attempt ${attempt}`}}));
       const data=await transport().send(token,body);
       const raw=schema().outputText(data);
-      if(!raw)throw new Error('No structured question set was returned.');
+      if(!raw)throw new Error('No structured question response was returned.');
       return JSON.parse(raw);
     }catch(error){
       if(!(isNetwork(error)||/408|409|425|429|500|502|503|504/.test(String(error?.message||''))))throw error;
@@ -52,37 +50,48 @@ async function request(token,body,label,job){
   }
 }
 
-function beginRepair(job,config,stage,errors,attempt,maxAttempts){
+function tierSequence(startTier){
+  const tiers=schema().REPAIR_TIERS;
+  if(startTier===tiers.fields)return[tiers.fields,tiers.questions,tiers.set];
+  if(startTier===tiers.questions)return[tiers.questions,tiers.set];
+  return[tiers.set];
+}
+
+function beginRepair(job,config,stage,errors,plan,step,total){
   const trimmed=(errors||[]).slice(0,errorLimit());
   job.status='repairing';
   job.repair={
     stageId:stage.id,
     stageLabel:stage.label,
-    attempt,
-    maxAttempts,
+    tier:plan.tier,
+    tierLabel:plan.label,
+    step,
+    total,
     errors:trimmed,
+    questionNumbers:plan.questionNumbers,
+    fields:plan.fields,
     exhausted:false,
     startedAt:job.repair?.startedAt||new Date().toISOString()
   };
   job.lastError=errorSummary(trimmed,8);
   const count=errors.length;
-  emitJob(job,config,`${stage.label} found ${count} validation issue${count===1?'':'s'}. Automatic repair ${attempt}/${maxAttempts}…`);
+  emitJob(job,config,`${stage.label} found ${count} validation issue${count===1?'':'s'}. ${plan.label} ${step}/${total}…`);
 }
 
-function exhaustRepair(job,config,stage,errors,lastValidSet,maxAttempts){
+function exhaustRepair(job,config,stage,errors,lastValidSet,usedTiers){
   job.currentSet=lastValidSet;
   job.status='paused';
   job.repair={
     stageId:stage.id,
     stageLabel:stage.label,
-    attempt:maxAttempts,
-    maxAttempts,
+    tier:usedTiers.at(-1)||null,
+    attemptedTiers:usedTiers,
     errors:(errors||[]).slice(0,errorLimit()),
     exhausted:true,
     stoppedAt:new Date().toISOString()
   };
   job.lastError=errorSummary(errors,8);
-  job.lastMessage=`${stage.label} stopped after ${maxAttempts} automatic repair attempts: ${errorSummary(errors)}`;
+  job.lastMessage=`${stage.label} stopped after targeted field, affected-question and full-set repair were exhausted: ${errorSummary(errors)}`;
   if(config.persist!==false)saveJob(job);
   else document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));
   throw new Error(job.lastMessage);
@@ -94,78 +103,79 @@ function finishRepair(job){
   delete job.lastError;
 }
 
+async function repairCandidate(stage,config,job,candidate,lastValidSet,validationStage,reshuffle){
+  let errors=schema().validate(candidate,config,validationStage);
+  if(!errors.length)return candidate;
+
+  const initialPlan=schema().repairPlan(errors,candidate);
+  const sequence=tierSequence(initialPlan.tier);
+  const usedTiers=[];
+
+  for(let index=0;index<sequence.length&&errors.length;index++){
+    let tier=sequence[index];
+    const natural=schema().repairPlan(errors,candidate).tier;
+    if(natural===schema().REPAIR_TIERS.set)tier=schema().REPAIR_TIERS.set;
+    if(usedTiers.includes(tier))continue;
+
+    const plan=schema().repairPlan(errors,candidate,tier);
+    const step=usedTiers.length+1;
+    const total=sequence.length;
+    beginRepair(job,config,stage,errors,plan,step,total);
+    const prompt=schema().targetedRepairPrompt(
+      validationStage,
+      config,
+      plan,
+      candidate,
+      step,
+      total,
+      lastValidSet
+    );
+    const response=await request(
+      config.apiKey,
+      schema().repairRequestBody(prompt,config.knowledge,`ukmla_${validationStage}_${tier}_repair_v3`,tier),
+      `${stage.label} — ${plan.label}`,
+      config.persist===false?null:job
+    );
+    candidate=schema().applyRepair(candidate,response,plan);
+    if(reshuffle)candidate=schema().balancedShuffle(candidate);
+    errors=schema().validate(candidate,config,validationStage);
+    usedTiers.push(tier);
+
+    if(errors.length&&tier!==schema().REPAIR_TIERS.set){
+      const next=schema().nextRepairTier(tier,errors,candidate);
+      const nextPosition=sequence.indexOf(next);
+      if(nextPosition>index+1)index=nextPosition-1;
+    }
+  }
+
+  if(errors.length)exhaustRepair(job,config,stage,errors,lastValidSet,usedTiers);
+  finishRepair(job);
+  return candidate;
+}
+
 async function runRemoteStage(stage,config,job){
   const lastValidSet=job.currentSet;
   const initialPrompt=stage.id==='generation'
     ?schema().generationPrompt(config)
     :schema().checkpointPrompt(stage.id,{...config,currentSet:lastValidSet});
-  let candidate=await request(
+  const initial=await request(
     config.apiKey,
     schema().requestBody(initialPrompt,config.knowledge,`ukmla_${stage.id}_v2`),
     stage.label,
     config.persist===false?null:job
   );
-  let errors=schema().validate(candidate,config,stage.id);
-  const maxAttempts=repairLimit();
-  let attempt=0;
-
-  while(errors.length&&attempt<maxAttempts){
-    attempt++;
-    beginRepair(job,config,stage,errors,attempt,maxAttempts);
-    const prompt=schema().repairPrompt(stage.id,{
-      ...config,
-      currentSet:lastValidSet,
-      failedSet:candidate
-    },errors,attempt,maxAttempts);
-    candidate=await request(
-      config.apiKey,
-      schema().requestBody(prompt,config.knowledge,`ukmla_${stage.id}_repair_${attempt}_v2`),
-      `${stage.label} — automatic repair ${attempt}/${maxAttempts}`,
-      config.persist===false?null:job
-    );
-    errors=schema().validate(candidate,config,stage.id);
-  }
-
-  if(errors.length)exhaustRepair(job,config,stage,errors,lastValidSet,maxAttempts);
-  job.currentSet=candidate;
-  finishRepair(job);
+  job.currentSet=await repairCandidate(stage,config,job,initial,lastValidSet,stage.id,false);
 }
 
 async function runFinalValidation(stage,config,job){
-  const lastSet=job.currentSet;
-  let candidate=job.currentSet;
-  let errors=schema().validate(candidate,config,'final');
-  if(!errors.length)return;
-
-  const maxAttempts=repairLimit();
-  let attempt=0;
-  while(errors.length&&attempt<maxAttempts){
-    attempt++;
-    beginRepair(job,config,stage,errors,attempt,maxAttempts);
-    const prompt=schema().repairPrompt('final',{
-      ...config,
-      currentSet:lastSet,
-      failedSet:candidate
-    },errors,attempt,maxAttempts);
-    candidate=await request(
-      config.apiKey,
-      schema().requestBody(prompt,config.knowledge,`ukmla_final_repair_${attempt}_v2`),
-      `Final validation — automatic repair ${attempt}/${maxAttempts}`,
-      config.persist===false?null:job
-    );
-    candidate=schema().balancedShuffle(candidate);
-    errors=schema().validate(candidate,config,'final');
-  }
-
-  if(errors.length)exhaustRepair(job,config,stage,errors,lastSet,maxAttempts);
-  job.currentSet=candidate;
-  finishRepair(job);
+  const lastValidSet=job.currentSet;
+  job.currentSet=await repairCandidate(stage,config,job,job.currentSet,lastValidSet,'final',true);
 }
 
 async function runPipeline(config){
   const stages=schema().STAGES.filter(stage=>!stage.knowledgeOnly||config.knowledge);
   const job=config.job||{
-    version:3,
+    version:4,
     id:config.jobId||`ai-job-${Date.now().toString(36)}`,
     status:'active',
     sourceType:config.knowledge?'knowledge':'ai',
