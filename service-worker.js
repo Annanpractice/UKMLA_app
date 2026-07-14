@@ -1,4 +1,4 @@
-const CACHE_NAME='ukmla-cards-v5-question-bank';
+const CACHE_NAME='ukmla-cards-v6-auto-checkpoint-repair';
 const CORE_ASSETS=[
   './','./index.html','./app.html','./data/conditions.json',
   './v2/app.css','./v2/psa.css','./v2/psa-grounding.css','./v2/biomedical.css','./v2/question-workspace.css','./v2/question-bank.css',

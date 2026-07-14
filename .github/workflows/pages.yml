@@ -55,7 +55,8 @@ jobs:
             service-worker.js \
             scripts/validate_psa_module.js \
             scripts/validate_question_concision.js \
-            scripts/validate_question_bank.js
+            scripts/validate_question_bank.js \
+            scripts/validate_checkpoint_auto_repair.js
           do
             echo "=== ${FILE} ===" >> validation-diagnostics.txt
             node --check "${FILE}" >> validation-diagnostics.txt 2>&1
@@ -92,6 +93,9 @@ jobs:
       - name: Validate sparse stems and concise answer checkpoints
         run: node scripts/validate_question_concision.js
 
+      - name: Validate automatic checkpoint API repair
+        run: node scripts/validate_checkpoint_auto_repair.js
+
       - name: Validate Question Bank, merge safety and rolling analytics
         run: node scripts/validate_question_bank.js
 
@@ -125,14 +129,16 @@ jobs:
           grep -q "question-bank.css" v2/app.html
           grep -q "question-bank.js" v2/app.html
           grep -q "question-analytics.js" v2/app.html
+          grep -q "AUTO_REPAIR" v2/ai-schema.js
+          grep -q "automatic repair" v2/ai-engine.js
           python - <<'PY'
           from pathlib import Path
           html = Path('v2/app.html').read_text(encoding='utf-8')
           assert html.index('question-bank.js') < html.index('ai-engine.js')
           assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
-          assert 'ai-schema.js?v=2' in html
-          assert 'biomedical-ai.js?v=2' in html
-          assert 'ai-engine.js?v=3' in html
+          assert 'ai-schema.js?v=3' in html
+          assert 'biomedical-ai.js?v=3' in html
+          assert 'ai-engine.js?v=4' in html
           assert 'ai-ui.js?v=2' in html
           assert 'sync.js?v=3' in html
           PY
@@ -248,13 +254,14 @@ jobs:
           grep -q 'biomedical.css' _site/index.html
           grep -q 'question-workspace.js' _site/index.html
           grep -q 'question-workspace.css' _site/index.html
-          grep -q 'ai-schema.js?v=2' _site/index.html
-          grep -q 'biomedical-ai.js?v=2' _site/index.html
-          grep -q 'ai-engine.js?v=3' _site/index.html
+          grep -q 'ai-schema.js?v=3' _site/index.html
+          grep -q 'biomedical-ai.js?v=3' _site/index.html
+          grep -q 'ai-engine.js?v=4' _site/index.html
           grep -q 'ai-ui.js?v=2' _site/index.html
           grep -q 'sync.js?v=3' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
+          grep -q 'ukmla-cards-v6-auto-checkpoint-repair' _site/service-worker.js
           python - <<'PY'
           import json
           data = json.load(open('_site/data/conditions.json', encoding='utf-8'))

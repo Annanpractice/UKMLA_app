@@ -26,6 +26,7 @@ const STAGES=[
 ];
 
 const STAGE_ORDER=STAGES.map(stage=>stage.id);
+const AUTO_REPAIR={maxAttempts:3,maxErrors:20};
 const LIMITS={
   stemMaxWords:36,
   sparseDiagnosisStemMaxWords:28,
@@ -207,23 +208,56 @@ SOURCE:
 ${JSON.stringify({mode:config.knowledge?'knowledge_dump':'coverage_scheduler',sourceTitle:config.sourceTitle||config.topic,targets:sourcePayload(config.conditions)})}`;
 }
 
-function checkpointPrompt(stage,config){
+function checkpointInstruction(stage){
   const instructions={
+    generation:'Restore the exact ten-question structure, fixed target order, unique question-type order, A–E options and all required metadata. Preserve valid clinical content.',
     sparse:`Compress every stem to one or two short sentences. Keep one decisive positive signal and at most one essential negative. Remove repeated clues, normal previous tests used only to exclude distractors, and explanatory history. Enforce ${LIMITS.stemMaxWords} words maximum, or ${LIMITS.sparseDiagnosisStemMaxWords} for sparse diagnosis. Keep the lead-in to ${LIMITS.leadInMaxWords} words and decisiveClue to ${LIMITS.decisiveClueMaxWords} words.`,
     options:`Make all five options the same semantic category and grammatically compatible with the lead-in. Each option must be ${LIMITS.optionMaxWords} words and ${LIMITS.optionMaxCharacters} characters or fewer. Use answer phrases only: no explanations, semicolons, colons, "because", "due to" or result clauses.`,
     category:'Check that the lead-in asks for exactly the category supplied by every option. Keep the wording short; do not restore detail removed by the sparse or option checkpoints.',
     distractors:`Make all four wrong options credible close competitors. Difficulty must come from clinical proximity, not long qualifying clauses. Keep the rationale to ${LIMITS.rationaleMaxWords} words and strongest-distractor explanation to ${LIMITS.distractorExplanationMaxWords} words.`,
-    source:'Strictly verify every answer, clue, rationale and factual claim against the supplied concept fields and source references. Remove unsupported facts rather than adding explanatory detail. Preserve all concision limits.'
+    source:'Strictly verify every answer, clue, rationale and factual claim against the supplied concept fields and source references. Remove unsupported facts rather than adding explanatory detail. Preserve all concision limits.',
+    final:'Repair every remaining deterministic validation failure while preserving target order, question-type order, factual content and concise wording. Return a complete valid set ready for balanced shuffling and rendering.'
   };
+  return instructions[stage]||instructions.final;
+}
+
+function checkpointPrompt(stage,config){
   return`Return the complete ten-question set in the same JSON schema. Preserve fixed target order, target IDs, topic IDs and question-type order.
 
-ROUTINE CHECKPOINT: ${instructions[stage]}
+ROUTINE CHECKPOINT: ${checkpointInstruction(stage)}
 
 SOURCE TARGETS:
 ${JSON.stringify(sourcePayload(config.conditions))}
 
 CURRENT SET:
 ${JSON.stringify(config.currentSet)}`;
+}
+
+function repairPrompt(stage,config,errors,attempt,maxAttempts){
+  const failures=[...new Set((errors||[]).map(error=>String(error).trim()).filter(Boolean))]
+    .slice(0,AUTO_REPAIR.maxErrors);
+  const label=STAGES.find(item=>item.id===stage)?.label||stage;
+  return`The previous ${label} output failed deterministic local validation.
+
+AUTOMATIC CHECKPOINT REPAIR ${attempt} OF ${maxAttempts}
+Return the complete ten-question set in the same JSON schema. Do not skip, weaken or rename the checkpoint. Correct every listed validation failure. Make the smallest necessary edits to the failed questions and preserve all already-valid questions, target IDs, topic IDs, question numbers, question-type order, answer keys and source metadata.
+
+Do not explain the corrections. Return only the corrected complete JSON set.
+
+FAILED VALIDATION:
+${failures.map(error=>`- ${error}`).join('\n')}
+
+CHECKPOINT REQUIREMENT:
+${checkpointInstruction(stage)}
+
+SOURCE TARGETS:
+${JSON.stringify(sourcePayload(config.conditions))}
+
+LAST VALID SET ENTERING THIS CHECKPOINT:
+${JSON.stringify(config.currentSet||null)}
+
+FAILED CHECKPOINT OUTPUT TO REPAIR:
+${JSON.stringify(config.failedSet||null)}`;
 }
 
 function requestBody(prompt,knowledge,name){
@@ -329,12 +363,15 @@ function balancedShuffle(set){
 window.UKMLA_V2_AI_SCHEMA={
   TYPES,
   STAGES,
+  AUTO_REPAIR,
   LIMITS,
   quizSchema,
   requestBody,
   outputText,
   generationPrompt,
+  checkpointInstruction,
   checkpointPrompt,
+  repairPrompt,
   validate,
   balancedShuffle,
   wordCount,

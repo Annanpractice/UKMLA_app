@@ -7,6 +7,7 @@
 
   const baseGenerationPrompt=schema.generationPrompt;
   const baseCheckpointPrompt=schema.checkpointPrompt;
+  const baseRepairPrompt=schema.repairPrompt;
   const baseValidate=schema.validate;
   const BIOMEDICAL_MIN_WORDS=10;
   const BIOMEDICAL_MAX_WORDS=34;
@@ -29,15 +30,8 @@
 Applied reasoning must remain terse. Two-step reasoning means the candidate performs two mental steps; it does not mean the stem supplies two sets of clues. Use ${BIOMEDICAL_MIN_WORDS}–${BIOMEDICAL_MAX_WORDS}, one or two short sentences, one decisive positive signal and no more than one essential negative. Do not add an older normal investigation solely to eliminate a distractor. Keep options to 10 words or fewer. Structures/relations must compete with structures/relations; mechanisms or interpretations must compete with mechanisms or interpretations. Do not introduce unsupported thresholds, vascular variants or disputed anatomy.`;
   }
 
-  schema.generationPrompt=function(config){
-    return baseGenerationPrompt(config)+profileRules(config);
-  };
-
-  schema.checkpointPrompt=function(stage,config){
-    const base=baseCheckpointPrompt(stage,config);
-    const targets=biomedicalTargets(config);
-    if(!targets.length)return base;
-    const audit=stage==='sparse'
+  function checkpointAudit(stage){
+    return stage==='sparse'
       ?`For biomedical targets, compress to ${BIOMEDICAL_MIN_WORDS}–${BIOMEDICAL_MAX_WORDS}. Retain one decisive positive signal. Remove repeated exclusions, previous normal tests and any sentence that explains the reasoning the candidate should perform.`
       :stage==='options'
         ?'For biomedical targets, use short parallel noun phrases: comparable nerves, arteries, territories, relations, mechanisms or physiological responses. Maximum 10 words each; no explanatory clauses.'
@@ -45,8 +39,25 @@ Applied reasoning must remain terse. Two-step reasoning means the candidate perf
           ?'Reject anatomy lead-ins that ask for management when answers are structures. Reject physiology lead-ins that ask for diagnoses when answers are mechanisms. Do not add wording to repair a category mismatch; rewrite the lead-in tersely.'
           :stage==='distractors'
             ?'Use neighbouring lesions or genuinely competing mechanisms as distractors. Keep them close and short; difficulty must not come from long qualifiers.'
-            :'Verify every biomedical claim strictly against the five supplied fields. Remove unsupported facts and preserve all stem, option and explanation limits.';
-    return`${base}\n\nBIOMEDICAL CHECKPOINT:\n${audit}`;
+            :stage==='generation'
+              ?'Restore the fixed biomedical target and question type without changing it to a more familiar condition. Keep the stem and options terse.'
+              :'Verify every biomedical claim strictly against the five supplied fields. Remove unsupported facts and preserve all stem, option and explanation limits.';
+  }
+
+  schema.generationPrompt=function(config){
+    return baseGenerationPrompt(config)+profileRules(config);
+  };
+
+  schema.checkpointPrompt=function(stage,config){
+    const base=baseCheckpointPrompt(stage,config);
+    if(!biomedicalTargets(config).length)return base;
+    return`${base}\n\nBIOMEDICAL CHECKPOINT:\n${checkpointAudit(stage)}`;
+  };
+
+  schema.repairPrompt=function(stage,config,errors,attempt,maxAttempts){
+    const base=baseRepairPrompt(stage,config,errors,attempt,maxAttempts);
+    if(!biomedicalTargets(config).length)return base;
+    return`${base}\n\nBIOMEDICAL AUTOMATIC REPAIR:\n${checkpointAudit(stage)} Do not make unaffected biomedical questions longer while fixing another question.`;
   };
 
   schema.validate=function(set,config,stage='final'){
