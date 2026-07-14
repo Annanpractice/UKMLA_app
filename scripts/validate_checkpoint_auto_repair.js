@@ -39,17 +39,19 @@ function buildContext(responses,stageIds=['generation','category','shuffle','fin
   const window={UKMLA_V2:core,UKMLA_V2_AI_TRANSPORT:transport,addEventListener:()=>{}};
   const context={
     window,document,localStorage,CustomEvent:CustomEventStub,
-    navigator:{onLine:true},console,
+    navigator:{onLine:true},console,location:{search:''},URLSearchParams,
     setTimeout:()=>0,clearTimeout:()=>{},
     Date,JSON,Math,Promise,TypeError,Error
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync('v2/ai-schema.js','utf8'),context,{filename:'v2/ai-schema.js'});
   vm.runInContext(fs.readFileSync('v2/biomedical-ai.js','utf8'),context,{filename:'v2/biomedical-ai.js'});
+  vm.runInContext(fs.readFileSync('v2/ai-pipeline-mode.js','utf8'),context,{filename:'v2/ai-pipeline-mode.js'});
   vm.runInContext(fs.readFileSync('v2/ai-targeted-repair.js','utf8'),context,{filename:'v2/ai-targeted-repair.js'});
   const schema=context.window.UKMLA_V2_AI_SCHEMA;
+  schema.setPipelineMode(schema.PIPELINE_MODES.legacy);
   const wanted=new Set(stageIds);
-  schema.STAGES.splice(0,schema.STAGES.length,...schema.STAGES.filter(stage=>wanted.has(stage.id)));
+  schema.LEGACY_STAGES.splice(0,schema.LEGACY_STAGES.length,...schema.LEGACY_STAGES.filter(stage=>wanted.has(stage.id)));
   vm.runInContext(fs.readFileSync('v2/ai-engine.js','utf8'),context,{filename:'v2/ai-engine.js'});
   return{context,schema,engine:context.window.UKMLA_V2_AI_ENGINE,localStorage,requests,progress,core};
 }
@@ -154,7 +156,7 @@ async function validateFieldRepairOnly(){
   const result=await harness.engine.runPipeline(configFor(harness,conditions));
   assert(result.questions.length===10,'Targeted field repair did not preserve the complete set.');
   assert(harness.requests.length===3,`Expected generation, checkpoint and one field repair call; received ${harness.requests.length}.`);
-  assert(harness.requests[2].text.format.name==='ukmla_category_fields_repair_v3','Field repair request name is incorrect.');
+  assert(harness.requests[2].text.format.name==='ukmla_category_fields_repair_v4','Field repair request name is incorrect.');
   assert(harness.requests[2].text.format.schema.properties.patches,'Field repair used the full-set schema.');
   const prompt=harness.requests[2].input[1].content[0].text;
   assert(!prompt.includes('"questionNumber":1,'),'Field repair transmitted an unaffected question.');
@@ -167,8 +169,6 @@ async function validateEscalationToQuestion(){
   const valid=makeSet(bootstrap.schema,conditions,'generation-valid');
   const invalid=clone(valid);
   invalid.questions[1].options[1].text='This option is too long because it includes an unnecessary explanation';
-  const badQuestion=clone(valid.questions[1]);
-  badQuestion.options[1].text='Still too long because this response remains an explanatory option';
   const responses=[
     valid,
     invalid,
@@ -251,6 +251,7 @@ async function validateFinalFieldRepair(){
   await validateExhaustionPreservesLastValid();
   await validateFinalFieldRepair();
   console.log(JSON.stringify({
+    testedPipeline:'legacy-separate-v1',
     mechanicalFailuresUseAtomicPatches:true,
     unaffectedQuestionsOmitted:true,
     fieldRepairCalls:1,
