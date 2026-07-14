@@ -17,18 +17,16 @@
     const middle=Math.floor(sorted.length/2);
     return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
   }
+  function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
 
   function decorateHome(){
     if(!location.hash.startsWith('#/home')&&location.hash!=='')return;
     const stats=bank()?.rollingStats(10);
     const card=document.querySelector('#app .hero-stats .stat:nth-child(3)');
     if(!stats||!card)return;
-    const strong=card.querySelector('strong');
-    const label=card.querySelector('span');
-    const value=`${stats.percent}%`;
     const text=stats.count?`last ${stats.count} set${stats.count===1?'':'s'} accuracy`:'last 10 sets accuracy';
-    if(strong&&strong.textContent!==value)strong.textContent=value;
-    if(label&&label.textContent!==text)label.textContent=text;
+    setText(card.querySelector('strong'),`${stats.percent}%`);
+    setText(card.querySelector('span'),text);
   }
 
   function chartSvg(attempts){
@@ -36,15 +34,16 @@
     if(!series.length)return'<section class="empty"><p>Complete a question set to start the run chart.</p></section>';
     const width=920,height=330,left=52,right=24,top=24,bottom=52;
     const plotWidth=width-left-right,plotHeight=height-top-bottom;
-    const times=series.map(item=>new Date(item.completedAt).getTime()).filter(Number.isFinite);
-    const minTime=Math.min(...times),maxTime=Math.max(...times);
+    const timestamps=series.map(item=>new Date(item.completedAt).getTime());
+    const valid=timestamps.filter(Number.isFinite);
+    const minTime=Math.min(...valid),maxTime=Math.max(...valid);
     const span=Math.max(1,maxTime-minTime);
-    const x=(item,index)=>times.length===1?left+plotWidth/2:left+((new Date(item.completedAt).getTime()-minTime)/span)*plotWidth;
+    const x=item=>series.length===1?left+plotWidth/2:left+((new Date(item.completedAt).getTime()-minTime)/span)*plotWidth;
     const y=value=>top+(100-Math.max(0,Math.min(100,Number(value)||0)))/100*plotHeight;
-    const points=series.map((item,index)=>`${x(item,index).toFixed(1)},${y(item.percent).toFixed(1)}`).join(' ');
+    const points=series.map(item=>`${x(item).toFixed(1)},${y(item.percent).toFixed(1)}`).join(' ');
     const med=median(series.map(item=>Number(item.percent)||0));
     const grid=[0,25,50,75,100].map(value=>`<line class="run-chart-grid" x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}"></line><text class="run-chart-label" x="${left-9}" y="${y(value)+4}" text-anchor="end">${value}%</text>`).join('');
-    const circles=series.map((item,index)=>`<circle class="run-chart-point" cx="${x(item,index)}" cy="${y(item.percent)}" r="5"><title>${escapeHtml(formatDate(item.completedAt))}: ${item.percent}% (${item.correctCount}/${item.questionCount}) · ${escapeHtml(item.title||item.sourceType)}</title></circle>`).join('');
+    const circles=series.map(item=>`<circle class="run-chart-point" cx="${x(item)}" cy="${y(item.percent)}" r="5"><title>${escapeHtml(formatDate(item.completedAt))}: ${item.percent}% (${item.correctCount}/${item.questionCount}) · ${escapeHtml(item.title||item.sourceType)}</title></circle>`).join('');
     return`<div class="run-chart-wrap"><svg class="run-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Question-set percentage over time"><line class="run-chart-grid" x1="${left}" y1="${top}" x2="${left}" y2="${height-bottom}"></line><line class="run-chart-grid" x1="${left}" y1="${height-bottom}" x2="${width-right}" y2="${height-bottom}"></line>${grid}<line class="run-chart-median" x1="${left}" y1="${y(med)}" x2="${width-right}" y2="${y(med)}"></line><text class="run-chart-median-label" x="${width-right-4}" y="${y(med)-7}" text-anchor="end">Median ${Math.round(med)}%</text>${series.length>1?`<polyline class="run-chart-line" points="${points}"></polyline>`:''}${circles}<text class="run-chart-label" x="${left}" y="${height-18}" text-anchor="start">${escapeHtml(formatDate(series[0].completedAt,true))}</text><text class="run-chart-label" x="${width-right}" y="${height-18}" text-anchor="end">${escapeHtml(formatDate(series.at(-1).completedAt,true))}</text></svg></div>`;
   }
 
@@ -84,14 +83,11 @@
     if(!grid||!bank())return;
     const stats=bank().rollingStats(10);
     const completed=bank().completedAttempts();
-    const first=grid.querySelector('.metric-card');
+    const first=grid.querySelector('.metric-card:not(.run-chart-card)');
     if(first){
-      const heading=first.querySelector('h3');
-      const big=first.querySelector('.metric-big');
-      const detail=first.querySelector('p');
-      if(heading)heading.textContent='Last 10 completed sets';
-      if(big)big.textContent=`${stats.percent}%`;
-      if(detail)detail.textContent=stats.count?`${stats.correct}/${stats.questions} correct across ${stats.count} sets`:'No completed sets yet';
+      setText(first.querySelector('h3'),'Last 10 completed sets');
+      setText(first.querySelector('.metric-big'),`${stats.percent}%`);
+      setText(first.querySelector('p'),stats.count?`${stats.correct}/${stats.questions} correct across ${stats.count} sets`:'No completed sets yet');
     }
 
     let chart=document.getElementById('question-run-chart');
@@ -101,19 +97,22 @@
       chart.className='metric-card run-chart-card';
       grid.prepend(chart);
     }
-    const recent=completed.slice(-10).reverse();
-    chart.innerHTML=`<div class="run-chart-head"><div><h3>Performance run chart</h3><p>Each point is one completed question set. The centre line is the median percentage across the displayed history.</p></div><button class="btn ghost" id="download-run-chart">Download attempt CSV</button></div>${chartSvg(completed)}<div class="run-chart-history">${recent.map(item=>`<div class="run-chart-row"><span>${escapeHtml(formatDate(item.completedAt))}</span><span>${escapeHtml(item.title||bank().sourceLabel(item.sourceType))}</span><strong>${item.percent}%</strong></div>`).join('')}</div>`;
-    chart.querySelector('#download-run-chart').onclick=()=>core().downloadText(runChartCsv(),`ukmla-run-chart-${new Date().toISOString().slice(0,10)}.csv`,'text/csv');
+    const signature=completed.map(item=>`${item.attemptId}:${item.updatedAt}:${item.percent}`).join('|');
+    if(chart.dataset.signature!==signature){
+      const recent=completed.slice(-10).reverse();
+      chart.dataset.signature=signature;
+      chart.innerHTML=`<div class="run-chart-head"><div><h3>Performance run chart</h3><p>Each point is one completed question set. The centre line is the median percentage across the displayed history.</p></div><button class="btn ghost" id="download-run-chart">Download attempt CSV</button></div>${chartSvg(completed)}<div class="run-chart-history">${recent.map(item=>`<div class="run-chart-row"><span>${escapeHtml(formatDate(item.completedAt))}</span><span>${escapeHtml(item.title||bank().sourceLabel(item.sourceType))}</span><strong>${item.percent}%</strong></div>`).join('')}</div>`;
+      chart.querySelector('#download-run-chart').onclick=()=>core().downloadText(runChartCsv(),`ukmla-run-chart-${new Date().toISOString().slice(0,10)}.csv`,'text/csv');
+    }
 
     const copy=document.getElementById('copy-summary');
-    if(copy)copy.onclick=()=>core().copyText(analyticsSummary(),'Analytics copied');
+    if(copy&&!copy.dataset.rollingSummary){
+      copy.dataset.rollingSummary='true';
+      copy.onclick=()=>core().copyText(analyticsSummary(),'Analytics copied');
+    }
   }
 
-  function apply(){
-    scheduled=false;
-    decorateHome();
-    decorateAnalytics();
-  }
+  function apply(){scheduled=false;decorateHome();decorateAnalytics();}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply);}
   function initialise(){
     const app=document.getElementById('app');
