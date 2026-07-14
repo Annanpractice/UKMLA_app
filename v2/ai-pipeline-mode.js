@@ -86,7 +86,7 @@ schema.checkpointInstruction=function(stage){
 schema.checkpointPrompt=function(stage,config){
   if(stage!=='options_category')return baseCheckpointPrompt(stage,config);
   const base=baseCheckpointPrompt('options',config);
-  return`${base}\n\nSECOND MANDATORY AUDIT IN THE SAME RESPONSE:\n${baseCheckpointInstruction('category')}\n\nPRESERVATION PRIORITY:\n- Preserve the correct clinical proposition and answer key.\n- Repair category-mismatched distractors before changing a valid lead-in.\n- Do not make stems longer or make distractors more generic.\n- Return the complete ten-question set once, after both audits are complete.`;
+  return`${base}\n\nCOMBINED TWO-AUDIT REQUIREMENT:\n${combinedInstruction()}\n\nPRESERVATION PRIORITY:\n- Preserve the correct clinical proposition and answer key.\n- Repair category-mismatched distractors before changing a valid lead-in.\n- Do not make stems longer or make distractors more generic.\n- Return the complete ten-question set once, after both audits are complete.`;
 };
 
 schema.repairPrompt=function(stage,config,errors,attempt,maxAttempts){
