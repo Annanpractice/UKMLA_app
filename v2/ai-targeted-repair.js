@@ -19,6 +19,7 @@ function unique(values){return[...new Set(values)];}
 function errorList(errors){return unique((errors||[]).map(value=>String(value).trim()).filter(Boolean)).slice(0,schema.AUTO_REPAIR?.maxErrors||20);}
 function questionNumberFromError(error){const match=String(error).match(/^Q(\d+)([A-E])?:/i);return match?Number(match[1]):null;}
 function optionIdFromError(error){const match=String(error).match(/^Q\d+([A-E]):/i);return match?match[1].toUpperCase():null;}
+function checkpointLabel(stage){return schema.stageLabel?.(stage)||schema.STAGES.find(item=>item.id===stage)?.label||stage;}
 function atomicPath(error){
   const text=String(error).toLowerCase();
   if(/^q\d+[a-e]:/.test(text)&&/option (?:exceeds|contains)/.test(text))return'optionText';
@@ -158,7 +159,7 @@ function repairRequestBody(prompt,knowledge,name,tier){
 }
 
 function fieldPrompt(stage,config,plan,candidate,step,total){
-  return`The ${schema.STAGES.find(item=>item.id===stage)?.label||stage} output failed deterministic validation.
+  return`The ${checkpointLabel(stage)} output failed deterministic validation.
 
 TARGETED FIELD REPAIR ${step} OF ${total}
 Return only atomic text patches for the listed failed fields. Do not return complete questions or the full set. Do not alter IDs, answer keys, metadata, unaffected fields or unaffected questions.
@@ -177,7 +178,7 @@ ${JSON.stringify(sourceTargets(config,plan.questionNumbers))}${biomedicalRepairR
 }
 
 function questionPrompt(stage,config,plan,candidate,step,total){
-  return`The ${schema.STAGES.find(item=>item.id===stage)?.label||stage} output still fails deterministic validation.
+  return`The ${checkpointLabel(stage)} output still fails deterministic validation.
 
 AFFECTED-QUESTION REPAIR ${step} OF ${total}
 Return complete corrected question objects only for question numbers ${plan.questionNumbers.join(', ')}. Do not return the other questions or the full set. Preserve each fixed target, topic, question type and factual answer unless a listed validation error requires correction.
