@@ -160,7 +160,7 @@ for(const file of ['question-bank.css','question-bank.js','question-analytics.js
 const workspace=fs.readFileSync('v2/question-workspace.js','utf8');
 if(!workspace.includes("bank:'Question Bank'")||!workspace.includes('UKMLA_QUESTION_BANK.mount(container)'))throw new Error('Question Bank tab is not wired to its workspace.');
 const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-if(!serviceWorker.includes('ukmla-cards-v7-targeted-checkpoint-repair')||!serviceWorker.includes("url.origin!==self.location.origin"))throw new Error('Offline service worker safeguards are missing.');
+if(!serviceWorker.includes('ukmla-cards-v8-combined-option-category')||!serviceWorker.includes("url.origin!==self.location.origin"))throw new Error('Offline service worker safeguards are missing.');
 
 console.log(JSON.stringify({
   bankIndexRecords:bank.bankIndex().length,
