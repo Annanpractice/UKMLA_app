@@ -3,6 +3,7 @@
 
   let scheduled=false;
   let observer=null;
+  const ANALYTICS_SOURCES=new Set(['basic','ai','biomedical']);
 
   function core(){return window.UKMLA_V2;}
   function bank(){return window.UKMLA_QUESTION_BANK;}
@@ -18,12 +19,19 @@
     return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
   }
   function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
+  function eligibleCompleted(){return(bank()?.completedAttempts()||[]).filter(item=>ANALYTICS_SOURCES.has(item.sourceType));}
+  function rollingStats(limit=10){
+    const recent=eligibleCompleted().slice(-limit);
+    const correct=recent.reduce((sum,item)=>sum+Number(item.correctCount||0),0);
+    const questions=recent.reduce((sum,item)=>sum+Number(item.questionCount||0),0);
+    return{attempts:recent,count:recent.length,correct,questions,percent:questions?Math.round(correct/questions*100):0};
+  }
 
   function decorateHome(){
     if(!location.hash.startsWith('#/home')&&location.hash!=='')return;
-    const stats=bank()?.rollingStats(10);
+    const stats=rollingStats(10);
     const card=document.querySelector('#app .hero-stats .stat:nth-child(3)');
-    if(!stats||!card)return;
+    if(!card)return;
     const text=stats.count?`last ${stats.count} set${stats.count===1?'':'s'} accuracy`:'last 10 sets accuracy';
     setText(card.querySelector('strong'),`${stats.percent}%`);
     setText(card.querySelector('span'),text);
@@ -48,15 +56,15 @@
   }
 
   function runChartCsv(){
-    const rows=bank()?.completedAttempts()||[];
+    const rows=eligibleCompleted();
     const quote=value=>`"${String(value??'').replace(/"/g,'""')}"`;
     const columns=['attempt_id','set_id','completed_at','source','title','correct','questions','percentage','device_id'];
     return[columns.join(','),...rows.map(item=>[item.attemptId,item.setId,item.completedAt,item.sourceType,item.title,item.correctCount,item.questionCount,item.percent,item.deviceId].map(quote).join(','))].join('\n');
   }
 
   function analyticsSummary(){
-    const stats=bank()?.rollingStats(10)||{count:0,correct:0,questions:0,percent:0,attempts:[]};
-    const completed=bank()?.completedAttempts()||[];
+    const stats=rollingStats(10);
+    const completed=eligibleCompleted();
     const med=median(completed.map(item=>Number(item.percent)||0));
     const recent=stats.attempts.slice().reverse();
     const base=core()?.analyticsSummary?.()||'';
@@ -81,8 +89,8 @@
     if(!location.hash.startsWith('#/analytics'))return;
     const grid=document.querySelector('#app .analytics-grid');
     if(!grid||!bank())return;
-    const stats=bank().rollingStats(10);
-    const completed=bank().completedAttempts();
+    const stats=rollingStats(10);
+    const completed=eligibleCompleted();
     const first=grid.querySelector('.metric-card:not(.run-chart-card)');
     if(first){
       setText(first.querySelector('h3'),'Last 10 completed sets');
@@ -101,7 +109,7 @@
     if(chart.dataset.signature!==signature){
       const recent=completed.slice(-10).reverse();
       chart.dataset.signature=signature;
-      chart.innerHTML=`<div class="run-chart-head"><div><h3>Performance run chart</h3><p>Each point is one completed question set. The centre line is the median percentage across the displayed history.</p></div><button class="btn ghost" id="download-run-chart">Download attempt CSV</button></div>${chartSvg(completed)}<div class="run-chart-history">${recent.map(item=>`<div class="run-chart-row"><span>${escapeHtml(formatDate(item.completedAt))}</span><span>${escapeHtml(item.title||bank().sourceLabel(item.sourceType))}</span><strong>${item.percent}%</strong></div>`).join('')}</div>`;
+      chart.innerHTML=`<div class="run-chart-head"><div><h3>Performance run chart</h3><p>Each point is one completed UKMLA, Basic HTML or Anatomy & Physiology set. The centre line is the median percentage across the displayed history.</p></div><button class="btn ghost" id="download-run-chart">Download attempt CSV</button></div>${chartSvg(completed)}<div class="run-chart-history">${recent.map(item=>`<div class="run-chart-row"><span>${escapeHtml(formatDate(item.completedAt))}</span><span>${escapeHtml(item.title||bank().sourceLabel(item.sourceType))}</span><strong>${item.percent}%</strong></div>`).join('')}</div>`;
       chart.querySelector('#download-run-chart').onclick=()=>core().downloadText(runChartCsv(),`ukmla-run-chart-${new Date().toISOString().slice(0,10)}.csv`,'text/csv');
     }
 
@@ -125,5 +133,5 @@
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialise,{once:true});else initialise();
-  window.UKMLA_QUESTION_ANALYTICS={analyticsSummary,runChartCsv,chartSvg};
+  window.UKMLA_QUESTION_ANALYTICS={analyticsSummary,runChartCsv,chartSvg,rollingStats,eligibleCompleted};
 })();
