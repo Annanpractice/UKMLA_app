@@ -3,7 +3,7 @@
 
   const INDEX_KEY='ukmlaQuestionBankIndexV1';
   const ATTEMPTS_KEY='ukmlaQuestionBankAttemptsV1';
-  const MIGRATION_KEY='ukmlaQuestionBankMigratedV1';
+  const MIGRATION_KEY='ukmlaQuestionBankMigratedV2IndexedDb';
   const SET_PREFIX='ukmlaQuestionBankSetV1:';
   const SCHEMA='ukmla-question-bank-v1';
   const TRACKED_SOURCES=new Set(['basic','ai','biomedical','knowledge']);
@@ -12,8 +12,10 @@
   let search='';
   let player=null;
   let initialised=false;
+  let migrationPromise=null;
 
   function core(){return window.UKMLA_V2;}
+  function large(){return window.UKMLA_LARGE_STORAGE;}
   function parse(value,fallback){try{return JSON.parse(value||'null')??fallback;}catch(_){return fallback;}}
   function clone(value){return JSON.parse(JSON.stringify(value));}
   function setKey(setId){return`${SET_PREFIX}${setId}`;}
@@ -34,7 +36,7 @@
   function bankIndex(){return parse(localStorage.getItem(INDEX_KEY),[]);}
   function saveIndex(records){
     try{localStorage.setItem(INDEX_KEY,JSON.stringify(records));return true;}
-    catch(error){core()?.toast('Question Bank storage is full. Export a backup before adding more sets.');return false;}
+    catch(error){core()?.toast('Question Bank index could not be stored. Your full sets remain in IndexedDB.');return false;}
   }
   function attempts(){return parse(localStorage.getItem(ATTEMPTS_KEY),[]);}
   function saveAttempts(records){
@@ -65,8 +67,9 @@
     return sourceLabel(type);
   }
 
-  function storeSet(set,meta={}){
+  async function storeSet(set,meta={}){
     if(!set||!Array.isArray(set.questions)||!set.questions.length)return null;
+    if(!large())throw new Error('Large offline storage did not initialise.');
     const stored=clone(set);
     const setId=String(meta.setId||stored.quizId||stored.setId||uid('question-set'));
     stored.quizId=setId;
@@ -76,7 +79,9 @@
     stored.generatedAt=stored.generatedAt||meta.createdAt||now();
     const payload=JSON.stringify(stored);
     const contentHash=hashText(payload);
-    try{localStorage.setItem(setKey(setId),payload);}catch(error){core()?.toast('The complete question set could not be stored offline.');return null;}
+
+    try{await large().putRaw(setKey(setId),payload);}
+    catch(error){core()?.toast('The complete question set could not be stored in IndexedDB.');return null;}
 
     const records=bankIndex();
     const existing=records.find(item=>item.setId===setId);
@@ -95,18 +100,35 @@
       verificationLabel:verificationLabel(stored,stored.sourceType,meta),
       promptVersion:stored.schemaVersion||'',
       availableOffline:true,
+      storageBackend:'indexeddb',
       updatedAt:now()
     };
     const next=[record,...records.filter(item=>item.setId!==setId)]
       .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-    if(!saveIndex(next))return null;
+    if(!saveIndex(next)){await large().deleteKey(setKey(setId));return null;}
+    localStorage.removeItem(setKey(setId));
     notify();
     return record;
   }
 
-  function loadSet(setId){return parse(localStorage.getItem(setKey(setId)),null);}
-  function removeSet(setId){
+  async function loadSet(setId){
+    if(!large())return null;
+    const key=setKey(setId);
+    let raw=await large().getRaw(key);
+    if(raw===null){
+      const legacy=localStorage.getItem(key);
+      if(legacy!==null){
+        await large().putRaw(key,legacy);
+        raw=legacy;
+        localStorage.removeItem(key);
+      }
+    }
+    return parse(raw,null);
+  }
+
+  async function removeSet(setId){
     localStorage.removeItem(setKey(setId));
+    await large()?.deleteKey(setKey(setId));
     saveIndex(bankIndex().filter(item=>item.setId!==setId));
     saveAttempts(attempts().filter(item=>item.setId!==setId));
     notify();
@@ -220,7 +242,7 @@
     return{attempts:recent,count:recent.length,correct,questions,percent:questions?Math.round(correct/questions*100):0};
   }
 
-  function discoverSetForEvent(event){
+  async function discoverSetForEvent(event){
     const api=core();
     if(!api)return null;
     const active=api.App.quiz;
@@ -237,11 +259,11 @@
     return setRecord(event.quizId);
   }
 
-  function handleLearningEvent(event){
+  async function handleLearningEvent(event){
     if(!event||!TRACKED_SOURCES.has(event.source)||!event.quizId)return;
     let attempt=attemptById(event.quizId);
     if(!attempt){
-      const record=discoverSetForEvent(event);
+      const record=await discoverSetForEvent(event);
       if(!record)return;
       attempt=beginAttempt(record.setId,{attemptId:event.quizId});
     }
@@ -257,47 +279,74 @@
     });
   }
 
-  function migrateLegacy(){
-    if(localStorage.getItem(MIGRATION_KEY)==='1')return;
+  async function compactLegacyGeneratedSets(){
     const api=core();
-    if(!api)return;
-    for(const set of api.loadJson(api.STORAGE.sets,[]))storeSet(set,{sourceType:set.sourceType||'ai'});
+    if(!api||!large())return{migrated:0,removedLegacy:false};
+    const legacy=api.loadJson(api.STORAGE.sets,[]);
+    let migrated=0;
+    for(const set of legacy){
+      const setId=String(set?.quizId||set?.setId||'');
+      if(!setId)continue;
+      if(!(await large().has(setKey(setId)))){
+        const record=await storeSet(set,{sourceType:set.sourceType||'ai'});
+        if(!record)throw new Error(`Could not migrate saved set ${setId}.`);
+        migrated++;
+      }
+    }
+    const allSafe=await Promise.all(legacy.filter(set=>set?.quizId||set?.setId).map(set=>large().has(setKey(set.quizId||set.setId))));
+    if(allSafe.every(Boolean))localStorage.removeItem(api.STORAGE.sets);
+    return{migrated,removedLegacy:allSafe.every(Boolean)};
+  }
 
-    const grouped=new Map();
-    for(const event of api.events()){
-      if(event.kind!=='answered'||!TRACKED_SOURCES.has(event.source)||!event.quizId)continue;
-      if(!grouped.has(event.quizId))grouped.set(event.quizId,[]);
-      grouped.get(event.quizId).push(event);
-    }
-    const all=attempts();
-    for(const [quizId,rows] of grouped){
-      if(all.some(item=>item.attemptId===quizId))continue;
-      const record=setRecord(quizId);
-      const unique=[...new Map(rows.map(row=>[row.questionId,row])).values()];
-      const expected=record?.questionCount||10;
-      const complete=unique.length>=expected;
-      all.push({
-        schemaVersion:SCHEMA,
-        attemptId:quizId,
-        setId:record?.setId||`legacy:${quizId}`,
-        sourceType:rows[0]?.source||'basic',
-        title:record?.title||'Historical question set',
-        questionCount:expected,
-        status:complete?'completed':'in_progress',
-        currentIndex:Math.max(0,unique.length-1),
-        answers:Object.fromEntries(unique.map((row,index)=>[String(row.questionId),{questionId:String(row.questionId),questionIndex:index,selectedOptionId:row.selectedOptionId||'',correctOptionId:row.correctOptionId||'',correct:Boolean(row.correct),answeredAt:row.at}])),
-        presentedQuestionIds:unique.map(row=>String(row.questionId)),
-        correctCount:unique.filter(row=>row.correct).length,
-        percent:complete?Math.round(unique.filter(row=>row.correct).length/Math.max(1,expected)*100):null,
-        startedAt:unique[0]?.at||now(),
-        updatedAt:unique.at(-1)?.at||now(),
-        completedAt:complete?(unique.at(-1)?.at||now()):null,
-        deviceId:'legacy'
-      });
-    }
-    saveAttempts(all);
-    localStorage.setItem(MIGRATION_KEY,'1');
-    notify();
+  async function migrateLegacy(){
+    if(migrationPromise)return migrationPromise;
+    migrationPromise=(async()=>{
+      if(!large())throw new Error('IndexedDB storage is unavailable.');
+      await large().migrateLocalPrefix(SET_PREFIX);
+      const api=core();
+      if(!api)return;
+
+      await compactLegacyGeneratedSets();
+
+      if(localStorage.getItem(MIGRATION_KEY)!=='1'){
+        const grouped=new Map();
+        for(const event of api.events()){
+          if(event.kind!=='answered'||!TRACKED_SOURCES.has(event.source)||!event.quizId)continue;
+          if(!grouped.has(event.quizId))grouped.set(event.quizId,[]);
+          grouped.get(event.quizId).push(event);
+        }
+        const all=attempts();
+        for(const [quizId,rows] of grouped){
+          if(all.some(item=>item.attemptId===quizId))continue;
+          const record=setRecord(quizId);
+          const unique=[...new Map(rows.map(row=>[row.questionId,row])).values()];
+          const expected=record?.questionCount||10;
+          const complete=unique.length>=expected;
+          all.push({
+            schemaVersion:SCHEMA,
+            attemptId:quizId,
+            setId:record?.setId||`legacy:${quizId}`,
+            sourceType:rows[0]?.source||'basic',
+            title:record?.title||'Historical question set',
+            questionCount:expected,
+            status:complete?'completed':'in_progress',
+            currentIndex:Math.max(0,unique.length-1),
+            answers:Object.fromEntries(unique.map((row,index)=>[String(row.questionId),{questionId:String(row.questionId),questionIndex:index,selectedOptionId:row.selectedOptionId||'',correctOptionId:row.correctOptionId||'',correct:Boolean(row.correct),answeredAt:row.at}])),
+            presentedQuestionIds:unique.map(row=>String(row.questionId)),
+            correctCount:unique.filter(row=>row.correct).length,
+            percent:complete?Math.round(unique.filter(row=>row.correct).length/Math.max(1,expected)*100):null,
+            startedAt:unique[0]?.at||now(),
+            updatedAt:unique.at(-1)?.at||now(),
+            completedAt:complete?(unique.at(-1)?.at||now()):null,
+            deviceId:'legacy'
+          });
+        }
+        saveAttempts(all);
+        localStorage.setItem(MIGRATION_KEY,'1');
+      }
+      notify();
+    })().catch(error=>{migrationPromise=null;throw error;});
+    return migrationPromise;
   }
 
   function latestAttemptFor(setId,status){
@@ -335,9 +384,9 @@
     if(!list)return;
     const records=recordsForFilter();
     list.innerHTML=records.length?records.map(cardHtml).join(''):'<section class="empty"><h2>No matching question sets</h2><p>Validated sets will appear here automatically.</p></section>';
-    list.querySelectorAll('[data-bank-open]').forEach(button=>button.onclick=()=>openRecord(button.dataset.bankOpen,button.dataset.bankAction));
-    list.querySelectorAll('[data-bank-remove]').forEach(button=>button.onclick=()=>{
-      if(confirm('Remove this saved set and its attempts from this device?')){removeSet(button.dataset.bankRemove);drawBank();}
+    list.querySelectorAll('[data-bank-open]').forEach(button=>button.onclick=()=>void openRecord(button.dataset.bankOpen,button.dataset.bankAction));
+    list.querySelectorAll('[data-bank-remove]').forEach(button=>button.onclick=async()=>{
+      if(confirm('Remove this saved set and its attempts from this device?')){await removeSet(button.dataset.bankRemove);drawBank();}
     });
   }
 
@@ -348,15 +397,16 @@
     const ready=records.filter(record=>!allAttempts.some(item=>item.setId===record.setId)).length;
     const inProgress=records.filter(record=>allAttempts.some(item=>item.setId===record.setId&&item.status==='in_progress')).length;
     const completed=records.filter(record=>allAttempts.some(item=>item.setId===record.setId&&item.status==='completed')).length;
-    root.innerHTML=`<section class="bank-hero"><div><div class="eyebrow">Synced offline library</div><h2>Question Bank</h2><p>Only the lightweight index is loaded here. Full question content is opened from offline storage only when you select a set.</p></div><div class="bank-totals"><strong>${records.length}</strong><span>saved sets</span><strong>${completed}</strong><span>completed</span></div></section><section class="panel bank-toolbar"><div class="tabs bank-filter-tabs"><button class="tab ${filter==='not-completed'?'active':''}" data-bank-filter="not-completed">Not completed <sup>${ready+inProgress}</sup></button><button class="tab ${filter==='completed'?'active':''}" data-bank-filter="completed">Completed <sup>${completed}</sup></button><button class="tab ${filter==='all'?'active':''}" data-bank-filter="all">All <sup>${records.length}</sup></button></div><div class="field"><label>Search saved sets</label><input class="input" id="bank-search" value="${escapeHtml(search)}" placeholder="Topic or source"></div></section><section class="bank-grid" id="bank-list"></section>`;
+    root.innerHTML=`<section class="bank-hero"><div><div class="eyebrow">Synced offline library</div><h2>Question Bank</h2><p>The lightweight index remains in local storage. Full question content is held in larger IndexedDB storage and opened only when selected.</p></div><div class="bank-totals"><strong>${records.length}</strong><span>saved sets</span><strong>${completed}</strong><span>completed</span></div></section><section class="panel bank-toolbar"><div class="tabs bank-filter-tabs"><button class="tab ${filter==='not-completed'?'active':''}" data-bank-filter="not-completed">Not completed <sup>${ready+inProgress}</sup></button><button class="tab ${filter==='completed'?'active':''}" data-bank-filter="completed">Completed <sup>${completed}</sup></button><button class="tab ${filter==='all'?'active':''}" data-bank-filter="all">All <sup>${records.length}</sup></button></div><div class="field"><label>Search saved sets</label><input class="input" id="bank-search" value="${escapeHtml(search)}" placeholder="Topic or source"></div></section><section class="bank-grid" id="bank-list"></section>`;
     root.dataset.activeQuestionTab='bank';
     root.querySelectorAll('[data-bank-filter]').forEach(button=>button.onclick=()=>{filter=button.dataset.bankFilter;drawBank();});
     root.querySelector('#bank-search').oninput=event=>{search=event.target.value;drawBankList();};
     drawBankList();
   }
 
-  function openRecord(setId,action){
-    const set=loadSet(setId);
+  async function openRecord(setId,action){
+    core()?.toast('Opening saved set…');
+    const set=await loadSet(setId);
     if(!set){core()?.toast('This set is listed but its full content is not on this device. Pull sync or restore a backup.');return;}
     if(action==='review'){
       const attempt=latestAttemptFor(setId,'completed');
@@ -427,13 +477,18 @@
     root.querySelector('#review-next').onclick=()=>index===set.questions.length-1?drawBank():renderReview(set,attempt,index+1);
   }
 
-  function mount(container){root=container;migrateLegacy();drawBank();}
+  async function mount(container){
+    root=container;
+    root.innerHTML='<section class="empty"><h2>Preparing offline Question Bank…</h2><p>Large saved sets are being verified in IndexedDB.</p></section>';
+    try{await migrateLegacy();drawBank();}
+    catch(error){root.innerHTML=`<section class="empty"><h2>Question Bank storage could not initialise</h2><p>${escapeHtml(error.message)}</p></section>`;}
+  }
 
   function initialise(){
     if(initialised||!core())return false;
     initialised=true;
-    migrateLegacy();
-    document.addEventListener('ukmlaLearningEvent',event=>handleLearningEvent(event.detail));
+    document.addEventListener('ukmlaLearningEvent',event=>void handleLearningEvent(event.detail));
+    void migrateLegacy().catch(error=>core()?.toast(`Storage migration paused: ${error.message}`));
     return true;
   }
   function waitForCore(){if(!initialise())setTimeout(waitForCore,80);}
@@ -442,6 +497,7 @@
   window.UKMLA_QUESTION_BANK={
     INDEX_KEY,ATTEMPTS_KEY,SET_PREFIX,SCHEMA,
     mount,storeSet,loadSet,removeSet,bankIndex,attempts,beginAttempt,attemptById,
-    recordPresented,recordAnswer,completeAttempt,completedAttempts,rollingStats,sourceLabel,migrateLegacy
+    recordPresented,recordAnswer,completeAttempt,completedAttempts,rollingStats,sourceLabel,
+    migrateLegacy,compactLegacyGeneratedSets
   };
 })();
