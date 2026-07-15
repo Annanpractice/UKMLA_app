@@ -120,7 +120,12 @@ class SimpleEventTarget{
   localStorage.setItem('ukmlaV2StateV1',JSON.stringify({safe:true}));
   const beforeState=localStorage.getItem('ukmlaV2StateV1');
   let quotaFailure='';
-  try{await sync.mergeRemote({ukmlaV2StateV1:JSON.stringify({huge:'y'.repeat(1_200_000)})});}catch(error){quotaFailure=String(error.message||error);}
+  try{
+    await sync.mergeRemote({
+      ukmlaV2StateV1:JSON.stringify({remoteAttempt:true}),
+      ukmlaPsaUiStateV1:JSON.stringify({updatedAt:'2099-01-01T00:00:00.000Z',huge:'y'.repeat(1_200_000)})
+    });
+  }catch(error){quotaFailure=String(error.message||error);}
   assert(quotaFailure.includes('No partial import was kept'),'Quota failure did not report rollback safety.');
   assert(localStorage.getItem('ukmlaV2StateV1')===beforeState,'Quota failure left a partial localStorage import.');
 
