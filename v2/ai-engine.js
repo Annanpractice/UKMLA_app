@@ -270,17 +270,16 @@ async function runPipeline(config){
   return job.currentSet;
 }
 
-function storeSet(set){
+async function storeSet(set){
   const type=set.sourceType==='knowledge_dump'?'knowledge':'ai';
-  const bankRecord=window.UKMLA_QUESTION_BANK?.storeSet(set,{
+  const record=await window.UKMLA_QUESTION_BANK?.storeSet(set,{
     sourceType:type,
     title:set.topic&&set.topic!=='All UKMLA topics'?set.topic:undefined,
     verificationLabel:type==='knowledge'?'Source-fidelity checkpoint passed':'All clinical checkpoints passed'
-  })||null;
-  const sets=core().loadJson(core().STORAGE.sets,[]);
-  if(!sets.some(item=>item.quizId===set.quizId))sets.unshift(set);
-  core().saveJson(core().STORAGE.sets,sets.slice(0,30));
-  return bankRecord;
+  });
+  if(!record)throw new Error('The completed question set could not be saved in IndexedDB.');
+  localStorage.removeItem(core().STORAGE.sets);
+  return record;
 }
 
 window.UKMLA_V2_AI_ENGINE={runPipeline,loadJob,clearJob,storeSet};

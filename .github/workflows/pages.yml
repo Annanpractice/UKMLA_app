@@ -33,6 +33,7 @@ jobs:
 
           for FILE in \
             v2/core.js \
+            v2/large-storage.js \
             v2/question-bank.js \
             v2/question-analytics.js \
             v2/ai-transport.js \
@@ -54,6 +55,7 @@ jobs:
             v2/psa-grounding.js \
             v2/psa-runtime.js \
             v2/psa.js \
+            v2/handsfree.js \
             service-worker.js \
             scripts/validate_psa_module.js \
             scripts/validate_question_concision.js \
@@ -102,7 +104,7 @@ jobs:
       - name: Validate targeted checkpoint API repair
         run: node scripts/validate_checkpoint_auto_repair.js
 
-      - name: Validate Question Bank, merge safety and rolling analytics
+      - name: Validate IndexedDB Question Bank, quota rollback and analytics
         run: node scripts/validate_question_bank.js
 
       - name: Validate biomedical sources, question integration and generated data
@@ -115,7 +117,7 @@ jobs:
           grep -q "UKMLA_QUESTION_BANK.*storeSet" v2/biomedical-basic.js
           grep -q "biomedical-basic.js" v2/app.html
 
-      - name: Validate mobile UKMLA Questions workspace
+      - name: Validate mobile UKMLA Questions workspace and large storage
         run: |
           grep -q "ai:'UKMLA Questions'" v2/question-workspace.js
           grep -q "bank:'Question Bank'" v2/question-workspace.js
@@ -137,6 +139,9 @@ jobs:
           grep -q "Affected-question repair" v2/ai-targeted-repair.js
           grep -q "Full-set fallback repair" v2/ai-targeted-repair.js
           grep -q "targeted field, affected-question and full-set repair" v2/ai-engine.js
+          grep -q "ukmla-v2-backup-4-indexeddb" v2/sync.js
+          grep -q "No partial import was kept" v2/large-storage.js
+          grep -q "storageBackend:'indexeddb'" v2/question-bank.js
           ! grep -q "AI-generated UKMLA quiz" v2/ai-ui.js
           ! grep -q "Generate 10-question AI quiz" v2/ai-ui.js
           grep -q "question-workspace.css" v2/app.html
@@ -147,14 +152,16 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           html = Path('v2/app.html').read_text(encoding='utf-8')
-          assert html.index('question-bank.js') < html.index('ai-engine.js')
+          assert html.index('large-storage.js') < html.index('question-bank.js') < html.index('ai-engine.js')
           assert html.index('biomedical-ai.js') < html.index('ai-pipeline-mode.js') < html.index('ai-targeted-repair.js') < html.index('ai-engine.js')
           assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
+          assert 'large-storage.js?v=1' in html
+          assert 'question-bank.js?v=2' in html
           assert 'ai-pipeline-mode.js?v=1' in html
           assert 'ai-targeted-repair.js?v=2' in html
-          assert 'ai-engine.js?v=6' in html
-          assert 'ai-ui.js?v=3' in html
-          assert 'sync.js?v=3' in html
+          assert 'ai-engine.js?v=7' in html
+          assert 'ai-ui.js?v=4' in html
+          assert 'sync.js?v=4' in html
           PY
 
       - name: Audit complete card dataset
@@ -241,6 +248,7 @@ jobs:
           test -s _site/service-worker.js
           test -s _site/data/conditions.json
           test -s _site/v2/core.js
+          test -s _site/v2/large-storage.js
           test -s _site/v2/question-bank.js
           test -s _site/v2/question-analytics.js
           test -s _site/v2/question-bank.css
@@ -260,24 +268,26 @@ jobs:
           test -s _site/v2/psa-grounding.css
           test -s _site/v2/psa-runtime.js
           test -s _site/v2/psa.css
-          grep -q 'question-bank.js' _site/index.html
+          grep -q 'large-storage.js?v=1' _site/index.html
+          grep -q 'question-bank.js?v=2' _site/index.html
           grep -q 'question-analytics.js' _site/index.html
           grep -q 'question-bank.css' _site/index.html
           grep -q 'service-worker.js' _site/index.html
           grep -q 'biomedical-ai.js' _site/index.html
           grep -q 'ai-pipeline-mode.js?v=1' _site/index.html
           grep -q 'ai-targeted-repair.js?v=2' _site/index.html
-          grep -q 'ai-engine.js?v=6' _site/index.html
-          grep -q 'ai-ui.js?v=3' _site/index.html
+          grep -q 'ai-engine.js?v=7' _site/index.html
+          grep -q 'ai-ui.js?v=4' _site/index.html
           grep -q 'biomedical.js' _site/index.html
           grep -q 'biomedical-basic.js' _site/index.html
           grep -q 'biomedical.css' _site/index.html
           grep -q 'question-workspace.js' _site/index.html
           grep -q 'question-workspace.css' _site/index.html
-          grep -q 'sync.js?v=3' _site/index.html
+          grep -q 'sync.js?v=4' _site/index.html
           grep -q 'psa-grounding.js' _site/index.html
           grep -q 'psa-grounding.css' _site/index.html
-          grep -q 'ukmla-cards-v8-combined-option-category' _site/service-worker.js
+          grep -q 'ukmla-cards-v9-indexeddb-storage' _site/service-worker.js
+          grep -q 'large-storage.js' _site/service-worker.js
           grep -q 'ai-pipeline-mode.js' _site/service-worker.js
           grep -q 'ai-targeted-repair.js' _site/service-worker.js
           python - <<'PY'

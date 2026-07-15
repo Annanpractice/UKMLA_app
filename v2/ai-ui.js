@@ -113,10 +113,11 @@ async function start(resume){
         pipelineMode:activeMode||pipelineMode
       })
     });
-    engine().storeSet(set);
+    drawProgress({lastMessage:'Saving complete set to IndexedDB…',percent:100,status:'active',pipelineMode:set.pipelineMode||pipelineMode});
+    await engine().storeSet(set);
     renderSet(root.querySelector('#ai-play'),set,'ai');
     drawProgress({
-      lastMessage:'Question set ready. All clinical quality checks passed.',
+      lastMessage:'Question set ready and safely stored offline.',
       percent:100,
       status:'complete',
       pipelineMode:set.pipelineMode||pipelineMode
