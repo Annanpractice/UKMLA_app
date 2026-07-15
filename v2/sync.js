@@ -5,9 +5,11 @@ const PAD_ID='ukmla-4Jq9QYF2vHc8nLz6WmRpT3xA';
 const BANK_INDEX_KEY='ukmlaQuestionBankIndexV1';
 const BANK_ATTEMPTS_KEY='ukmlaQuestionBankAttemptsV1';
 const BANK_SET_PREFIX='ukmlaQuestionBankSetV1:';
+const ARCHIVE_PREFIX='ukmlaArchivedLocalValueV1:';
+const LEGACY_GENERATED_KEY='ukmlaAiGeneratedQuizSetsV1';
+const LEGACY_ARCHIVE_KEYS=new Set(['ukmlaAiPromptCheckedV1','ukmlaAiDecisionDataV1']);
 const KEYS=[
-  'ukmlaQuizProgressV1','ukmlaAspectStatusV2','ukmlaAiPromptCheckedV1','ukmlaAiDecisionDataV1',
-  'ukmlaAiGeneratedQuizSetsV1','ukmlaLearningEventsV1','ukmlaLearningRegistryV1','ukmlaCoverageStateV1',
+  'ukmlaQuizProgressV1','ukmlaAspectStatusV2','ukmlaLearningEventsV1','ukmlaLearningRegistryV1','ukmlaCoverageStateV1',
   'ukmlaKnowledgePackStatsV1','ukmlaV2StateV1','ukmlaV2ReviewedV1',
   'ukmlaPsaPapersV1','ukmlaPsaActiveSessionsV1','ukmlaPsaAttemptsV1','ukmlaPsaGenerationJobV1',
   'ukmlaPsaMarkingJobV1','ukmlaPsaUiStateV1',BANK_INDEX_KEY,BANK_ATTEMPTS_KEY
@@ -15,13 +17,13 @@ const KEYS=[
 let root=null,firebasePromise=null,busy=false;
 
 function core(){return window.UKMLA_V2;}
+function large(){return window.UKMLA_LARGE_STORAGE;}
+function bank(){return window.UKMLA_QUESTION_BANK;}
 function parse(value,fallback){try{return JSON.parse(value||'null')??fallback;}catch(_){return fallback;}}
 function status(message){const node=root?.querySelector('#sync-status');if(node)node.textContent=message;const indicator=document.getElementById('sync-indicator');if(indicator)indicator.textContent=message;}
 function setBusy(value){busy=value;root?.querySelectorAll('button').forEach(button=>button.disabled=value);}
-function localBankPayloadKeys(){const keys=[];for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(key?.startsWith(BANK_SET_PREFIX))keys.push(key);}return keys;}
-function allSyncKeys(remoteValues={}){return[...new Set([...KEYS,...localBankPayloadKeys(),...Object.keys(remoteValues||{}).filter(key=>key.startsWith(BANK_SET_PREFIX))])];}
-function localValues(){const values={};for(const key of allSyncKeys()){const value=localStorage.getItem(key);if(value!==null)values[key]=value;}return values;}
-function backupPayload(){return{schemaVersion:'ukmla-v2-backup-3-question-bank',exportedAt:new Date().toISOString(),deviceId:localStorage.getItem('ukmlaRemoteDeviceIdV1')||'',values:localValues()};}
+function archiveKey(key){return`${ARCHIVE_PREFIX}${key}`;}
+function originalArchiveKey(key){return String(key).slice(ARCHIVE_PREFIX.length);}
 
 function mergeEvents(localValue,remoteValue){const map=new Map();[...parse(localValue,[]),...parse(remoteValue,[])].forEach(event=>{if(event?.id)map.set(event.id,event);});return JSON.stringify([...map.values()].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||''))));}
 function mergeObjects(localValue,remoteValue){const local=parse(localValue,{}),remote=parse(remoteValue,{}),result={...remote};for(const[key,value]of Object.entries(local)){const existing=result[key],localDate=String(value?.updatedAt||value?.createdAt||''),remoteDate=String(existing?.updatedAt||existing?.createdAt||'');if(!existing||localDate>=remoteDate)result[key]=value;}return JSON.stringify(result);}
@@ -53,7 +55,7 @@ function mergeValue(key,localValue,remoteValue){
   if(key==='ukmlaLearningRegistryV1')return mergeRegistry(localValue,remoteValue);
   if(key==='ukmlaCoverageStateV1')return mergeCoverage(localValue,remoteValue);
   if(key==='ukmlaQuizProgressV1')return mergeProgress(localValue,remoteValue);
-  if(key==='ukmlaAiGeneratedQuizSetsV1')return mergeSets(localValue,remoteValue);
+  if(key===LEGACY_GENERATED_KEY)return mergeSets(localValue,remoteValue);
   if(key===BANK_INDEX_KEY)return mergeQuestionBankIndex(localValue,remoteValue);
   if(key===BANK_ATTEMPTS_KEY)return mergeQuestionBankAttempts(localValue,remoteValue);
   if(key==='ukmlaPsaPapersV1')return mergeArrayById(localValue,remoteValue,['paperId'],20);
@@ -63,35 +65,113 @@ function mergeValue(key,localValue,remoteValue){
   return localValue??remoteValue;
 }
 
-function mergeRemote(values){
-  for(const key of allSyncKeys(values)){
-    const local=localStorage.getItem(key),remote=values?.[key];
-    if(remote===undefined&&local===null)continue;
-    const merged=mergeValue(key,local,remote);
-    if(merged!==null&&merged!==undefined)localStorage.setItem(key,String(merged));
+async function prepareLargeStorage(){
+  if(!large())throw new Error('IndexedDB support did not load.');
+  await large().openDb();
+  await large().migrateLocalPrefix(BANK_SET_PREFIX);
+  if(bank())await bank().migrateLegacy();
+  for(const key of LEGACY_ARCHIVE_KEYS){
+    const value=localStorage.getItem(key);
+    if(value===null)continue;
+    await large().putRaw(archiveKey(key),value);
+    if(await large().getRaw(archiveKey(key))===value)localStorage.removeItem(key);
   }
+}
+
+async function localValues(){
+  await prepareLargeStorage();
+  const values={};
+  for(const key of KEYS){const value=localStorage.getItem(key);if(value!==null)values[key]=value;}
+  for(const[key,value]of await large().entries(BANK_SET_PREFIX))values[key]=value;
+  for(const[key,value]of await large().entries(ARCHIVE_PREFIX)){
+    const original=originalArchiveKey(key);
+    if(values[original]===undefined)values[original]=value;
+  }
+  return values;
+}
+
+async function backupPayload(){return{schemaVersion:'ukmla-v2-backup-4-indexeddb',exportedAt:new Date().toISOString(),deviceId:localStorage.getItem('ukmlaRemoteDeviceIdV1')||'',values:await localValues()};}
+
+async function importLegacyGeneratedSets(value){
+  const sets=parse(value,[]);
+  if(!Array.isArray(sets)||!sets.length||!bank())return 0;
+  let imported=0;
+  for(const set of sets){
+    const setId=String(set?.quizId||set?.setId||'');
+    if(!setId)continue;
+    if(await large().has(`${BANK_SET_PREFIX}${setId}`))continue;
+    const record=await bank().storeSet(set,{sourceType:set.sourceType||'ai'});
+    if(record)imported++;
+  }
+  return imported;
+}
+
+async function mergeRemote(values){
+  if(!values||typeof values!=='object')return{largeRecords:0,smallRecords:0,legacySets:0};
+  await prepareLargeStorage();
+
+  const bankRows=[];
+  for(const[key,remoteValue]of Object.entries(values)){
+    if(!key.startsWith(BANK_SET_PREFIX))continue;
+    const localValue=await large().getRaw(key);
+    bankRows.push([key,mergeValue(key,localValue,remoteValue)]);
+  }
+  if(bankRows.length)await large().putMany(bankRows);
+
+  const archiveRows=[];
+  for(const key of LEGACY_ARCHIVE_KEYS){
+    const remoteValue=values[key];
+    if(remoteValue===undefined)continue;
+    const localValue=await large().getRaw(archiveKey(key));
+    archiveRows.push([archiveKey(key),mergeNewest(localValue,remoteValue)]);
+  }
+  if(archiveRows.length)await large().putMany(archiveRows);
+
+  const updates={};
+  for(const key of KEYS){
+    const localValue=localStorage.getItem(key),remoteValue=values[key];
+    if(remoteValue===undefined&&localValue===null)continue;
+    const merged=mergeValue(key,localValue,remoteValue);
+    if(merged!==null&&merged!==undefined)updates[key]=String(merged);
+  }
+  await large().commitLocalStorage(updates);
+
+  const legacySets=await importLegacyGeneratedSets(values[LEGACY_GENERATED_KEY]);
+  localStorage.removeItem(LEGACY_GENERATED_KEY);
   document.dispatchEvent(new Event('ukmlaRemoteDataImported'));
   document.dispatchEvent(new Event('ukmlaQuestionBankChanged'));
+  return{largeRecords:bankRows.length+archiveRows.length,smallRecords:Object.keys(updates).length,legacySets};
 }
 
 async function firebase(){if(firebasePromise)return firebasePromise;firebasePromise=(async()=>{status('Connecting to Firebase…');const appMod=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');const dbMod=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');const config=window.UKMLA_V2_FIREBASE_CONFIG;if(!config)throw new Error('Firebase configuration is unavailable.');const app=appMod.getApps().length?appMod.getApp():appMod.initializeApp(config);const db=dbMod.getDatabase(app),ref=dbMod.ref(db,`ukmlaPads/${PAD_ID.replace(/[^A-Za-z0-9_-]/g,'-')}/state`);return{dbMod,ref};})();return firebasePromise;}
-async function pull(){if(busy)return;setBusy(true);try{const{dbMod,ref}=await firebase();status('Downloading and merging cloud data…');const snapshot=await dbMod.get(ref),remote=snapshot.val();if(!remote?.values){status('Cloud pad is empty.');return;}mergeRemote(remote.values);status('Cloud data and Question Bank merged. Reloading…');setTimeout(()=>location.reload(),650);}catch(error){status(`Pull failed: ${error.message}`);}finally{setBusy(false);}}
-async function push(){if(busy)return;setBusy(true);try{const{dbMod,ref}=await firebase();status('Merging current cloud data before upload…');const snapshot=await dbMod.get(ref),remote=snapshot.val();if(remote?.values)mergeRemote(remote.values);await dbMod.set(ref,{updatedAt:Date.now(),origin:localStorage.getItem('ukmlaRemoteDeviceIdV1')||'v2',values:localValues()});status(`Question Bank and progress merged and pushed at ${new Date().toLocaleTimeString()}.`);}catch(error){status(`Push failed: ${error.message}`);}finally{setBusy(false);}}
-function downloadBackup(){core().downloadText(JSON.stringify(backupPayload(),null,2),`ukmla-backup-${new Date().toISOString().slice(0,10)}.json`,'application/json');}
-async function importBackup(file){try{const payload=JSON.parse(await file.text());if(!payload?.values||typeof payload.values!=='object')throw new Error('This is not a UKMLA backup.');mergeRemote(payload.values);status('Backup and Question Bank imported. Reloading…');setTimeout(()=>location.reload(),500);}catch(error){status(`Import failed: ${error.message}`);}}
-function storageSize(){let total=0;for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);total+=(key?.length||0)+(localStorage.getItem(key)?.length||0);}return total*2;}
+async function pull(){if(busy)return;setBusy(true);try{const{dbMod,ref}=await firebase();status('Downloading cloud data into safe large storage…');const snapshot=await dbMod.get(ref),remote=snapshot.val();if(!remote?.values){status('Cloud pad is empty.');return;}const result=await mergeRemote(remote.values);status(`Cloud data restored safely: ${result.largeRecords} large and ${result.smallRecords} compact records. Reloading…`);setTimeout(()=>location.reload(),850);}catch(error){status(`Pull failed: ${error.message}`);}finally{setBusy(false);}}
+async function push(){if(busy)return;setBusy(true);try{const{dbMod,ref}=await firebase();status('Merging current cloud data before upload…');const snapshot=await dbMod.get(ref),remote=snapshot.val();if(remote?.values)await mergeRemote(remote.values);const values=await localValues();await dbMod.set(ref,{updatedAt:Date.now(),origin:localStorage.getItem('ukmlaRemoteDeviceIdV1')||'v2',values});status(`Question Bank and progress merged and pushed at ${new Date().toLocaleTimeString()}.`);}catch(error){status(`Push failed: ${error.message}`);}finally{setBusy(false);}}
+async function downloadBackup(){if(busy)return;setBusy(true);try{status('Assembling local and IndexedDB records…');const payload=await backupPayload();core().downloadText(JSON.stringify(payload,null,2),`ukmla-backup-${new Date().toISOString().slice(0,10)}.json`,'application/json');status('Complete backup downloaded.');}catch(error){status(`Backup failed: ${error.message}`);}finally{setBusy(false);}}
+async function importBackup(file){if(busy)return;setBusy(true);try{status('Reading backup without changing existing data…');const payload=JSON.parse(await file.text());if(!payload?.values||typeof payload.values!=='object')throw new Error('This is not a UKMLA backup.');status('Storing large records in IndexedDB and merging compact progress…');const result=await mergeRemote(payload.values);status(`Backup imported safely: ${result.largeRecords} large and ${result.smallRecords} compact records. Reloading…`);setTimeout(()=>location.reload(),850);}catch(error){status(`Import failed: ${error.message}`);}finally{setBusy(false);}}
+
 function formatBytes(bytes){if(bytes<1024)return`${bytes} B`;if(bytes<1048576)return`${(bytes/1024).toFixed(1)} KB`;return`${(bytes/1048576).toFixed(2)} MB`;}
+async function refreshStorageStats(){
+  const node=root?.querySelector('#storage-stats');
+  if(!node||!large())return;
+  try{
+    await prepareLargeStorage();
+    const estimate=await large().estimate();
+    const quota=estimate.quota?` of ${formatBytes(estimate.quota)} browser quota`:'';
+    node.innerHTML=`<div class="storage-row"><span>Compact local storage</span><strong>${formatBytes(estimate.localStorageBytes)}</strong></div><div class="storage-row"><span>Large IndexedDB records</span><strong>${formatBytes(estimate.indexedDbBytes)}</strong></div>${estimate.usage?`<div class="storage-row"><span>Total site usage</span><strong>${formatBytes(estimate.usage)}${quota}</strong></div>`:''}`;
+  }catch(error){node.innerHTML=`<p style="color:var(--danger)">Storage check failed: ${core().escapeHtml(error.message)}</p>`;}
+}
 function mount(container){
   root=container;
   const bankSets=parse(localStorage.getItem(BANK_INDEX_KEY),[]).length;
   const bankAttempts=parse(localStorage.getItem(BANK_ATTEMPTS_KEY),[]);
-  root.innerHTML=`<div class="page-head"><div><div class="eyebrow">Local-first data control</div><h1>Sync & backup</h1><p>No network connection is opened until you press Pull or Push. Question Bank sets merge by stable set ID; attempts merge by attempt ID, and a completed attempt cannot be replaced by an older incomplete copy.</p></div></div><section class="sync-grid"><article class="panel"><h2>Firebase cloud pad</h2><p id="sync-status" style="color:var(--muted)">Disconnected. Local data remains available.</p><div class="card-actions"><button class="btn primary" id="sync-pull">Pull and merge</button><button class="btn" id="sync-push">Merge and push</button></div></article><article class="panel"><h2>Complete backup</h2><p>Export all progress, events, Question Bank payloads and attempts, PSA papers, active device sessions and review state.</p><div class="card-actions"><button class="btn" id="sync-export">Download backup</button><button class="btn ghost" id="sync-import">Import backup</button><input id="sync-import-file" type="file" accept="application/json,.json" hidden></div></article><article class="panel"><h2>Browser storage</h2><div class="storage-row"><span>Used</span><strong>${formatBytes(storageSize())}</strong></div><div class="storage-row"><span>Question Bank sets</span><strong>${bankSets}</strong></div><div class="storage-row"><span>Completed bank attempts</span><strong>${bankAttempts.filter(item=>item.status==='completed').length}</strong></div><div class="storage-row"><span>In-progress bank attempts</span><strong>${bankAttempts.filter(item=>item.status==='in_progress').length}</strong></div><div class="storage-row"><span>Learning events</span><strong>${core().events().length}</strong></div><div class="storage-row"><span>PSA attempts</span><strong>${parse(localStorage.getItem('ukmlaPsaAttemptsV1'),[]).length}</strong></div><div class="storage-row"><span>PSA papers</span><strong>${parse(localStorage.getItem('ukmlaPsaPapersV1'),[]).length}</strong></div><div class="storage-row"><span>Knowledge packs</span><strong>${Object.keys(core().loadJson(core().STORAGE.knowledge,{})).length}</strong></div></article></section>`;
+  root.innerHTML=`<div class="page-head"><div><div class="eyebrow">Local-first data control</div><h1>Sync & backup</h1><p>Full question sets now use IndexedDB rather than the small local-storage allowance. Import and Pull merge compact records with rollback protection.</p></div></div><section class="sync-grid"><article class="panel"><h2>Firebase cloud pad</h2><p id="sync-status" style="color:var(--muted)">Disconnected. Local data remains available.</p><div class="card-actions"><button class="btn primary" id="sync-pull">Pull and merge</button><button class="btn" id="sync-push">Merge and push</button></div></article><article class="panel"><h2>Complete backup</h2><p>Export all progress, events, IndexedDB Question Bank payloads and attempts, PSA records and review state.</p><div class="card-actions"><button class="btn" id="sync-export">Download backup</button><button class="btn ghost" id="sync-import">Import backup</button><input id="sync-import-file" type="file" accept="application/json,.json" hidden></div></article><article class="panel"><h2>Browser storage</h2><div id="storage-stats"><p style="color:var(--muted)">Calculating safe storage use…</p></div><div class="storage-row"><span>Question Bank sets</span><strong>${bankSets}</strong></div><div class="storage-row"><span>Completed bank attempts</span><strong>${bankAttempts.filter(item=>item.status==='completed').length}</strong></div><div class="storage-row"><span>In-progress bank attempts</span><strong>${bankAttempts.filter(item=>item.status==='in_progress').length}</strong></div><div class="storage-row"><span>Learning events</span><strong>${core().events().length}</strong></div><div class="storage-row"><span>PSA attempts</span><strong>${parse(localStorage.getItem('ukmlaPsaAttemptsV1'),[]).length}</strong></div><div class="storage-row"><span>PSA papers</span><strong>${parse(localStorage.getItem('ukmlaPsaPapersV1'),[]).length}</strong></div><div class="storage-row"><span>Knowledge packs</span><strong>${Object.keys(core().loadJson(core().STORAGE.knowledge,{})).length}</strong></div></article></section>`;
   root.querySelector('#sync-pull').onclick=pull;
   root.querySelector('#sync-push').onclick=push;
   root.querySelector('#sync-export').onclick=downloadBackup;
   root.querySelector('#sync-import').onclick=()=>root.querySelector('#sync-import-file').click();
-  root.querySelector('#sync-import-file').onchange=event=>{const file=event.target.files[0];if(file)importBackup(file);};
+  root.querySelector('#sync-import-file').onchange=event=>{const file=event.target.files[0];if(file)void importBackup(file);};
+  void refreshStorageStats();
 }
 
-window.UKMLA_V2_SYNC={mount,mergeValue,mergeRemote,localValues,backupPayload};
+window.UKMLA_V2_SYNC={mount,mergeValue,mergeRemote,localValues,backupPayload,prepareLargeStorage};
 })();
