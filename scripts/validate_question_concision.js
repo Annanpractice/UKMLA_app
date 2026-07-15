@@ -139,14 +139,24 @@ for (const required of [
   'at most one explicit negative or exclusion',
   'Maximum 36 words per stem',
   '10 words or fewer',
-  'Two-step reasoning means the candidate performs two mental steps'
+  'Two-step reasoning means the candidate performs two mental steps',
+  'Do not state the complete classic diagnostic pattern',
+  'Do not repeat or paraphrase stem clues inside any option',
+  'Options must be short answer labels only'
 ]) {
   if (!generationPrompt.includes(required)) throw new Error(`Generation prompt is missing: ${required}`);
 }
 
-for (const stage of ['sparse', 'options', 'category', 'distractors']) {
+const antiGiveawayPrompts = {
+  sparse: 'Reject any stem that supplies the full classic triad or complete diagnostic pattern.',
+  options: 'The correct option must name the answer only, not restate why it is correct.',
+  category: 'Reject any question where the correct option merely restates or paraphrases the stem',
+  distractors: 'Do not make the correct option uniquely detailed or explanatory.'
+};
+for (const [stage, required] of Object.entries(antiGiveawayPrompts)) {
   const prompt = schema.checkpointPrompt(stage, { ...config, currentSet: concise });
   if (!prompt.includes('BIOMEDICAL CHECKPOINT')) throw new Error(`${stage}: biomedical checkpoint was removed.`);
+  if (!prompt.includes(required)) throw new Error(`${stage}: anti-giveaway wording is missing: ${required}`);
 }
 
 const combinedPrompt = schema.checkpointPrompt('options_category', { ...config, currentSet: concise });
@@ -155,12 +165,29 @@ for (const required of [
   'ANSWER-CATEGORY ALIGNMENT',
   'Preserve the correct clinical proposition and answer key',
   'Do not make stems longer or make distractors more generic',
+  'Do not repeat or paraphrase stem clues inside any option.',
+  'The correct option must name the answer only, not restate why it is correct.',
+  'Reject any question where the correct option merely restates the stem.',
   'BIOMEDICAL CHECKPOINT'
 ]) {
   if (!combinedPrompt.includes(required)) throw new Error(`Combined checkpoint prompt is missing: ${required}`);
 }
 const currentSetOccurrences = combinedPrompt.split('"quizId":"concision-test"').length - 1;
 if (currentSetOccurrences !== 1) throw new Error(`Combined checkpoint transmitted the full set ${currentSetOccurrences} times.`);
+
+const combinedRepair = schema.repairPrompt(
+  'options_category',
+  { ...config, currentSet: concise, failedSet: explanatoryOption },
+  ['Q2A: option contains an explanatory clause.'],
+  1,
+  3
+);
+if (!combinedRepair.includes('Both option-format and answer-category requirements remain mandatory.')) {
+  throw new Error('Combined repair could drop one half of the review.');
+}
+if (!combinedRepair.includes('correct option merely restates the stem')) {
+  throw new Error('Combined repair lost the anti-giveaway rule.');
+}
 
 const combinedMode = schema.PIPELINE_MODES.combined;
 const legacyMode = schema.PIPELINE_MODES.legacy;
@@ -187,5 +214,7 @@ console.log(JSON.stringify({
   optionMaximumWords: schema.LIMITS.optionMaxWords,
   repeatedExclusionRegression: 'passed',
   explanatoryOptionRegression: 'passed',
+  antiGiveawayPromptRegression: 'passed',
+  combinedRepairRegression: 'passed',
   conciseReferenceSet: 'passed'
 }, null, 2));
