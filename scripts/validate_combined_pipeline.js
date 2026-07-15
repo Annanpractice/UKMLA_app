@@ -97,6 +97,26 @@ function makeSet(schema,conditions,id){
   };
 }
 
+function validateGiveawayRouting(harness){
+  const conditions=makeConditions(harness.schema);
+  const set=makeSet(harness.schema,conditions,'giveaway-route');
+  const question=set.questions[0];
+  question.stem='After a surgical-neck humeral fracture, examination shows weak shoulder abduction and numbness over the lateral shoulder.';
+  question.leadIn='Which nerve is injured?';
+  const texts=['Radial nerve','Musculocutaneous nerve','Thoracodorsal nerve','Suprascapular nerve','Axillary nerve affecting deltoid and lateral shoulder sensation'];
+  question.options=question.options.map((option,index)=>({...option,id:'ABCDE'[index],text:texts[index]}));
+  question.correctOptionId='E';
+  const config={conditions,questionTypes:harness.schema.TYPES.map(item=>item[0]),knowledge:false};
+  const errors=harness.schema.validate(set,config,'options_category');
+  assert(errors.some(error=>error.includes('correct option E repeats or paraphrases stem clues')),'Giveaway validator did not produce a repairable question error.');
+  const plan=harness.schema.repairPlan(errors,set);
+  assert(plan.tier==='questions','Semantic clue duplication should repair the affected question, not one field or the full set.');
+  assert(plan.questionNumbers.join(',')==='1','Giveaway repair did not isolate the affected question.');
+  const prompt=harness.schema.targetedRepairPrompt('options_category',config,plan,set,1,2,null);
+  assert(prompt.includes('question numbers 1'),'Affected-question prompt omitted the giveaway question.');
+  assert(!prompt.includes('"questionNumber":2,'),'Affected-question prompt included unaffected questions.');
+}
+
 async function runClean(mode,expectedCalls){
   const harness=createHarness(mode);
   const conditions=makeConditions(harness.schema);
@@ -119,6 +139,7 @@ async function runClean(mode,expectedCalls){
   const modes=bootstrap.schema.PIPELINE_MODES;
   assert(bootstrap.schema.resolvePipelineMode(null)===modes.combined,'Combined trial is not the default for new builds.');
   assert(typeof bootstrap.schema.analyseGiveawayQuestion==='function','Local anti-giveaway validator did not initialise.');
+  validateGiveawayRouting(bootstrap);
 
   const combined=await runClean(modes.combined,4);
   const combinedNames=combined.harness.requests.map(request=>request.text.format.name);
@@ -153,6 +174,8 @@ async function runClean(mode,expectedCalls){
     qualityRulesRemoved:false,
     separateValidatorsRetained:true,
     localGiveawayValidator:true,
+    giveawayRepairTier:'questions',
+    unaffectedQuestionsOmitted:true,
     noCleanBuildApiPenalty:true,
     visibleRollbackSelector:true,
     queryRollback:true,
