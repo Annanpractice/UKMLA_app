@@ -50,8 +50,9 @@ async function getRaw(key){
   if(useMemory())return memoryStore().get(String(key))??null;
   const db=await openDb();
   const transaction=db.transaction(STORE,'readonly');
+  const done=transactionDone(transaction);
   const record=await requestResult(transaction.objectStore(STORE).get(String(key)));
-  await transactionDone(transaction);
+  await done;
   return record?.value??null;
 }
 
@@ -62,8 +63,9 @@ async function putRaw(key,value){
   if(useMemory()){memoryStore().set(String(key),text);return true;}
   const db=await openDb();
   const transaction=db.transaction(STORE,'readwrite');
+  const done=transactionDone(transaction);
   transaction.objectStore(STORE).put({key:String(key),value:text,updatedAt:new Date().toISOString()});
-  await transactionDone(transaction);
+  await done;
   return true;
 }
 
@@ -76,10 +78,11 @@ async function putMany(entries){
   }
   const db=await openDb();
   const transaction=db.transaction(STORE,'readwrite');
+  const done=transactionDone(transaction);
   const store=transaction.objectStore(STORE);
   const updatedAt=new Date().toISOString();
   for(const[key,value]of rows)store.put({key:String(key),value:String(value),updatedAt});
-  await transactionDone(transaction);
+  await done;
   return rows.length;
 }
 
@@ -87,8 +90,9 @@ async function deleteKey(key){
   if(useMemory()){memoryStore().delete(String(key));return true;}
   const db=await openDb();
   const transaction=db.transaction(STORE,'readwrite');
+  const done=transactionDone(transaction);
   transaction.objectStore(STORE).delete(String(key));
-  await transactionDone(transaction);
+  await done;
   return true;
 }
 
@@ -98,9 +102,10 @@ async function deleteMany(keys){
   if(useMemory()){for(const key of list)memoryStore().delete(key);return list.length;}
   const db=await openDb();
   const transaction=db.transaction(STORE,'readwrite');
+  const done=transactionDone(transaction);
   const store=transaction.objectStore(STORE);
   for(const key of list)store.delete(key);
-  await transactionDone(transaction);
+  await done;
   return list.length;
 }
 
@@ -108,6 +113,7 @@ async function entries(prefix=''){
   if(useMemory())return[...memoryStore().entries()].filter(([key])=>!prefix||key.startsWith(prefix));
   const db=await openDb();
   const transaction=db.transaction(STORE,'readonly');
+  const done=transactionDone(transaction);
   const store=transaction.objectStore(STORE);
   const rows=[];
   await new Promise((resolve,reject)=>{
@@ -121,7 +127,7 @@ async function entries(prefix=''){
     };
     request.onerror=()=>reject(request.error||new Error('IndexedDB cursor failed.'));
   });
-  await transactionDone(transaction);
+  await done;
   return rows;
 }
 
