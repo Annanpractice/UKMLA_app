@@ -18,6 +18,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('v2/ai-schema.js', 'utf8'), context, { filename: 'v2/ai-schema.js' });
 vm.runInContext(fs.readFileSync('v2/biomedical-ai.js', 'utf8'), context, { filename: 'v2/biomedical-ai.js' });
+vm.runInContext(fs.readFileSync('v2/ai-giveaway-validator.js', 'utf8'), context, { filename: 'v2/ai-giveaway-validator.js' });
 vm.runInContext(fs.readFileSync('v2/ai-pipeline-mode.js', 'utf8'), context, { filename: 'v2/ai-pipeline-mode.js' });
 
 const schema = context.window.UKMLA_V2_AI_SCHEMA;
@@ -91,6 +92,13 @@ function makeSet() {
   };
 }
 
+function setNerveOptions(question,correctText){
+  const names=['Radial nerve','Musculocutaneous nerve','Thoracodorsal nerve','Suprascapular nerve',correctText];
+  question.options=question.options.map((option,index)=>({...option,id:'ABCDE'[index],text:names[index]}));
+  question.correctOptionId='E';
+  question.strongestDistractorId='D';
+}
+
 const concise = makeSet();
 const conciseErrors = schema.validate(concise, config, 'final');
 if (conciseErrors.length) {
@@ -124,6 +132,55 @@ if (!optionErrors.some(error => error.includes('explanatory clause'))) {
 const combinedErrors = schema.validate(explanatoryOption, config, 'options_category');
 if (!combinedErrors.some(error => error.includes('explanatory clause'))) {
   throw new Error(`Combined checkpoint did not retain option validation: ${combinedErrors.join(' ')}`);
+}
+
+const giveaway = makeSet();
+const giveawayQuestion=giveaway.questions[1];
+giveawayQuestion.stem='After a surgical-neck humeral fracture, examination shows weak shoulder abduction and numbness over the lateral shoulder.';
+giveawayQuestion.leadIn='Which nerve is injured?';
+setNerveOptions(giveawayQuestion,'Axillary nerve affecting deltoid and lateral shoulder sensation');
+const giveawayErrors=schema.validate(giveaway,config,'options_category');
+if(!giveawayErrors.some(error=>error.includes('Q2: correct option E repeats or paraphrases stem clues'))){
+  throw new Error(`Local validator missed the screenshot-style giveaway: ${giveawayErrors.join(' ')}`);
+}
+if(!giveawayErrors.some(error=>error.includes('shoulder abduction')&&error.includes('lateral-shoulder sensation'))){
+  throw new Error(`Giveaway error omitted the matched clue concepts: ${giveawayErrors.join(' ')}`);
+}
+const generationGiveawayErrors=schema.validate(giveaway,config,'generation');
+if(generationGiveawayErrors.some(error=>error.includes('repeats or paraphrases stem clues'))){
+  throw new Error('Local giveaway validation ran before the option checkpoint.');
+}
+
+const safeLabel=makeSet();
+const safeLabelQuestion=safeLabel.questions[1];
+safeLabelQuestion.stem=giveawayQuestion.stem;
+safeLabelQuestion.leadIn='Which nerve is injured?';
+setNerveOptions(safeLabelQuestion,'Axillary nerve');
+const safeLabelErrors=schema.validate(safeLabel,config,'options_category');
+if(safeLabelErrors.some(error=>error.includes('repeats or paraphrases stem clues'))){
+  throw new Error(`A short answer label was falsely rejected: ${safeLabelErrors.join(' ')}`);
+}
+
+const paraphrase=makeSet();
+const paraphraseQuestion=paraphrase.questions[1];
+paraphraseQuestion.stem=giveawayQuestion.stem;
+paraphraseQuestion.leadIn='Which deficit pattern identifies the lesion?';
+setNerveOptions(paraphraseQuestion,'Deltoid weakness and regimental-patch sensory loss');
+const paraphraseErrors=schema.validate(paraphrase,config,'options');
+if(!paraphraseErrors.some(error=>error.includes('repeats or paraphrases stem clues'))){
+  throw new Error(`Synonym-based clue duplication was not detected: ${paraphraseErrors.join(' ')}`);
+}
+
+const oneInference=makeSet();
+const oneInferenceQuestion=oneInference.questions[1];
+oneInferenceQuestion.stem='After a surgical-neck humeral fracture, deltoid contraction is absent.';
+oneInferenceQuestion.leadIn='Which movement is impaired?';
+const movements=['Elbow flexion','Wrist extension','Finger abduction','Thumb opposition','Shoulder abduction'];
+oneInferenceQuestion.options=oneInferenceQuestion.options.map((option,index)=>({...option,id:'ABCDE'[index],text:movements[index]}));
+oneInferenceQuestion.correctOptionId='E';
+const oneInferenceErrors=schema.validate(oneInference,config,'options_category');
+if(oneInferenceErrors.some(error=>error.includes('repeats or paraphrases stem clues'))){
+  throw new Error(`One legitimate inference was falsely classified as a giveaway: ${oneInferenceErrors.join(' ')}`);
 }
 
 const longExplanation = makeSet();
@@ -215,6 +272,10 @@ console.log(JSON.stringify({
   repeatedExclusionRegression: 'passed',
   explanatoryOptionRegression: 'passed',
   antiGiveawayPromptRegression: 'passed',
+  deterministicGiveawayDetection: 'passed',
+  synonymParaphraseDetection: 'passed',
+  shortAnswerLabelAllowed: 'passed',
+  singleInferenceAllowed: 'passed',
   combinedRepairRegression: 'passed',
   conciseReferenceSet: 'passed'
 }, null, 2));

@@ -42,7 +42,7 @@ function createHarness(mode,query=''){
     setTimeout:()=>0,clearTimeout:()=>{},Date,JSON,Math,Promise,TypeError,Error
   };
   vm.createContext(context);
-  for(const file of ['v2/ai-schema.js','v2/biomedical-ai.js','v2/ai-pipeline-mode.js','v2/ai-targeted-repair.js','v2/ai-engine.js']){
+  for(const file of ['v2/ai-schema.js','v2/biomedical-ai.js','v2/ai-giveaway-validator.js','v2/ai-pipeline-mode.js','v2/ai-targeted-repair.js','v2/ai-engine.js']){
     vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
   }
   const schema=context.window.UKMLA_V2_AI_SCHEMA;
@@ -97,6 +97,26 @@ function makeSet(schema,conditions,id){
   };
 }
 
+function validateGiveawayRouting(harness){
+  const conditions=makeConditions(harness.schema);
+  const set=makeSet(harness.schema,conditions,'giveaway-route');
+  const question=set.questions[0];
+  question.stem='After a surgical-neck humeral fracture, examination shows weak shoulder abduction and numbness over the lateral shoulder.';
+  question.leadIn='Which nerve is injured?';
+  const texts=['Radial nerve','Musculocutaneous nerve','Thoracodorsal nerve','Suprascapular nerve','Axillary nerve affecting deltoid and lateral shoulder sensation'];
+  question.options=question.options.map((option,index)=>({...option,id:'ABCDE'[index],text:texts[index]}));
+  question.correctOptionId='E';
+  const config={conditions,questionTypes:harness.schema.TYPES.map(item=>item[0]),knowledge:false};
+  const errors=harness.schema.validate(set,config,'options_category');
+  assert(errors.some(error=>error.includes('correct option E repeats or paraphrases stem clues')),'Giveaway validator did not produce a repairable question error.');
+  const plan=harness.schema.repairPlan(errors,set);
+  assert(plan.tier==='questions','Semantic clue duplication should repair the affected question, not one field or the full set.');
+  assert(plan.questionNumbers.join(',')==='1','Giveaway repair did not isolate the affected question.');
+  const prompt=harness.schema.targetedRepairPrompt('options_category',config,plan,set,1,2,null);
+  assert(prompt.includes('question numbers 1'),'Affected-question prompt omitted the giveaway question.');
+  assert(!prompt.includes('"questionNumber":2,'),'Affected-question prompt included unaffected questions.');
+}
+
 async function runClean(mode,expectedCalls){
   const harness=createHarness(mode);
   const conditions=makeConditions(harness.schema);
@@ -118,6 +138,8 @@ async function runClean(mode,expectedCalls){
   const bootstrap=createHarness(null);
   const modes=bootstrap.schema.PIPELINE_MODES;
   assert(bootstrap.schema.resolvePipelineMode(null)===modes.combined,'Combined trial is not the default for new builds.');
+  assert(typeof bootstrap.schema.analyseGiveawayQuestion==='function','Local anti-giveaway validator did not initialise.');
+  validateGiveawayRouting(bootstrap);
 
   const combined=await runClean(modes.combined,4);
   const combinedNames=combined.harness.requests.map(request=>request.text.format.name);
@@ -138,9 +160,12 @@ async function runClean(mode,expectedCalls){
   assert(ui.includes('Legacy mode restores separate option and semantic-category API reviews'),'The rollback explanation is missing.');
 
   const html=fs.readFileSync('v2/app.html','utf8');
-  assert(html.indexOf('biomedical-ai.js')<html.indexOf('ai-pipeline-mode.js'),'Pipeline mode loads before biomedical rules.');
+  assert(html.indexOf('biomedical-ai.js')<html.indexOf('ai-giveaway-validator.js'),'Giveaway validator loads before biomedical validation.');
+  assert(html.indexOf('ai-giveaway-validator.js')<html.indexOf('ai-pipeline-mode.js'),'Pipeline mode captured validation before the giveaway checker.');
   assert(html.indexOf('ai-pipeline-mode.js')<html.indexOf('ai-targeted-repair.js'),'Targeted repair loads before pipeline mode.');
   assert(html.indexOf('ai-targeted-repair.js')<html.indexOf('ai-engine.js'),'Engine loads before targeted repair.');
+  const serviceWorker=fs.readFileSync('service-worker.js','utf8');
+  assert(serviceWorker.includes('ai-giveaway-validator.js'),'Offline cache omitted the local giveaway validator.');
 
   console.log(JSON.stringify({
     defaultMode:modes.combined,
@@ -148,6 +173,10 @@ async function runClean(mode,expectedCalls){
     legacyCleanApiCalls:legacy.harness.requests.length,
     qualityRulesRemoved:false,
     separateValidatorsRetained:true,
+    localGiveawayValidator:true,
+    giveawayRepairTier:'questions',
+    unaffectedQuestionsOmitted:true,
+    noCleanBuildApiPenalty:true,
     visibleRollbackSelector:true,
     queryRollback:true,
     pipelineTelemetry:true
