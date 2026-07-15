@@ -25,6 +25,7 @@ const COMBINED_STAGES=[
   {id:'final',label:'Final validation and rendering',percent:100,local:true}
 ];
 
+const baseGenerationPrompt=schema.generationPrompt;
 const baseCheckpointInstruction=schema.checkpointInstruction;
 const baseCheckpointPrompt=schema.checkpointPrompt;
 const baseRepairPrompt=schema.repairPrompt;
@@ -71,27 +72,49 @@ function stageLabel(stage){
   return[...COMBINED_STAGES,...LEGACY_STAGES].find(item=>item.id===stage)?.label||stage;
 }
 
+function antiGiveawayInstruction(stage){
+  const rules={
+    generation:'Do not state the complete classic diagnostic pattern when one clue can require meaningful inference. Do not repeat or paraphrase stem clues inside any option. Options must be short answer labels only.',
+    sparse:'Reject any stem that supplies the full classic triad or complete diagnostic pattern. Retain the minimum clue set needed for one meaningful inference.',
+    options:'Do not repeat or paraphrase stem clues inside any option. The correct option must name the answer only, not restate why it is correct. Reject explanatory mini-vignettes inside options.',
+    category:'Reject any question where the correct option merely restates or paraphrases the stem rather than answering it.',
+    distractors:'Keep distractors as answer labels, not clue summaries. Do not make the correct option uniquely detailed or explanatory.',
+    source:'Source fidelity does not justify copying stem clues into an option. Preserve inference and short answer labels.',
+    final:'Reject giveaway wording: no complete classic pattern when one clue suffices, and no option may repeat or paraphrase the stem clues.'
+  };
+  return rules[stage]||rules.final;
+}
+
 function combinedInstruction(){
   return`Perform two mandatory audits in this order:
 1. OPTION NORMALISATION: make all five options concise, parallel answer phrases from one semantic category, grammatically compatible with the lead-in, no more than ${schema.LIMITS.optionMaxWords} words and ${schema.LIMITS.optionMaxCharacters} characters, with no explanatory clauses.
 2. ANSWER-CATEGORY ALIGNMENT: confirm the lead-in asks for exactly the category supplied by every option. Preserve the correct clinical proposition and answer key. Prefer repairing mismatched distractors; alter the lead-in only when all five valid options clearly belong to another category.
+Do not repeat or paraphrase stem clues inside any option. The correct option must name the answer only, not restate why it is correct. Reject any question where the correct option merely restates the stem.
 Do not expand the stem, restore clues removed by the sparse review, weaken close distractors, change targets, or convert anatomy structures into deficits or physiology mechanisms into diagnoses.`;
 }
 
+schema.generationPrompt=function(config){
+  return`${baseGenerationPrompt(config)}\n\nANTI-GIVEAWAY REQUIREMENT:\n${antiGiveawayInstruction('generation')}`;
+};
+
 schema.checkpointInstruction=function(stage){
   if(stage==='options_category')return combinedInstruction();
-  return baseCheckpointInstruction(stage);
+  return`${baseCheckpointInstruction(stage)} ${antiGiveawayInstruction(stage)}`;
 };
 
 schema.checkpointPrompt=function(stage,config){
-  if(stage!=='options_category')return baseCheckpointPrompt(stage,config);
-  const base=baseCheckpointPrompt('options',config);
-  return`${base}\n\nCOMBINED TWO-AUDIT REQUIREMENT:\n${combinedInstruction()}\n\nPRESERVATION PRIORITY:\n- Preserve the correct clinical proposition and answer key.\n- Repair category-mismatched distractors before changing a valid lead-in.\n- Do not make stems longer or make distractors more generic.\n- Return the complete ten-question set once, after both audits are complete.`;
+  if(stage==='options_category'){
+    const base=baseCheckpointPrompt('options',config);
+    return`${base}\n\nCOMBINED TWO-AUDIT REQUIREMENT:\n${combinedInstruction()}\n\nPRESERVATION PRIORITY:\n- Preserve the correct clinical proposition and answer key.\n- Repair category-mismatched distractors before changing a valid lead-in.\n- Do not make stems longer or make distractors more generic.\n- Return the complete ten-question set once, after both audits are complete.`;
+  }
+  return`${baseCheckpointPrompt(stage,config)}\n\nANTI-GIVEAWAY REQUIREMENT:\n${antiGiveawayInstruction(stage)}`;
 };
 
 schema.repairPrompt=function(stage,config,errors,attempt,maxAttempts){
-  if(stage!=='options_category')return baseRepairPrompt(stage,config,errors,attempt,maxAttempts);
-  return`${baseRepairPrompt('options',config,errors,attempt,maxAttempts)}\n\nCOMBINED CHECKPOINT REQUIREMENT:\n${combinedInstruction()}\nBoth option-format and answer-category requirements remain mandatory.`;
+  if(stage==='options_category'){
+    return`${baseRepairPrompt('options',config,errors,attempt,maxAttempts)}\n\nCOMBINED CHECKPOINT REQUIREMENT:\n${combinedInstruction()}\nBoth option-format and answer-category requirements remain mandatory.`;
+  }
+  return`${baseRepairPrompt(stage,config,errors,attempt,maxAttempts)}\n\nANTI-GIVEAWAY REPAIR REQUIREMENT:\n${antiGiveawayInstruction(stage)}`;
 };
 
 schema.validate=function(set,config,stage='final'){
@@ -111,6 +134,7 @@ Object.assign(schema,{
   resolvePipelineMode,
   setPipelineMode,
   stagesForPipeline,
-  stageLabel
+  stageLabel,
+  antiGiveawayInstruction
 });
 })();
