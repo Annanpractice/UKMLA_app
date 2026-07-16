@@ -9,7 +9,10 @@ function generatedSetId(set){return String(set?.quizId||set?.setId||`generated-$
 function pendingSetKey(set){return`${PENDING_SET_PREFIX}${generatedSetId(set)}`;}
 async function persistCompletedSet(set,job){
   if(!set||!Array.isArray(set.questions)||!set.questions.length)throw new Error('Completed question set is missing.');
-  if(!large()?.putRaw||!large()?.getRaw)throw new Error('Durable browser storage is unavailable. The completed set has not been released.');
+  if(!large()?.putRaw||!large()?.getRaw){
+    saveJob({...job,currentSet:set,status:'complete',percent:100,lastMessage:'Questions ready; awaiting verified Question Bank storage'});
+    return null;
+  }
   const key=pendingSetKey(set);
   const payload=JSON.stringify(set);
   await large().putRaw(key,payload);
