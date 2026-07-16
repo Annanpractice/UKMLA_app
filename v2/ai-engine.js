@@ -6,7 +6,22 @@ const JOB_KEY='ukmlaV2AiJobV1';
 function core(){return window.UKMLA_V2;}
 function schema(){return window.UKMLA_V2_AI_SCHEMA;}
 function transport(){return window.UKMLA_V2_AI_TRANSPORT;}
-function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function waitForRetry(ms){
+  return new Promise(resolve=>{
+    let settled=false;
+    const finish=()=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      window.removeEventListener?.('online',finish);
+      document.removeEventListener?.('ukmlaV2AiForeground',finish);
+      resolve();
+    };
+    const timer=setTimeout(finish,ms);
+    window.addEventListener('online',finish,{once:true});
+    document.addEventListener('ukmlaV2AiForeground',finish,{once:true});
+  });
+}
 function isNetwork(error){return error instanceof TypeError||/network|fetch|offline|connection|load failed/i.test(String(error?.message||error));}
 function saveJob(job){job.updatedAt=new Date().toISOString();core().saveJson(JOB_KEY,job);document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));}
 function loadJob(){return core().loadJson(JOB_KEY,null);}
@@ -52,15 +67,14 @@ async function request(token,body,label,job,stageId,persist=true){
       if(job){
         job.status='paused';
         job.lastError=String(error.message||error);
-        job.lastMessage=`Connection interrupted during ${label}. Progress saved.`;
+        job.lastMessage=`Connection interrupted during ${label}. Progress saved; returning to this page resumes immediately.`;
         if(persist)saveJob(job);
         else document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));
       }
-      if(navigator.onLine===false)await new Promise(resolve=>window.addEventListener('online',resolve,{once:true}));
-      await wait(Math.min(60000,2000*Math.pow(2,Math.min(attempt,5))));
+      await waitForRetry(Math.min(60000,2000*Math.pow(2,Math.min(attempt,5))));
       if(job){
         job.status='active';
-        job.lastMessage=`Connection restored. Resuming ${label}.`;
+        job.lastMessage=`Connection available. Resuming ${label}.`;
         if(persist)saveJob(job);
         else document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:job}));
       }
