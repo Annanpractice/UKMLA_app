@@ -127,7 +127,7 @@ function validateSbaAudit(harness){
   assert(auditIndex===distractorIndex+1,'SBA audit is not immediately after distractor review.');
   const prompt=harness.schema.checkpointPrompt('sba_audit',config);
   assert(prompt.includes('Could a knowledgeable but imperfect candidate reasonably choose this distractor because of a specific misconception?'),'SBA audit omitted the mandatory distractor plausibility question.');
-  for(const wording of ['keyword dumps','Cushing response acute raised ICP bradycardia high blood pressure triad','risking','via','limiting','At least three','obviously unethical','comparable structures']){
+  for(const wording of ['KEYWORD DUMPS','Cushing response acute raised ICP bradycardia high blood pressure triad','risking','via','limiting','At least three','obviously unethical','comparable structures']){
     assert(prompt.includes(wording),`SBA audit prompt omitted: ${wording}`);
   }
   const optionPrompt=harness.schema.checkpointPrompt('options_category',config);
