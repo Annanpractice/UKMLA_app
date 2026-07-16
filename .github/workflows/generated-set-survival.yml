@@ -1,0 +1,28 @@
+name: Generated set survival regression
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches:
+      - "agent/fix-unsaved-generated-sets-v2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generated-set-survival:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate storage runtime syntax
+        run: |
+          node --check v2/large-storage.js
+          node --check v2/question-bank.js
+          node --check v2/ai-engine.js
+          node --check v2/ai-save-recovery.js
+          node --check scripts/validate_generated_set_survival.js
+      - name: Validate completed-set durability and index recovery
+        run: node scripts/validate_generated_set_survival.js
