@@ -148,7 +148,7 @@ class SimpleEventTarget{
   assert(html.indexOf('large-storage.js')<html.indexOf('question-bank.js'),'IndexedDB layer does not load before Question Bank.');
   assert(html.includes('sync.js?v=4'),'IndexedDB-aware sync shell version is missing.');
   const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-  assert(serviceWorker.includes('ukmla-cards-v9-indexeddb-storage')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include IndexedDB storage.');
+  assert(serviceWorker.includes('ukmla-cards-v11-sba-runtime-proof')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include IndexedDB storage.');
 
   console.log(JSON.stringify({
     payloadBackend:'indexeddb',legacyLocalPayloadMigration:true,localStoragePayloadRemoved:true,
