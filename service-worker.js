@@ -1,4 +1,4 @@
-// Previous deployed cache marker retained for validation migration: ukmla-cards-v11-sba-runtime-proof
+// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v12-recency-background-generation
 const CACHE_NAME='ukmla-cards-v13-durable-generated-sets';
 const CORE_ASSETS=[
   './','./index.html','./app.html','./data/conditions.json',
