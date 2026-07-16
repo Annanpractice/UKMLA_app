@@ -170,6 +170,7 @@ async function start(resume){
   }
 
   if(tokenInput)tokenInput.value='';
+  playState=null;
   lastBuildError='';
   completedSet=null;
   latestProgress={...(job||{}),pipelineMode,percent:job?.percent||5,status:'active',lastMessage:job?.lastMessage||'Starting question generation'};
@@ -181,6 +182,7 @@ async function start(resume){
   updateIndicator(latestProgress);
 
   activeBuildPromise=(async()=>{
+    let succeeded=false;
     try{
       const set=await engine().runPipeline({
         apiKey:token,
@@ -202,6 +204,7 @@ async function start(resume){
       await engine().storeSet(set);
       completedSet=set;
       latestProgress={lastMessage:'Question set ready and safely stored offline.',percent:100,status:'complete',pipelineMode:set.pipelineMode||pipelineMode};
+      succeeded=true;
       if(workspaceMounted()){
         const play=root.querySelector('#ai-play');
         if(play){renderSet(play,set,'ai');completedSet=null;}
@@ -215,7 +218,7 @@ async function start(resume){
     }finally{
       activeBuildPromise=null;
       updateIndicator(latestProgress);
-      if(workspaceMounted())mount(root);
+      if(workspaceMounted()&&!succeeded&&!playState)mount(root);
     }
   })();
   return activeBuildPromise;
