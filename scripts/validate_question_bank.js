@@ -141,18 +141,20 @@ class SimpleEventTarget{
   vm.runInContext(fs.readFileSync('v2/question-analytics.js','utf8'),analyticsContext,{filename:'v2/question-analytics.js'});
   const analytics=analyticsContext.window.UKMLA_QUESTION_ANALYTICS;
   assert(analytics,'Question analytics did not initialise.');
-  assert(analytics.chartSvg(synthetic.slice(0,3)).includes('Median'),'Run chart median is missing.');
-  assert(analytics.runChartCsv().includes('attempt_id,set_id,completed_at'),'Run chart CSV headers are missing.');
+  assert(analytics.chartSvg(synthetic.slice(0,5)).includes('Median'),'50-question run-chart median is missing.');
+  assert(analytics.aggregateAttempts(synthetic).length===2,'Five-set aggregation did not create two complete blocks.');
+  assert(analytics.runChartCsv().includes('block_number,first_completed_at,last_completed_at'),'50-question run-chart CSV headers are missing.');
 
   const html=fs.readFileSync('v2/app.html','utf8');
   assert(html.indexOf('large-storage.js')<html.indexOf('question-bank.js'),'IndexedDB layer does not load before Question Bank.');
   assert(html.includes('sync.js?v=4'),'IndexedDB-aware sync shell version is missing.');
   const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-  assert(serviceWorker.includes('ukmla-cards-v11-sba-runtime-proof')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include IndexedDB storage.');
+  assert(serviceWorker.includes('ukmla-cards-v12-recency-background-generation')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include the recency analytics release.');
 
   console.log(JSON.stringify({
     payloadBackend:'indexeddb',legacyLocalPayloadMigration:true,localStoragePayloadRemoved:true,
     backupIncludesIndexedDb:true,pullIncludesIndexedDb:true,quotaRollback:true,completedAttemptPercent:70,
-    rollingLastTenPercent:rolling.percent,completedAttemptWinsMerge:true,offlineShell:true
+    rollingLastTenPercent:rolling.percent,runChartBlocks:analytics.aggregateAttempts(synthetic).length,
+    completedAttemptWinsMerge:true,offlineShell:true
   },null,2));
 })().catch(error=>{console.error(error);process.exit(1);});
