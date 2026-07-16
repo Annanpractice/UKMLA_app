@@ -1,0 +1,31 @@
+name: SBA quality regression
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sba-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate SBA audit pipeline
+        id: sba
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/validate_combined_pipeline.js 2>&1 | tee sba-quality-diagnostics.txt
+
+      - name: Upload SBA diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sba-quality-diagnostics
+          path: sba-quality-diagnostics.txt
+          if-no-files-found: error
