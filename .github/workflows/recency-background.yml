@@ -21,6 +21,7 @@ jobs:
       - name: Validate changed JavaScript syntax
         run: |
           node --check v2/question-analytics.js
+          node --check v2/ai-engine.js
           node --check v2/ai-ui.js
           node --check scripts/validate_recency_background.js
 
