@@ -23,15 +23,15 @@ jobs:
           fetch-depth: 0
       - name: Apply durable generated-set patch
         run: python scripts/apply_durable_generated_set_patch.py
-      - name: Commit patched files
+      - name: Commit patched runtime files
         run: |
           git status --short
-          if git diff --quiet; then
-            echo "Patch already applied"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add v2/ai-engine.js v2/ai-save-recovery.js v2/app.html service-worker.js scripts/validate_question_bank.js scripts/validate_recency_background.js scripts/validate_durable_generated_sets.js
+          if git diff --cached --quiet; then
+            echo "Runtime patch already applied"
+            exit 0
+          fi
           git commit -m "Keep completed generated sets until verified storage"
           git push origin HEAD:agent/durable-generated-question-storage
