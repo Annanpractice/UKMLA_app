@@ -2,6 +2,45 @@
 'use strict';
 
 const JOB_KEY='ukmlaV2AiJobV1';
+const PENDING_SET_PREFIX='ukmlaPendingAiSetV2:';
+
+function large(){return window.UKMLA_LARGE_STORAGE;}
+function generatedSetId(set){return String(set?.quizId||set?.setId||`generated-${Date.now().toString(36)}`);}
+function pendingSetKey(set){return`${PENDING_SET_PREFIX}${generatedSetId(set)}`;}
+async function persistCompletedSet(set,job){
+  if(!set||!Array.isArray(set.questions)||!set.questions.length)throw new Error('Completed question set is missing.');
+  if(!large()?.putRaw||!large()?.getRaw){
+    saveJob({...job,currentSet:set,status:'complete',percent:100,lastMessage:'Questions ready; awaiting verified Question Bank storage'});
+    return null;
+  }
+  const key=pendingSetKey(set);
+  const payload=JSON.stringify(set);
+  await large().putRaw(key,payload);
+  if(await large().getRaw(key)!==payload)throw new Error('Completed-set recovery verification failed.');
+  const lightweight={...job,currentSet:null,pendingSetKey:key,pendingSetId:generatedSetId(set),status:'complete',percent:100,lastMessage:'Questions ready; awaiting verified Question Bank storage'};
+  saveJob(lightweight);
+  return key;
+}
+async function recoverableSets(){
+  const rows=[];
+  const job=loadJob();
+  if(job?.status==='complete'&&job.currentSet&&Array.isArray(job.currentSet.questions))rows.push({set:job.currentSet,key:null,legacy:true});
+  if(large()?.entries){
+    for(const[key,value]of await large().entries(PENDING_SET_PREFIX)){
+      try{
+        const set=JSON.parse(value);
+        if(set&&Array.isArray(set.questions)&&set.questions.length)rows.push({set,key,legacy:false});
+      }catch(_){/* preserve unreadable payload for manual inspection */}
+    }
+  }
+  const unique=new Map();
+  for(const row of rows)unique.set(generatedSetId(row.set),row);
+  return[...unique.values()];
+}
+async function clearPendingSet(set){
+  if(!large()?.deleteKey)return;
+  await large().deleteKey(pendingSetKey(set));
+}
 
 function core(){return window.UKMLA_V2;}
 function schema(){return window.UKMLA_V2_AI_SCHEMA;}
@@ -358,11 +397,12 @@ async function runPipeline(config){
   }
 
   assertRequiredApiCheckpoints(job,stages);
+  const completedSet=job.currentSet;
   job.status='complete';
   job.percent=100;
   job.lastMessage='Questions ready';
-  if(config.persist!==false)saveJob(job);
-  return job.currentSet;
+  if(config.persist!==false)await persistCompletedSet(completedSet,job);
+  return completedSet;
 }
 
 async function storeSet(set){
@@ -380,6 +420,7 @@ async function storeSet(set){
   if(!verified||!Array.isArray(verified.questions)||verified.questions.length!==expectedCount){
     throw new Error('Question Bank verification failed after saving. The completed set remains recoverable and will be retried.');
   }
+  await clearPendingSet(set);
   const pending=loadJob();
   const pendingId=String(pending?.currentSet?.quizId||pending?.currentSet?.setId||'');
   const storedId=String(set?.quizId||set?.setId||record.setId||'');
@@ -389,5 +430,5 @@ async function storeSet(set){
   return record;
 }
 
-window.UKMLA_V2_AI_ENGINE={runPipeline,loadJob,clearJob,storeSet};
+window.UKMLA_V2_AI_ENGINE={runPipeline,loadJob,clearJob,storeSet,PENDING_SET_PREFIX,persistCompletedSet,recoverableSets,clearPendingSet};
 })();
