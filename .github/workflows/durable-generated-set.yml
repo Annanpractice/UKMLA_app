@@ -1,0 +1,23 @@
+name: Durable generated question storage
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-generated-sets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate JavaScript syntax
+        run: |
+          node --check v2/ai-engine.js
+          node --check v2/ai-save-recovery.js
+          node --check scripts/validate_durable_generated_sets.js
+      - name: Validate completed-set persistence and recovery
+        run: node scripts/validate_durable_generated_sets.js
