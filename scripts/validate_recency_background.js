@@ -99,8 +99,9 @@ for(const required of [
 const html=fs.readFileSync('v2/app.html','utf8');
 assert(html.includes('question-analytics.js?v=2'),'Recency analytics asset version is missing.');
 assert(html.includes('ai-ui.js?v=4'),'Stable AI UI asset path changed unexpectedly.');
+assert(html.includes('ai-save-recovery.js?v=1'),'Durable completed-set recovery asset is missing.');
 const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-assert(serviceWorker.includes('ukmla-cards-v12-recency-background-generation'),'Service-worker cache was not advanced for this release.');
+assert(serviceWorker.includes('ukmla-cards-v13-durable-generated-sets'),'Service-worker cache was not advanced for this release.');
 
 console.log(JSON.stringify({
   latestThirtyCorrectScore:improvedScore,
