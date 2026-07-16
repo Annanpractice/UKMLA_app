@@ -13,6 +13,8 @@
   let player=null;
   let initialised=false;
   let migrationPromise=null;
+  let reconciliationPromise=null;
+  let volatileIndex=[];
 
   function core(){return window.UKMLA_V2;}
   function large(){return window.UKMLA_LARGE_STORAGE;}
@@ -33,10 +35,17 @@
     return value.toString(36).padStart(7,'0');
   }
 
-  function bankIndex(){return parse(localStorage.getItem(INDEX_KEY),[]);}
+  function storedIndex(){return parse(localStorage.getItem(INDEX_KEY),[]);}
+  function mergeIndex(records){
+    const map=new Map();
+    for(const record of records||[]){if(record?.setId)map.set(String(record.setId),record);}
+    return[...map.values()].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  }
+  function bankIndex(){return mergeIndex([...storedIndex(),...volatileIndex]);}
   function saveIndex(records){
-    try{localStorage.setItem(INDEX_KEY,JSON.stringify(records));return true;}
-    catch(error){core()?.toast('Question Bank index could not be stored. Your full sets remain in IndexedDB.');return false;}
+    volatileIndex=mergeIndex(records);
+    try{localStorage.setItem(INDEX_KEY,JSON.stringify(volatileIndex));volatileIndex=[];return true;}
+    catch(error){core()?.toast('Question Bank index is full. Saved sets remain protected in IndexedDB and will be rebuilt automatically.');return false;}
   }
   function attempts(){return parse(localStorage.getItem(ATTEMPTS_KEY),[]);}
   function saveAttempts(records){
@@ -105,7 +114,7 @@
     };
     const next=[record,...records.filter(item=>item.setId!==setId)]
       .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-    if(!saveIndex(next)){await large().deleteKey(setKey(setId));return null;}
+    saveIndex(next);
     localStorage.removeItem(setKey(setId));
     notify();
     return record;
@@ -124,6 +133,44 @@
       }
     }
     return parse(raw,null);
+  }
+
+  async function reconcileIndex(){
+    if(reconciliationPromise)return reconciliationPromise;
+    reconciliationPromise=(async()=>{
+      if(!large()?.entries)return bankIndex();
+      const map=new Map(bankIndex().map(record=>[String(record.setId),record]));
+      for(const[key,payload]of await large().entries(SET_PREFIX)){
+        const stored=parse(payload,null);
+        if(!stored||!Array.isArray(stored.questions)||!stored.questions.length)continue;
+        const setId=String(stored.setId||stored.quizId||String(key).slice(SET_PREFIX.length));
+        const existing=map.get(setId);
+        const type=sourceType(stored);
+        map.set(setId,{
+          schemaVersion:SCHEMA,
+          setId,
+          payloadKey:setKey(setId),
+          contentHash:hashText(String(payload)),
+          title:titleFor(stored,type),
+          topic:String(stored.topic||'All UKMLA topics'),
+          sourceType:type,
+          sourceLabel:sourceLabel(type),
+          questionCount:stored.questions.length,
+          createdAt:existing?.createdAt||stored.generatedAt||now(),
+          verifiedAt:existing?.verifiedAt||stored.generatedAt||now(),
+          verificationLabel:existing?.verificationLabel||verificationLabel(stored,type),
+          promptVersion:stored.schemaVersion||'',
+          availableOffline:true,
+          storageBackend:'indexeddb',
+          updatedAt:existing?.updatedAt||now()
+        });
+      }
+      const next=mergeIndex([...map.values()]);
+      saveIndex(next);
+      notify();
+      return next;
+    })().finally(()=>{reconciliationPromise=null;});
+    return reconciliationPromise;
   }
 
   async function removeSet(setId){
@@ -480,7 +527,7 @@
   async function mount(container){
     root=container;
     root.innerHTML='<section class="empty"><h2>Preparing offline Question Bank…</h2><p>Large saved sets are being verified in IndexedDB.</p></section>';
-    try{await migrateLegacy();drawBank();}
+    try{await migrateLegacy();await reconcileIndex();drawBank();}
     catch(error){root.innerHTML=`<section class="empty"><h2>Question Bank storage could not initialise</h2><p>${escapeHtml(error.message)}</p></section>`;}
   }
 
@@ -496,7 +543,7 @@
 
   window.UKMLA_QUESTION_BANK={
     INDEX_KEY,ATTEMPTS_KEY,SET_PREFIX,SCHEMA,
-    mount,storeSet,loadSet,removeSet,bankIndex,attempts,beginAttempt,attemptById,
+    mount,storeSet,loadSet,removeSet,bankIndex,reconcileIndex,attempts,beginAttempt,attemptById,
     recordPresented,recordAnswer,completeAttempt,completedAttempts,rollingStats,sourceLabel,
     migrateLegacy,compactLegacyGeneratedSets
   };
