@@ -149,7 +149,7 @@ class SimpleEventTarget{
   assert(html.indexOf('large-storage.js')<html.indexOf('question-bank.js'),'IndexedDB layer does not load before Question Bank.');
   assert(html.includes('sync.js?v=4'),'IndexedDB-aware sync shell version is missing.');
   const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-  assert(serviceWorker.includes('ukmla-cards-v12-recency-background-generation')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include the recency analytics release.');
+  assert(serviceWorker.includes('ukmla-cards-v13-durable-generated-sets')&&serviceWorker.includes('large-storage.js'),'Offline cache does not include the recency analytics release.');
 
   console.log(JSON.stringify({
     payloadBackend:'indexeddb',legacyLocalPayloadMigration:true,localStoragePayloadRemoved:true,

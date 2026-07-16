@@ -361,22 +361,31 @@ async function runPipeline(config){
   job.status='complete';
   job.percent=100;
   job.lastMessage='Questions ready';
-  if(config.persist!==false){
-    saveJob(job);
-    setTimeout(clearJob,500);
-  }
+  if(config.persist!==false)saveJob(job);
   return job.currentSet;
 }
 
 async function storeSet(set){
   const type=set.sourceType==='knowledge_dump'?'knowledge':'ai';
-  const record=await window.UKMLA_QUESTION_BANK?.storeSet(set,{
+  const bank=window.UKMLA_QUESTION_BANK;
+  if(!bank?.storeSet||!bank?.loadSet)throw new Error('Question Bank storage is not ready. The completed set remains recoverable and will be retried.');
+  const record=await bank.storeSet(set,{
     sourceType:type,
     title:set.topic&&set.topic!=='All UKMLA topics'?set.topic:undefined,
     verificationLabel:type==='knowledge'?'Source-fidelity checkpoint passed':'All clinical checkpoints passed'
   });
-  if(!record)throw new Error('The completed question set could not be saved in IndexedDB.');
+  if(!record)throw new Error('The completed question set could not be saved in IndexedDB. It remains recoverable and will be retried.');
+  const verified=await bank.loadSet(record.setId);
+  const expectedCount=Array.isArray(set?.questions)?set.questions.length:0;
+  if(!verified||!Array.isArray(verified.questions)||verified.questions.length!==expectedCount){
+    throw new Error('Question Bank verification failed after saving. The completed set remains recoverable and will be retried.');
+  }
+  const pending=loadJob();
+  const pendingId=String(pending?.currentSet?.quizId||pending?.currentSet?.setId||'');
+  const storedId=String(set?.quizId||set?.setId||record.setId||'');
+  if(!pending||!pendingId||pendingId===storedId)clearJob();
   localStorage.removeItem(core().STORAGE.sets);
+  document.dispatchEvent(new CustomEvent('ukmlaAiCompletedSetStored',{detail:{setId:record.setId,recovered:Boolean(pending?.status==='complete')}}));
   return record;
 }
 
