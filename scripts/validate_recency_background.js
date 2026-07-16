@@ -88,6 +88,14 @@ for(const required of [
 ])assert(ui.includes(required),`Background generation UI omitted: ${required}`);
 assert(!ui.includes('AbortController'),'Background generation introduced an abort path.');
 
+const engine=fs.readFileSync('v2/ai-engine.js','utf8');
+for(const required of [
+  'waitForRetry',
+  'ukmlaV2AiForeground',
+  'returning to this page resumes immediately',
+  'Connection available. Resuming'
+])assert(engine.includes(required),`Mobile foreground retry omitted: ${required}`);
+
 const html=fs.readFileSync('v2/app.html','utf8');
 assert(html.includes('question-analytics.js?v=2'),'Recency analytics asset version is missing.');
 assert(html.includes('ai-ui.js?v=4'),'Stable AI UI asset path changed unexpectedly.');
@@ -101,5 +109,6 @@ console.log(JSON.stringify({
   runChartBlocks:groups.length,
   questionsPerRunChartBlock:groups[0].questionCount,
   inAppBackgroundGeneration:true,
+  mobileForegroundWake:true,
   mobileResumeCheckpoint:true
 },null,2));
