@@ -42,7 +42,7 @@ function createHarness(mode,query=''){
     setTimeout:()=>0,clearTimeout:()=>{},Date,JSON,Math,Promise,TypeError,Error
   };
   vm.createContext(context);
-  for(const file of ['v2/ai-schema.js','v2/biomedical-ai.js','v2/ai-giveaway-validator.js','v2/ai-pipeline-mode.js','v2/ai-targeted-repair.js','v2/ai-engine.js']){
+  for(const file of ['v2/ai-schema.js','v2/biomedical-ai.js','v2/ai-giveaway-validator.js','v2/ai-pipeline-mode.js','v2/ai-sba-audit.js','v2/ai-targeted-repair.js','v2/ai-engine.js']){
     vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
   }
   const schema=context.window.UKMLA_V2_AI_SCHEMA;
@@ -117,8 +117,23 @@ function validateGiveawayRouting(harness){
   assert(!prompt.includes('"questionNumber":2,'),'Affected-question prompt included unaffected questions.');
 }
 
-async function runClean(mode,expectedCalls){
-  const harness=createHarness(mode);
+function validateSbaAudit(harness){
+  const conditions=makeConditions(harness.schema);
+  const set=makeSet(harness.schema,conditions,'sba-audit-prompt');
+  const config={conditions,questionTypes:harness.schema.TYPES.map(item=>item[0]),knowledge:false,currentSet:set};
+  const stages=harness.schema.stagesForPipeline(harness.schema.PIPELINE_MODES.combined);
+  const distractorIndex=stages.findIndex(stage=>stage.id==='distractors');
+  const auditIndex=stages.findIndex(stage=>stage.id==='sba_audit');
+  assert(auditIndex===distractorIndex+1,'SBA audit is not immediately after distractor review.');
+  const prompt=harness.schema.checkpointPrompt('sba_audit',config);
+  assert(prompt.includes('Could a knowledgeable but imperfect candidate reasonably choose this distractor because of a specific misconception?'),'SBA audit omitted the mandatory distractor plausibility question.');
+  for(const wording of ['risking...','via...','limiting...','fewer than three','obvious misconduct','comparable named structures']){
+    assert(prompt.includes(wording),`SBA audit prompt omitted: ${wording}`);
+  }
+}
+
+async function runClean(mode,expectedCalls,query=''){
+  const harness=createHarness(mode,query);
   const conditions=makeConditions(harness.schema);
   const set=makeSet(harness.schema,conditions,`set-${mode}`);
   for(let index=0;index<expectedCalls;index++)harness.responses.push(clone(set));
@@ -139,17 +154,27 @@ async function runClean(mode,expectedCalls){
   const modes=bootstrap.schema.PIPELINE_MODES;
   assert(bootstrap.schema.resolvePipelineMode(null)===modes.combined,'Combined trial is not the default for new builds.');
   assert(typeof bootstrap.schema.analyseGiveawayQuestion==='function','Local anti-giveaway validator did not initialise.');
+  assert(typeof bootstrap.schema.isSbaAuditEnabled==='function','SBA audit checkpoint did not initialise.');
+  assert(bootstrap.schema.isSbaAuditEnabled()===true,'SBA audit is not enabled by default.');
   validateGiveawayRouting(bootstrap);
+  validateSbaAudit(bootstrap);
 
-  const combined=await runClean(modes.combined,4);
+  const combined=await runClean(modes.combined,5);
   const combinedNames=combined.harness.requests.map(request=>request.text.format.name);
   assert(combinedNames.includes('ukmla_options_category_v3'),'Combined build did not call the combined checkpoint.');
+  assert(combinedNames.includes('ukmla_sba_audit_v3'),'Combined build did not call the SBA quality audit.');
   assert(!combinedNames.some(name=>name==='ukmla_options_v3'||name==='ukmla_category_v3'),'Combined build still made separate option/category calls.');
+
+  const auditOff=await runClean(modes.combined,4,'?sbaAudit=off');
+  const auditOffNames=auditOff.harness.requests.map(request=>request.text.format.name);
+  assert(!auditOffNames.includes('ukmla_sba_audit_v3'),'The emergency ?sbaAudit=off override did not remove the audit API call.');
+  assert(auditOff.harness.schema.isSbaAuditEnabled()===false,'The emergency SBA audit switch did not report disabled state.');
 
   const legacy=await runClean(modes.legacy,5);
   const legacyNames=legacy.harness.requests.map(request=>request.text.format.name);
   assert(legacyNames.includes('ukmla_options_v3')&&legacyNames.includes('ukmla_category_v3'),'Legacy rollback no longer restores both separate calls.');
   assert(!legacyNames.includes('ukmla_options_category_v3'),'Legacy rollback accidentally used the combined checkpoint.');
+  assert(!legacyNames.includes('ukmla_sba_audit_v3'),'Independent SBA audit altered the legacy rollback pipeline.');
 
   const queryHarness=createHarness(null,'?pipeline=legacy');
   assert(queryHarness.schema.resolvePipelineMode(null)===modes.legacy,'The emergency ?pipeline=legacy override failed.');
@@ -162,21 +187,26 @@ async function runClean(mode,expectedCalls){
   const html=fs.readFileSync('v2/app.html','utf8');
   assert(html.indexOf('biomedical-ai.js')<html.indexOf('ai-giveaway-validator.js'),'Giveaway validator loads before biomedical validation.');
   assert(html.indexOf('ai-giveaway-validator.js')<html.indexOf('ai-pipeline-mode.js'),'Pipeline mode captured validation before the giveaway checker.');
-  assert(html.indexOf('ai-pipeline-mode.js')<html.indexOf('ai-targeted-repair.js'),'Targeted repair loads before pipeline mode.');
+  assert(html.indexOf('ai-pipeline-mode.js')<html.indexOf('ai-sba-audit.js'),'SBA audit loads before pipeline mode.');
+  assert(html.indexOf('ai-sba-audit.js')<html.indexOf('ai-targeted-repair.js'),'Targeted repair loads before the SBA audit.');
   assert(html.indexOf('ai-targeted-repair.js')<html.indexOf('ai-engine.js'),'Engine loads before targeted repair.');
   const serviceWorker=fs.readFileSync('service-worker.js','utf8');
   assert(serviceWorker.includes('ai-giveaway-validator.js'),'Offline cache omitted the local giveaway validator.');
+  assert(serviceWorker.includes('ai-sba-audit.js'),'Offline cache omitted the SBA audit checkpoint.');
 
   console.log(JSON.stringify({
     defaultMode:modes.combined,
     combinedCleanApiCalls:combined.harness.requests.length,
+    combinedAuditOffApiCalls:auditOff.harness.requests.length,
     legacyCleanApiCalls:legacy.harness.requests.length,
     qualityRulesRemoved:false,
     separateValidatorsRetained:true,
     localGiveawayValidator:true,
     giveawayRepairTier:'questions',
     unaffectedQuestionsOmitted:true,
-    noCleanBuildApiPenalty:true,
+    dedicatedSbaAuditApiCall:true,
+    sbaAuditEmergencySwitch:true,
+    legacyRollbackUnchanged:true,
     visibleRollbackSelector:true,
     queryRollback:true,
     pipelineTelemetry:true
