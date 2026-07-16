@@ -1,0 +1,28 @@
+name: Recency analytics and background generation
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches:
+      - "agent/recency-analytics-background-generation"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recency-background:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate changed JavaScript syntax
+        run: |
+          node --check v2/question-analytics.js
+          node --check v2/ai-ui.js
+          node --check scripts/validate_recency_background.js
+
+      - name: Validate recency weighting, ten-question momentum, 50-question blocks and background generation
+        run: node scripts/validate_recency_background.js
