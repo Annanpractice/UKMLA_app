@@ -12,7 +12,10 @@ for(const required of [
   "caches.open('ukmla-runtime-card-data-v1')",
   'window.fetch=async function resilientFetch'
 ])assert(boot.includes(required),`Card-startup recovery omitted: ${required}`);
-assert(boot.indexOf('const cached=await cachedCardData(url)')<boot.indexOf('fetchWithTimeout(input'), 'Card data is not checked in Cache Storage before the network request.');
+const resilientStart=boot.indexOf('window.fetch=async function resilientFetch');
+const cacheRead=boot.indexOf('const cached=await cachedCardData(url)',resilientStart);
+const networkStart=boot.indexOf('void fetchWithTimeout(input',resilientStart);
+assert(resilientStart>=0&&cacheRead>resilientStart&&networkStart>cacheRead,'Card data is not checked in Cache Storage before the network request.');
 
 const html=fs.readFileSync('v2/app.html','utf8');
 assert(html.includes('boot-recovery.js?v=1'),'Boot recovery runtime is not loaded.');
