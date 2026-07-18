@@ -22,15 +22,31 @@ jobs:
           ref: agent/shared-quiz-status-intro
           fetch-depth: 0
       - name: Apply interface patch
-        run: python scripts/apply_shared_status_intro.py
-      - name: Commit patched files
+        id: apply
+        shell: bash
         run: |
+          set +e
+          python scripts/apply_shared_status_intro.py > shared-status-patch.log 2>&1
+          CODE=$?
+          cat shared-status-patch.log
+          echo "code=${CODE}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit patch or diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ steps.apply.outputs.code }}" != "0" ]; then
+            git restore v2/ai-ui.js v2/question-bank.js v2/question-workspace.js v2/app.html service-worker.js
+            git add shared-status-patch.log
+            git commit -m "Record shared status patch mismatch"
+            git push origin HEAD:agent/shared-quiz-status-intro
+            exit 1
+          fi
+          rm -f shared-status-patch.log
           if git diff --quiet; then
             echo "Patch already applied"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add v2/ai-ui.js v2/question-bank.js v2/question-workspace.js v2/app.html service-worker.js
           git commit -m "Share quiz progress with background generation"
           git push origin HEAD:agent/shared-quiz-status-intro
