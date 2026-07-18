@@ -1,1 +1,0 @@
-The opening screen must display only the uploaded UKMLA intro film or a genuine still extracted from that film. Substitute HTML or CSS artwork is not permitted.
