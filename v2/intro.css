@@ -22,10 +22,8 @@
   object-fit:cover;
   object-position:center center;
   background:#03152b;
-  opacity:0;
-  transition:opacity .12s linear;
+  opacity:1;
 }
-.app-intro.is-playing .app-intro-video{opacity:1}
 .app-intro-play,.app-intro-skip{
   position:absolute;
   z-index:2;
@@ -52,4 +50,4 @@
   font-weight:600;
 }
 .app-intro-play[hidden]{display:none}
-@media(prefers-reduced-motion:reduce){.app-intro{transition-duration:.15s}.app-intro-video{transition-duration:.05s}}
+@media(prefers-reduced-motion:reduce){.app-intro{transition-duration:.15s}}
