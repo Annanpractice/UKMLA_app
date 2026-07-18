@@ -237,10 +237,12 @@ jobs:
       - name: Prepare lightweight routed app
         run: |
           rm -rf _site
-          mkdir -p _site/v2 _site/data
+          mkdir -p _site/v2 _site/data _site/assets
           cp v2/app.html _site/index.html
           cp v2/*.css v2/*.js _site/v2/
           cp data/conditions.json _site/data/conditions.json
+          cp assets/ukmla-intro.mp4 _site/assets/ukmla-intro.mp4
+          cp assets/ukmla-intro-first-frame.jpg _site/assets/ukmla-intro-first-frame.jpg
           cp service-worker.js _site/service-worker.js
 
           cat > _site/app.html <<'HTML'
@@ -255,6 +257,8 @@ jobs:
           test -s _site/index.html
           test -s _site/service-worker.js
           test -s _site/data/conditions.json
+          test -s _site/assets/ukmla-intro.mp4
+          test -s _site/assets/ukmla-intro-first-frame.jpg
           test -s _site/v2/core.js
           test -s _site/v2/large-storage.js
           test -s _site/v2/question-bank.js
