@@ -15,6 +15,10 @@ jobs:
         with:
           ref: agent/remove-fake-poster-optimize-intro
           fetch-depth: 0
+      - name: Install media tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
       - name: Inspect source media
         run: |
           ls -lh assets/ukmla-intro.mp4
