@@ -1,7 +1,0 @@
-name: Intro branch marker
-on: pull_request
-jobs:
-  marker:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo intro
