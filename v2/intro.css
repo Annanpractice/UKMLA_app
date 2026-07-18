@@ -2,8 +2,6 @@
   position:fixed;
   inset:0;
   z-index:10000;
-  display:grid;
-  place-items:center;
   width:100vw;
   height:100dvh;
   min-height:100vh;
@@ -14,40 +12,66 @@
   isolation:isolate;
 }
 .app-intro.is-fading{opacity:0;pointer-events:none}
-.app-intro-video{
+.app-intro-launch{
   position:absolute;
   inset:0;
+  z-index:0;
+  width:100%;
+  height:100%;
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  border:0;
+  border-radius:0;
+  appearance:none;
+  background:#03152b;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.app-intro-launch img{
+  display:block;
   width:100%;
   height:100%;
   object-fit:cover;
   object-position:center center;
-  background:#03152b;
-  opacity:1;
+  user-select:none;
+  -webkit-user-drag:none;
 }
-.app-intro-play,.app-intro-skip{
+.app-intro-prompt{
   position:absolute;
-  z-index:2;
-  border:1px solid rgba(117,225,255,.5);
-  background:rgba(3,21,43,.9);
-  color:#f4fbff;
-  font:700 .86rem/1.2 var(--sans,system-ui,sans-serif);
-  box-shadow:0 10px 30px rgba(0,0,0,.34);
-  backdrop-filter:blur(10px);
-}
-.app-intro-play{
   left:50%;
-  bottom:max(104px,calc(env(safe-area-inset-bottom) + 88px));
+  bottom:max(72px,calc(env(safe-area-inset-bottom) + 52px));
   transform:translateX(-50%);
-  min-width:190px;
-  padding:14px 20px;
+  min-width:170px;
+  padding:13px 20px;
+  border:1px solid rgba(117,225,255,.58);
   border-radius:999px;
+  background:rgba(3,21,43,.82);
+  color:#f4fbff;
+  font:700 .9rem/1.2 var(--sans,system-ui,sans-serif);
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.36);
+  backdrop-filter:blur(10px);
+  transition:opacity .16s linear;
 }
-.app-intro-skip{
-  top:max(18px,calc(env(safe-area-inset-top) + 10px));
-  right:18px;
-  padding:9px 12px;
-  border-radius:12px;
-  font-weight:600;
+.app-intro.is-starting .app-intro-launch{pointer-events:none}
+.app-intro.is-starting .app-intro-prompt{opacity:0}
+.app-intro-video{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+  background:transparent;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .08s linear;
 }
-.app-intro-play[hidden]{display:none}
-@media(prefers-reduced-motion:reduce){.app-intro{transition-duration:.15s}}
+.app-intro.is-playing .app-intro-video{opacity:1}
+@media(prefers-reduced-motion:reduce){
+  .app-intro{transition-duration:.15s}
+  .app-intro-prompt,.app-intro-video{transition-duration:.05s}
+}
