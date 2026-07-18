@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#03152b">
   <title>UKMLA Cards</title>
   <link rel="stylesheet" href="./v2/app.css?v=2">
-  <link rel="stylesheet" href="./v2/intro.css?v=4">
+  <link rel="stylesheet" href="./v2/intro.css?v=5">
   <script src="./v2/boot-recovery.js?v=1" defer></script>
-  <script src="./v2/intro.js?v=5" defer></script>
+  <script src="./v2/intro.js?v=6" defer></script>
   <link rel="stylesheet" href="./v2/psa.css?v=1">
   <link rel="stylesheet" href="./v2/psa-grounding.css?v=1">
   <link rel="stylesheet" href="./v2/biomedical.css?v=1">
@@ -18,9 +18,11 @@
 </head>
 <body>
   <div class="app-intro" id="app-intro" aria-label="UKMLA opening animation">
-    <video class="app-intro-video" id="app-intro-video" src="./assets/ukmla-intro.mp4?v=3" poster="./assets/ukmla-intro-first-frame.jpg?v=1" preload="auto" muted autoplay playsinline></video>
-    <button class="app-intro-play" id="app-intro-play" type="button" hidden>Tap for sound</button>
-    <button class="app-intro-skip" id="app-intro-skip" type="button">Skip</button>
+    <button class="app-intro-launch" id="app-intro-launch" type="button" aria-label="Play the UKMLA introduction and enter the site">
+      <img src="./assets/ukmla-intro-first-frame.jpg?v=2" alt="" aria-hidden="true">
+      <span class="app-intro-prompt">Tap to enter</span>
+    </button>
+    <video class="app-intro-video" id="app-intro-video" src="./assets/ukmla-intro.mp4?v=4" preload="auto" playsinline></video>
   </div>
   <div id="app-shell">
     <aside class="side-nav" aria-label="Primary navigation">
