@@ -123,7 +123,7 @@ for(const required of ['height:100dvh','object-fit:cover','object-position:cente
   assert(introCss.includes(required),`Full-screen crop-safe intro CSS omitted: ${required}`);
 }
 const introJs=fs.readFileSync('v2/intro.js','utf8');
-for(const required of ['FADE_SECONDS=.5','MEDIA_TIMEOUT_MS=9000','remaining/FADE_SECONDS','video.volume','sessionStorage','video.defaultMuted=true','Tap for sound','playMuted','playWithSound','preferCachedSource','caches.match(absolute',{]){
+for(const required of ['FADE_SECONDS=.5','MEDIA_TIMEOUT_MS=9000','remaining/FADE_SECONDS','video.volume','sessionStorage','video.defaultMuted=true','Tap for sound','playMuted','playWithSound','preferCachedSource','caches.match(absolute']){
   assert(introJs.includes(required),`Intro fade, cache recovery or muted autoplay behavior omitted: ${required}`);
 }
 const serviceWorker=fs.readFileSync('service-worker.js','utf8');
