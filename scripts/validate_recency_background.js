@@ -115,22 +115,27 @@ const html=fs.readFileSync('v2/app.html','utf8');
 assert(html.includes('question-analytics.js?v=2'),'Recency analytics asset version is missing.');
 assert(html.includes('ai-ui.js?v=5'),'Shared-status AI UI asset version is missing.');
 assert(html.includes('ai-save-recovery.js?v=2'),'Durable completed-set recovery asset is missing.');
-for(const required of ['intro.css?v=2','intro.js?v=3','assets/ukmla-intro.mp4','playsinline','muted autoplay','app-intro-poster']){
+for(const required of ['intro.css?v=3','intro.js?v=4','assets/ukmla-intro.mp4?v=2','playsinline','muted autoplay']){
   assert(html.includes(required),`Opening film shell omitted: ${required}`);
 }
+assert(!html.includes('app-intro-poster'),'Invented substitute intro artwork remains in the page.');
 const introCss=fs.readFileSync('v2/intro.css','utf8');
-for(const required of ['height:100dvh','object-fit:cover','object-position:center center','overflow:hidden','app-intro-poster','bottom:max(92px']){
+for(const required of ['height:100dvh','object-fit:cover','object-position:center center','overflow:hidden','bottom:max(104px']){
   assert(introCss.includes(required),`Full-screen crop-safe intro CSS omitted: ${required}`);
 }
+assert(!introCss.includes('app-intro-poster'),'Invented substitute intro artwork remains in CSS.');
 const introJs=fs.readFileSync('v2/intro.js','utf8');
-for(const required of ['FADE_SECONDS=.5','MEDIA_TIMEOUT_MS=9000','remaining/FADE_SECONDS','video.volume','sessionStorage','video.defaultMuted=true','Tap for sound','playMuted','playWithSound','preferCachedSource','caches.match(absolute']){
-  assert(introJs.includes(required),`Intro fade, cache recovery or muted autoplay behavior omitted: ${required}`);
+for(const required of ['FADE_SECONDS=.5','AUTOPLAY_GRACE_MS=1800','MEDIA_TIMEOUT_MS=6500','remaining/FADE_SECONDS','video.volume','sessionStorage','video.defaultMuted=true','Tap for sound','playMuted','playWithSound','finish(false,false)']){
+  assert(introJs.includes(required),`Intro fade, native playback or fail-open behavior omitted: ${required}`);
+}
+for(const forbidden of ['preferCachedSource','caches.match(absolute','app-intro-poster']){
+  assert(!introJs.includes(forbidden),`Obsolete or substitute intro behavior remains: ${forbidden}`);
 }
 const serviceWorker=fs.readFileSync('service-worker.js','utf8');
-assert(serviceWorker.includes('ukmla-cards-v18-robust-mobile-intro'),'Service-worker cache was not advanced for the robust mobile intro release.');
-assert(serviceWorker.includes('./assets/ukmla-intro.mp4'),'Intro film is not included in the offline cache list.');
-for(const required of ['rangedVideoResponse','Content-Range',"url.pathname.endsWith('/assets/ukmla-intro.mp4')"]){
-  assert(serviceWorker.includes(required),`Cache-first ranged intro delivery omitted: ${required}`);
+assert(serviceWorker.includes('ukmla-cards-v19-real-intro-only'),'Service-worker cache was not advanced for the real-film-only release.');
+assert(serviceWorker.includes("if(url.pathname.endsWith('/assets/ukmla-intro.mp4'))return"),'Intro film is not delegated to native browser streaming.');
+for(const forbidden of ['rangedVideoResponse','Content-Range']){
+  assert(!serviceWorker.includes(forbidden),`Custom media reconstruction remains: ${forbidden}`);
 }
 
 console.log(JSON.stringify({
@@ -143,8 +148,8 @@ console.log(JSON.stringify({
   sharedQuizStatus:true,
   unseenQuestionBadge:true,
   fullScreenIntroCover:true,
-  cachedIntroBlobPreferred:true,
-  mutedAutoplayDeclared:true,
+  realFilmOnly:true,
+  nativeVideoStreaming:true,
   tapForSoundRestart:true,
   introFailureCannotTrapApp:true,
   halfSecondAudioVisualFade:true,

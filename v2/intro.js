@@ -3,16 +3,13 @@
 
 const SESSION_KEY='ukmlaIntroPlayedV1';
 const FADE_SECONDS=.5;
-const MEDIA_TIMEOUT_MS=9000;
+const AUTOPLAY_GRACE_MS=1800;
+const MEDIA_TIMEOUT_MS=6500;
 let finished=false;
-let objectUrl='';
 let playbackStarted=false;
+let sessionShouldBeMarked=false;
 
 function removeOverlay(overlay){
-  if(objectUrl){
-    URL.revokeObjectURL(objectUrl);
-    objectUrl='';
-  }
   if(overlay?.isConnected)overlay.remove();
 }
 
@@ -24,28 +21,8 @@ function configureMuted(video){
   video.setAttribute('playsinline','');
 }
 
-async function preferCachedSource(video){
-  if(!('caches'in window))return false;
-  const original=video.getAttribute('src');
-  if(!original)return false;
-  try{
-    const absolute=new URL(original,location.href).href;
-    const cached=await caches.match(absolute,{ignoreSearch:true});
-    if(!cached?.ok)return false;
-    const blob=await cached.blob();
-    if(!blob.size)return false;
-    objectUrl=URL.createObjectURL(blob);
-    video.src=objectUrl;
-    video.load();
-    return true;
-  }catch(_){
-    return false;
-  }
-}
-
 function initialise(){
   const overlay=document.getElementById('app-intro');
-  const poster=document.getElementById('app-intro-poster');
   const video=document.getElementById('app-intro-video');
   const playButton=document.getElementById('app-intro-play');
   const skipButton=document.getElementById('app-intro-skip');
@@ -66,19 +43,22 @@ function initialise(){
     if(playButton)playButton.hidden=true;
   };
 
-  const finish=(immediate=false)=>{
+  const finish=(immediate=false,markSession=sessionShouldBeMarked)=>{
     if(finished)return;
     finished=true;
-    try{sessionStorage.setItem(SESSION_KEY,'1');}catch(_){/* Optional. */}
+    if(markSession){
+      try{sessionStorage.setItem(SESSION_KEY,'1');}catch(_){/* Optional. */}
+    }
     overlay.classList.add('is-fading');
-    video.volume=0;
-    setTimeout(()=>removeOverlay(overlay),immediate?100:540);
+    try{video.pause();video.volume=0;}catch(_){/* Optional. */}
+    setTimeout(()=>removeOverlay(overlay),immediate?80:540);
   };
 
   const markPlaying=()=>{
+    if(finished)return;
     playbackStarted=true;
+    sessionShouldBeMarked=true;
     overlay.classList.add('is-playing');
-    poster?.classList.add('is-hidden');
     if(video.muted)showButton('Tap for sound');
     else hideButton();
   };
@@ -87,7 +67,6 @@ function initialise(){
     configureMuted(video);
     try{
       await video.play();
-      markPlaying();
       return true;
     }catch(_){
       showButton('Tap to play intro');
@@ -105,11 +84,10 @@ function initialise(){
       video.removeAttribute('muted');
       video.volume=1;
       await video.play();
-      markPlaying();
       return true;
     }catch(_){
       const mutedWorked=await playMuted();
-      if(!mutedWorked)finish(false);
+      if(!mutedWorked)finish(false,false);
       return mutedWorked;
     }
   };
@@ -123,29 +101,20 @@ function initialise(){
       if(!video.muted)video.volume=Math.max(0,Math.min(1,remaining/FADE_SECONDS));
     }
   });
-  video.addEventListener('waiting',()=>{
-    if(!playbackStarted)showButton('Tap to play intro');
-  });
-  video.addEventListener('stalled',()=>{
-    if(!playbackStarted)showButton('Tap to play intro');
-  });
-  video.addEventListener('ended',()=>finish(false),{once:true});
-  video.addEventListener('error',()=>finish(false),{once:true});
+  video.addEventListener('ended',()=>finish(false,true),{once:true});
+  video.addEventListener('error',()=>finish(true,false),{once:true});
   playButton?.addEventListener('click',()=>void playWithSound());
-  skipButton?.addEventListener('click',()=>finish(false));
+  skipButton?.addEventListener('click',()=>finish(false,true));
 
   configureMuted(video);
+  video.load();
   setTimeout(()=>{
     if(!finished&&!playbackStarted)showButton('Tap to play intro');
-  },1200);
+  },AUTOPLAY_GRACE_MS);
   setTimeout(()=>{
-    if(!finished)finish(false);
+    if(!finished&&!playbackStarted)finish(false,false);
   },MEDIA_TIMEOUT_MS);
-
-  void (async()=>{
-    await preferCachedSource(video);
-    if(!finished)await playMuted();
-  })();
+  void playMuted();
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialise,{once:true});
