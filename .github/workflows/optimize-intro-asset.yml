@@ -1,6 +1,8 @@
 name: Optimise intro asset
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [agent/remove-fake-poster-optimize-intro]
     paths:
@@ -11,6 +13,7 @@ permissions:
 
 jobs:
   optimise:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
