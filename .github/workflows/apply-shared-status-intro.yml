@@ -1,0 +1,33 @@
+name: Apply shared quiz status and intro
+
+on:
+  push:
+    branches:
+      - "agent/shared-quiz-status-intro"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/shared-quiz-status-intro
+          fetch-depth: 0
+      - name: Apply interface patch
+        run: python scripts/apply_shared_status_intro.py
+      - name: Commit patched files
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v2/ai-ui.js v2/question-bank.js v2/question-workspace.js v2/app.html service-worker.js
+          git commit -m "Share quiz progress with background generation"
+          git push origin HEAD:agent/shared-quiz-status-intro
