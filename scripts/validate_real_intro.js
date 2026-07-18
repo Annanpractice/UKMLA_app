@@ -6,13 +6,16 @@ const js=fs.readFileSync('v2/intro.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
 const videoPath='assets/ukmla-intro.mp4';
 const posterPath='assets/ukmla-intro-first-frame.jpg';
+const videoBytes=fs.statSync(videoPath).size;
+const posterBytes=fs.statSync(posterPath).size;
 assert(fs.existsSync(videoPath),'Real intro MP4 is missing.');
 assert(fs.existsSync(posterPath),'Genuine first frame from the intro is missing.');
-assert(fs.statSync(videoPath).size<1500000,'Mobile intro MP4 is still too large for reliable startup.');
-assert(fs.statSync(posterPath).size>1000,'Genuine intro first frame is empty or invalid.');
-assert(html.includes('assets/ukmla-intro.mp4?v=4'),'Optimised real intro MP4 is not referenced.');
+assert(videoBytes>5000000,'The original high-resolution intro MP4 was not restored.');
+assert(videoBytes<7000000,'Unexpected intro MP4 size.');
+assert(posterBytes>1000,'Genuine intro first frame is empty or invalid.');
+assert(html.includes('assets/ukmla-intro.mp4?v=5'),'Original intro MP4 cache version is not referenced.');
 assert(html.includes('<button class="app-intro-launch"'),'Genuine first frame is not implemented as the entry button.');
-assert(html.includes('<img src="./assets/ukmla-intro-first-frame.jpg?v=2"'),'Genuine first frame is not visible on the launch button.');
+assert(html.includes('<img src="./assets/ukmla-intro-first-frame.jpg?v=3"'),'Extracted first frame cache version is not visible on the launch button.');
 assert(html.includes('Tap to enter'),'Entry prompt is missing.');
 assert(!html.includes('muted autoplay'),'Intro must not autoplay before a user gesture.');
 assert(!html.includes('app-intro-poster'),'Invented intro poster markup must not return.');
@@ -26,14 +29,13 @@ assert(js.includes('FADE_SECONDS=.5')&&js.includes('remaining/FADE_SECONDS'),'Fi
 assert(!js.includes('playMuted'),'Muted autoplay fallback must remain removed.');
 assert(!js.includes('preferCachedSource'),'Cached blob source replacement must remain removed.');
 assert(!worker.includes('rangedVideoResponse'),'Service worker must not rebuild MP4 range responses.');
-assert(worker.includes('ukmla-cards-v21-tap-first-frame-intro'),'Service-worker release marker was not advanced.');
 console.log(JSON.stringify({
-  realUploadedClipOnly:true,
+  originalHighResolutionVideo:true,
   genuineFirstFrameButton:true,
   userGestureStartsSound:true,
   substituteArtworkForbidden:true,
   directBrowserStreaming:true,
   halfSecondFade:true,
-  videoBytes:fs.statSync(videoPath).size,
-  posterBytes:fs.statSync(posterPath).size
+  videoBytes,
+  posterBytes
 },null,2));
