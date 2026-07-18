@@ -1,1 +1,0 @@
-This branch replaces the heavy intro asset with a mobile-optimised encode and uses a genuine frame from the uploaded film as the only loading poster. The one-off optimisation workflow is removed before merge.
