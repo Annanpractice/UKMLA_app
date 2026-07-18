@@ -13,7 +13,7 @@ def replace_once(path, old, new):
 def regex_once(path, pattern, replacement):
     file = Path(path)
     text = file.read_text(encoding='utf-8')
-    updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+    updated, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.S)
     if count != 1:
         raise SystemExit(f'Expected one regex patch in {path}, found {count}')
     file.write_text(updated, encoding='utf-8')
