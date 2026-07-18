@@ -1,0 +1,14 @@
+name: Real intro asset regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  real-intro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate real uploaded intro only
+        run: node scripts/validate_real_intro.js

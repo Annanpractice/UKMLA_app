@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-const SESSION_KEY='ukmlaIntroPlayedV1';
+const SESSION_KEY='ukmlaIntroPlayedV2';
 const FADE_SECONDS=.5;
 const AUTOPLAY_GRACE_MS=1800;
 const MEDIA_TIMEOUT_MS=6500;
@@ -93,6 +93,9 @@ function initialise(){
   };
 
   video.addEventListener('playing',markPlaying);
+  video.addEventListener('canplay',()=>{
+    if(!finished&&!playbackStarted)void playMuted();
+  },{once:true});
   video.addEventListener('timeupdate',()=>{
     if(!Number.isFinite(video.duration)||!video.duration)return;
     const remaining=video.duration-video.currentTime;
