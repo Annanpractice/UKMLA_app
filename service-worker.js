@@ -1,5 +1,6 @@
-// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro ukmla-cards-v16-muted-intro-fallback
-const CACHE_NAME='ukmla-cards-v17-cache-first-card-startup';
+// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro ukmla-cards-v16-muted-intro-fallback ukmla-cards-v17-cache-first-card-startup
+const CACHE_NAME='ukmla-cards-v18-robust-mobile-intro';
+const RUNTIME_CARD_CACHE='ukmla-runtime-card-data-v1';
 const CORE_ASSETS=[
   './','./index.html','./app.html','./data/conditions.json',
   './v2/app.css','./v2/intro.css','./v2/psa.css','./v2/psa-grounding.css','./v2/biomedical.css','./v2/question-workspace.css','./v2/question-bank.css','./v2/handsfree.css',
@@ -18,16 +19,39 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil((async()=>{
     const names=await caches.keys();
-    await Promise.all(names.filter(name=>name!==CACHE_NAME&&name!=='ukmla-runtime-card-data-v1').map(name=>caches.delete(name)));
+    await Promise.all(names.filter(name=>name!==CACHE_NAME&&name!==RUNTIME_CARD_CACHE).map(name=>caches.delete(name)));
     await self.clients.claim();
   })());
 });
 
 async function cacheResponse(request,response){
-  if(!response?.ok)return response;
+  if(!response?.ok||response.status===206)return response;
   const cache=await caches.open(CACHE_NAME);
   await cache.put(request,response.clone());
   return response;
+}
+
+async function rangedVideoResponse(response,rangeHeader){
+  if(!rangeHeader)return response;
+  const match=/bytes=(\d*)-(\d*)/.exec(rangeHeader);
+  if(!match)return response;
+  const bytes=await response.arrayBuffer();
+  const size=bytes.byteLength;
+  let start=match[1]?Number(match[1]):0;
+  let end=match[2]?Number(match[2]):size-1;
+  if(!match[1]&&match[2]){
+    const suffix=Math.min(size,Number(match[2]));
+    start=size-suffix;
+    end=size-1;
+  }
+  start=Math.max(0,Math.min(start,size-1));
+  end=Math.max(start,Math.min(end,size-1));
+  const headers=new Headers(response.headers);
+  headers.set('Content-Type','video/mp4');
+  headers.set('Accept-Ranges','bytes');
+  headers.set('Content-Range',`bytes ${start}-${end}/${size}`);
+  headers.set('Content-Length',String(end-start+1));
+  return new Response(bytes.slice(start,end+1),{status:206,statusText:'Partial Content',headers});
 }
 
 self.addEventListener('fetch',event=>{
@@ -35,6 +59,24 @@ self.addEventListener('fetch',event=>{
   if(request.method!=='GET')return;
   const url=new URL(request.url);
   if(url.origin!==self.location.origin)return;
+
+  if(url.pathname.endsWith('/assets/ukmla-intro.mp4')){
+    event.respondWith((async()=>{
+      const fullRequest=new Request(url.href,{method:'GET',cache:'reload'});
+      const cached=await caches.match(fullRequest,{ignoreSearch:true});
+      const refresh=fetch(fullRequest)
+        .then(response=>cacheResponse(fullRequest,response))
+        .catch(()=>null);
+      if(cached){
+        event.waitUntil(refresh);
+        return rangedVideoResponse(cached,request.headers.get('range'));
+      }
+      const response=await refresh;
+      if(response)return rangedVideoResponse(response,request.headers.get('range'));
+      throw new Error('Intro film is unavailable.');
+    })());
+    return;
+  }
 
   if(url.pathname.endsWith('/data/conditions.json')){
     event.respondWith((async()=>{
