@@ -9,21 +9,31 @@ const posterPath='assets/ukmla-intro-first-frame.jpg';
 assert(fs.existsSync(videoPath),'Real intro MP4 is missing.');
 assert(fs.existsSync(posterPath),'Genuine first frame from the intro is missing.');
 assert(fs.statSync(videoPath).size<1500000,'Mobile intro MP4 is still too large for reliable startup.');
-assert(fs.statSync(posterPath).size>1000,'Genuine intro poster is empty or invalid.');
-assert(html.includes('assets/ukmla-intro.mp4?v=3'),'Optimised real intro MP4 is not referenced.');
-assert(html.includes('poster="./assets/ukmla-intro-first-frame.jpg?v=1"'),'Genuine intro frame is not used as the video poster.');
+assert(fs.statSync(posterPath).size>1000,'Genuine intro first frame is empty or invalid.');
+assert(html.includes('assets/ukmla-intro.mp4?v=4'),'Optimised real intro MP4 is not referenced.');
+assert(html.includes('<button class="app-intro-launch"'),'Genuine first frame is not implemented as the entry button.');
+assert(html.includes('<img src="./assets/ukmla-intro-first-frame.jpg?v=2"'),'Genuine first frame is not visible on the launch button.');
+assert(html.includes('Tap to enter'),'Entry prompt is missing.');
+assert(!html.includes('muted autoplay'),'Intro must not autoplay before a user gesture.');
 assert(!html.includes('app-intro-poster'),'Invented intro poster markup must not return.');
+assert(!html.includes('app-intro-skip'),'Separate skip control must not replace the first-frame entry action.');
 assert(!css.includes('app-intro-emblem'),'Invented intro emblem CSS must not return.');
 assert(css.includes('object-fit:cover'),'Intro must crop without distortion.');
-assert(css.includes('opacity:1'),'Genuine poster must remain visible before playback starts.');
+assert(css.includes('.app-intro-launch img'),'Genuine first frame is not styled as the full-screen button.');
+assert(js.includes("launchButton.addEventListener('click'"),'Video playback is not triggered by the first-frame button.');
+assert(js.includes('video.defaultMuted=false')&&js.includes('video.muted=false'),'Tap-triggered playback does not enable sound.');
+assert(js.includes('FADE_SECONDS=.5')&&js.includes('remaining/FADE_SECONDS'),'Final half-second audio and visual fade is missing.');
+assert(!js.includes('playMuted'),'Muted autoplay fallback must remain removed.');
 assert(!js.includes('preferCachedSource'),'Cached blob source replacement must remain removed.');
 assert(!worker.includes('rangedVideoResponse'),'Service worker must not rebuild MP4 range responses.');
-assert(worker.includes('ukmla-cards-v20-optimised-real-intro'),'Service-worker release marker was not advanced.');
+assert(worker.includes('ukmla-cards-v21-tap-first-frame-intro'),'Service-worker release marker was not advanced.');
 console.log(JSON.stringify({
   realUploadedClipOnly:true,
-  genuineFrameWhileLoading:true,
+  genuineFirstFrameButton:true,
+  userGestureStartsSound:true,
   substituteArtworkForbidden:true,
   directBrowserStreaming:true,
+  halfSecondFade:true,
   videoBytes:fs.statSync(videoPath).size,
   posterBytes:fs.statSync(posterPath).size
 },null,2));
