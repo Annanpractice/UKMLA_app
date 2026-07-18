@@ -21,58 +21,72 @@ function selectConditions(mode,topicId){
 function workspaceMounted(){return Boolean(root&&root.isConnected&&root.dataset.activeQuestionTab==='ai');}
 function isBuilding(){return Boolean(activeBuildPromise);}
 
-function injectBackgroundStyle(){
-  if(document.getElementById('ai-background-runtime-style'))return;
-  const style=document.createElement('style');
-  style.id='ai-background-runtime-style';
-  style.textContent=`
-    #ai-background-build{position:fixed;z-index:145;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));max-width:min(370px,calc(100vw - 32px));border:1px solid rgba(72,211,255,.48);border-radius:18px;background:rgba(3,21,43,.97);box-shadow:0 14px 38px rgba(0,0,0,.44),0 0 22px rgba(35,190,255,.2);color:#edfaff;padding:11px 13px;cursor:pointer;font:inherit;text-align:left}
-    #ai-background-build strong{display:block;font-size:.88rem}#ai-background-build span{display:block;margin-top:3px;color:#9ed8f2;font-size:.76rem}#ai-background-build[hidden]{display:none}
-    .background-build-note{margin-top:12px;padding:10px 12px;border:1px solid rgba(72,211,255,.28);border-radius:14px;background:rgba(72,211,255,.06);color:var(--muted);font-size:.82rem}
-  `;
-  document.head.appendChild(style);
+let completionStatusUntil=0;
+let sharedStatusKind='idle';
+let restoreStatusTimer=null;
+
+function statusNodes(){return[...document.querySelectorAll('[data-shared-quiz-status]')];}
+function prepareStatusNode(node){
+  if(node.dataset.sharedStatusReady==='1')return;
+  const label=node.querySelector('[data-shared-status-label]');
+  const detail=node.querySelector('[data-shared-status-detail]');
+  const fill=node.querySelector('[data-shared-status-fill]');
+  if(label)label.dataset.defaultText=label.textContent||'';
+  if(detail)detail.dataset.defaultText=detail.textContent||'';
+  if(fill)fill.dataset.defaultValue=fill.dataset.defaultValue||String(fill.style.getPropertyValue('--value')||'0%').replace('%','');
+  node.dataset.sharedStatusReady='1';
 }
-function openAiWorkspace(){
-  const api=core();
-  const stored=api.loadJson(api.STORAGE.state,{});
-  api.App.state={...api.App.state,quizTab:'ai'};
-  api.saveJson(api.STORAGE.state,{...stored,quizTab:'ai'});
-  api.go('quiz');
+function restoreStatusNode(node){
+  prepareStatusNode(node);
+  const label=node.querySelector('[data-shared-status-label]');
+  const detail=node.querySelector('[data-shared-status-detail]');
+  const fill=node.querySelector('[data-shared-status-fill]');
+  if(label)label.textContent=label.dataset.defaultText||'';
+  if(detail)detail.textContent=detail.dataset.defaultText||'';
+  if(fill)fill.style.setProperty('--value',`${Number(fill.dataset.defaultValue)||0}%`);
+  node.classList.remove('generation-borrowed','generation-ready');
+  node.removeAttribute('aria-live');
 }
-function indicator(){
-  injectBackgroundStyle();
-  let node=document.getElementById('ai-background-build');
-  if(!node){
-    node=document.createElement('button');
-    node.type='button';
-    node.id='ai-background-build';
-    node.hidden=true;
-    node.onclick=openAiWorkspace;
-    document.body.appendChild(node);
-  }
-  return node;
+function stageText(job){
+  const raw=String(job?.lastMessage||'Generating questions').replace(/\s+completed$/i,'').trim();
+  return raw||'Generating questions';
 }
-function updateIndicator(job=latestProgress){
-  const node=indicator();
-  if(isBuilding()){
-    const percent=Math.max(0,Math.min(100,Number(job?.percent)||0));
-    const stage=job?.lastMessage||'Generating questions';
-    node.hidden=false;
-    node.innerHTML=`<strong>${percent}% · ${escapeHtml(stage)}</strong><span>Generation continues while you use Home, Cards, Focus or Analytics. Tap to return.</span>`;
-    return;
+function updateSharedStatus(job=latestProgress){
+  document.getElementById('ai-background-build')?.remove();
+  const nodes=statusNodes();
+  const active=isBuilding();
+  const kind=active?'active':job?.status==='complete'?'complete':'idle';
+  if(kind==='complete'&&sharedStatusKind!=='complete')completionStatusUntil=Date.now()+2400;
+  sharedStatusKind=kind;
+  if(restoreStatusTimer){clearTimeout(restoreStatusTimer);restoreStatusTimer=null;}
+  const percent=Math.max(0,Math.min(100,Number(job?.percent)||0));
+  for(const node of nodes){
+    prepareStatusNode(node);
+    const label=node.querySelector('[data-shared-status-label]');
+    const detail=node.querySelector('[data-shared-status-detail]');
+    const fill=node.querySelector('[data-shared-status-fill]');
+    if(active){
+      if(label)label.textContent=`Generating questions · ${percent}%`;
+      if(detail)detail.textContent=stageText(job);
+      if(fill)fill.style.setProperty('--value',`${percent}%`);
+      node.classList.add('generation-borrowed');
+      node.classList.remove('generation-ready');
+      node.setAttribute('aria-live','polite');
+    }else if(kind==='complete'&&Date.now()<completionStatusUntil){
+      if(label)label.textContent='New question set saved';
+      if(detail)detail.textContent='Ready in Question Bank';
+      if(fill)fill.style.setProperty('--value','100%');
+      node.classList.remove('generation-borrowed');
+      node.classList.add('generation-ready');
+      node.setAttribute('aria-live','polite');
+    }else restoreStatusNode(node);
   }
-  if(completedSet){
-    node.hidden=false;
-    node.innerHTML='<strong>Questions ready</strong><span>The completed set was stored offline. Tap to open it.</span>';
-    return;
+  if(kind==='complete'&&Date.now()<completionStatusUntil){
+    restoreStatusTimer=setTimeout(()=>{for(const node of statusNodes())restoreStatusNode(node);},Math.max(80,completionStatusUntil-Date.now()));
   }
-  if(lastBuildError){
-    node.hidden=false;
-    node.innerHTML=`<strong>Question build paused</strong><span>${escapeHtml(lastBuildError)} Tap to review or resume.</span>`;
-    return;
-  }
-  node.hidden=true;
 }
+function updateIndicator(job=latestProgress){updateSharedStatus(job);}
+function refreshSharedStatus(){updateSharedStatus(latestProgress);}
 
 function pipelineOptions(selected){
   const modes=schema().PIPELINE_MODES;
@@ -226,6 +240,7 @@ async function start(resume){
 
 function renderSet(container,set,source='ai'){
   if(!container||!set)return;
+  if(source==='ai')window.UKMLA_QUESTION_BANK?.markSeen?.(set.quizId||set.setId);
   playState={set,source,index:0,answers:[],correct:0,container};
   drawQuestion();
 }
@@ -237,7 +252,8 @@ function drawQuestion(){
   const answer=state.answers[state.index];
   const qid=question.id||String(state.index+1);
   if(!answer)core().logPresented({id:`present:${state.set.quizId}:${qid}`,source:state.source,quizId:state.set.quizId,questionId:qid,conditionId:question.targetConditionId,conditionName:question.targetCondition,topicId:question.topicId,topicName:question.topicName,questionType:question.questionType,packId:state.set.packId||null});
-  state.container.innerHTML=`<article class="quiz-card" style="max-width:920px;margin:auto"><div class="topic-meta"><span>Question ${state.index+1} of ${state.set.questions.length}</span><span>${escapeHtml(question.questionTypeLabel)}</span></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" style="--value:${Math.round((state.index+1)/state.set.questions.length*100)}%"></div></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn)}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-ai-option="${option.id}" ${answer?'disabled':''}><span class="letter">${option.id}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale)}<br><span>${escapeHtml(question.strongestDistractorExplanation)}</span>${question.sourceSupport?`<br><small>Source: ${escapeHtml(question.sourceSupport.sourceRefs.join(', '))}</small>`:''}</div><div class="card-actions"><button class="btn" id="ai-prev" ${state.index===0?'disabled':''}>Previous</button><button class="btn primary" id="ai-next">${state.index===state.set.questions.length-1?'Results':'Next'}</button></div>`:''}</article>`;
+  state.container.innerHTML=`<article class="quiz-card" style="max-width:920px;margin:auto" data-shared-quiz-status><div class="topic-meta"><span data-shared-status-label>Question ${state.index+1} of ${state.set.questions.length}</span><span data-shared-status-detail>${escapeHtml(question.questionTypeLabel)}</span></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" data-shared-status-fill data-default-value="${Math.round((state.index+1)/state.set.questions.length*100)}" style="--value:${Math.round((state.index+1)/state.set.questions.length*100)}%"></div></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn)}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-ai-option="${option.id}" ${answer?'disabled':''}><span class="letter">${option.id}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale)}<br><span>${escapeHtml(question.strongestDistractorExplanation)}</span>${question.sourceSupport?`<br><small>Source: ${escapeHtml(question.sourceSupport.sourceRefs.join(', '))}</small>`:''}</div><div class="card-actions"><button class="btn" id="ai-prev" ${state.index===0?'disabled':''}>Previous</button><button class="btn primary" id="ai-next">${state.index===state.set.questions.length-1?'Results':'Next'}</button></div>`:''}</article>`;
+  refreshSharedStatus();
   state.container.querySelectorAll('[data-ai-option]').forEach(button=>button.onclick=()=>answerQuestion(button.dataset.aiOption));
   state.container.querySelector('#ai-prev')?.addEventListener('click',()=>{state.index--;drawQuestion();});
   state.container.querySelector('#ai-next')?.addEventListener('click',()=>{if(state.index===state.set.questions.length-1)drawResult();else{state.index++;drawQuestion();}});
@@ -278,6 +294,7 @@ window.UKMLA_V2_AI={
   renderSet,
   isBuilding,
   latestProgress:()=>latestProgress,
+  refreshSharedStatus,
   runKnowledgeBatch:config=>engine().runPipeline({...config,knowledge:true,persist:false}),
   storeSet:engine().storeSet,
   TYPES:schema().TYPES,

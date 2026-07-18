@@ -6,6 +6,7 @@
   const MIGRATION_KEY='ukmlaQuestionBankMigratedV2IndexedDb';
   const SET_PREFIX='ukmlaQuestionBankSetV1:';
   const SCHEMA='ukmla-question-bank-v1';
+  const UNSEEN_KEY='ukmlaQuestionBankUnseenV1';
   const TRACKED_SOURCES=new Set(['basic','ai','biomedical','knowledge']);
   let root=null;
   let filter='not-completed';
@@ -15,6 +16,7 @@
   let migrationPromise=null;
   let reconciliationPromise=null;
   let volatileIndex=[];
+  let volatileUnseen=new Set();
 
   function core(){return window.UKMLA_V2;}
   function large(){return window.UKMLA_LARGE_STORAGE;}
@@ -52,7 +54,36 @@
     try{localStorage.setItem(ATTEMPTS_KEY,JSON.stringify(records));return true;}
     catch(error){core()?.toast('Attempt history could not be stored. Export a backup.');return false;}
   }
-  function notify(){document.dispatchEvent(new Event('ukmlaQuestionBankChanged'));}
+  function unseenSetIds(){return[...new Set([...parse(localStorage.getItem(UNSEEN_KEY),[]).map(String),...volatileUnseen])];}
+  function saveUnseen(ids){
+    volatileUnseen=new Set((ids||[]).map(String));
+    try{localStorage.setItem(UNSEEN_KEY,JSON.stringify([...volatileUnseen]));volatileUnseen.clear();return true;}
+    catch(_){return false;}
+  }
+  function unseenCount(){
+    const available=new Set(bankIndex().map(record=>String(record.setId)));
+    return unseenSetIds().filter(setId=>available.has(String(setId))).length;
+  }
+  function markUnseen(setId){
+    const id=String(setId||'');
+    if(!id)return false;
+    const ids=unseenSetIds();
+    if(!ids.includes(id))ids.push(id);
+    saveUnseen(ids);
+    notify();
+    return true;
+  }
+  function markSeen(setId){
+    const id=String(setId||'');
+    if(!id)return false;
+    saveUnseen(unseenSetIds().filter(item=>item!==id));
+    notify();
+    return true;
+  }
+  function notify(){
+    document.dispatchEvent(new Event('ukmlaQuestionBankChanged'));
+    document.dispatchEvent(new CustomEvent('ukmlaQuestionBankBadgeChanged',{detail:{count:unseenCount()}}));
+  }
 
   function sourceType(set,meta={}){
     return meta.sourceType||set.sourceType||set.source||(
@@ -178,6 +209,7 @@
     await large()?.deleteKey(setKey(setId));
     saveIndex(bankIndex().filter(item=>item.setId!==setId));
     saveAttempts(attempts().filter(item=>item.setId!==setId));
+    saveUnseen(unseenSetIds().filter(item=>item!==String(setId)));
     notify();
   }
 
@@ -455,6 +487,7 @@
     core()?.toast('Opening saved set…');
     const set=await loadSet(setId);
     if(!set){core()?.toast('This set is listed but its full content is not on this device. Pull sync or restore a backup.');return;}
+    markSeen(setId);
     if(action==='review'){
       const attempt=latestAttemptFor(setId,'completed');
       if(attempt)renderReview(set,attempt,0);
@@ -478,8 +511,9 @@
       current=recordPresented(current.attemptId,qid,index)||current;
       core().logPresented({id:`present:${current.attemptId}:${qid}`,source:current.sourceType,quizId:current.attemptId,questionId:qid,conditionId:question.targetConditionId,conditionName:question.targetCondition,topicId:question.topicId,topicName:question.topicName,questionType:question.questionType,questionTypeLabel:question.questionTypeLabel});
     }
-    root.innerHTML=`<article class="quiz-card bank-player"><div class="bank-player-top"><button class="btn ghost" id="bank-back">← Question Bank</button><span>Question ${index+1} of ${set.questions.length}</span></div><div class="progress-track"><div class="progress-fill" style="--value:${Math.round((index+1)/set.questions.length*100)}%"></div></div><div class="topic-meta"><span>${escapeHtml(set.topic||setRecord(set.setId||set.quizId)?.title||'Saved set')}</span><span>${escapeHtml(question.questionTypeLabel||'UKMLA question')}</span></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'Select the single best answer.')}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-bank-option="${escapeHtml(option.id)}" ${answer?'disabled':''}><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div><div class="card-actions"><button class="btn" id="bank-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="bank-next">${index===set.questions.length-1?'Results':'Next'}</button></div>`:''}</article>`;
+    root.innerHTML=`<article class="quiz-card bank-player" data-shared-quiz-status><div class="bank-player-top"><button class="btn ghost" id="bank-back">← Question Bank</button><span data-shared-status-label>Question ${index+1} of ${set.questions.length}</span></div><div class="progress-track"><div class="progress-fill" data-shared-status-fill data-default-value="${Math.round((index+1)/set.questions.length*100)}" style="--value:${Math.round((index+1)/set.questions.length*100)}%"></div></div><div class="topic-meta"><span>${escapeHtml(set.topic||setRecord(set.setId||set.quizId)?.title||'Saved set')}</span><span data-shared-status-detail>${escapeHtml(question.questionTypeLabel||'UKMLA question')}</span></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'Select the single best answer.')}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-bank-option="${escapeHtml(option.id)}" ${answer?'disabled':''}><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div><div class="card-actions"><button class="btn" id="bank-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="bank-next">${index===set.questions.length-1?'Results':'Next'}</button></div>`:''}</article>`;
     root.dataset.activeQuestionTab='bank';
+    window.UKMLA_V2_AI?.refreshSharedStatus?.();
     root.querySelector('#bank-back').onclick=drawBank;
     root.querySelectorAll('[data-bank-option]').forEach(button=>button.onclick=()=>answerBankQuestion(button.dataset.bankOption));
     root.querySelector('#bank-prev')?.addEventListener('click',()=>renderPlayer(set,attemptById(current.attemptId),index-1));
@@ -535,6 +569,7 @@
     if(initialised||!core())return false;
     initialised=true;
     document.addEventListener('ukmlaLearningEvent',event=>void handleLearningEvent(event.detail));
+    document.addEventListener('ukmlaAiCompletedSetStored',event=>markUnseen(event.detail?.setId));
     void migrateLegacy().catch(error=>core()?.toast(`Storage migration paused: ${error.message}`));
     return true;
   }
@@ -544,6 +579,7 @@
   window.UKMLA_QUESTION_BANK={
     INDEX_KEY,ATTEMPTS_KEY,SET_PREFIX,SCHEMA,
     mount,storeSet,loadSet,removeSet,bankIndex,reconcileIndex,attempts,beginAttempt,attemptById,
+    unseenSetIds,unseenCount,markUnseen,markSeen,
     recordPresented,recordAnswer,completeAttempt,completedAttempts,rollingStats,sourceLabel,
     migrateLegacy,compactLegacyGeneratedSets
   };

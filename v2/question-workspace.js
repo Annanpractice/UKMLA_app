@@ -106,6 +106,22 @@
     }
   }
 
+  function updateQuestionsBadge(){
+    const count=Number(window.UKMLA_QUESTION_BANK?.unseenCount?.()||0);
+    document.querySelectorAll('[data-nav="quiz"]').forEach(button=>{
+      let badge=button.querySelector('.nav-unseen-badge');
+      if(!badge){
+        badge=document.createElement('span');
+        badge.className='nav-unseen-badge';
+        badge.setAttribute('aria-hidden','true');
+        button.appendChild(badge);
+      }
+      badge.textContent=count>9?'9+':String(count);
+      badge.hidden=count<1;
+      button.classList.toggle('has-unseen-question-set',count>0);
+    });
+  }
+
   function relabelNavigation(){
     document.querySelectorAll('[data-nav="quiz"]').forEach(button=>{
       const spans=button.querySelectorAll('span');
@@ -113,6 +129,7 @@
       setAttribute(button,'aria-label','Questions');
     });
     setText(document.getElementById('home-quiz'),'Start UKMLA questions');
+    updateQuestionsBadge();
   }
 
   function brandQuestionPage(){
@@ -210,9 +227,12 @@
     observer=new MutationObserver(schedule);
     observer.observe(app,{childList:true,subtree:true});
     window.addEventListener('hashchange',()=>setTimeout(schedule,0));
+    document.addEventListener('ukmlaQuestionBankChanged',updateQuestionsBadge);
+    document.addEventListener('ukmlaQuestionBankBadgeChanged',updateQuestionsBadge);
+    document.addEventListener('ukmlaAiCompletedSetStored',updateQuestionsBadge);
     schedule();
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-  window.UKMLA_QUESTION_WORKSPACE={openTab,applyBranding};
+  window.UKMLA_QUESTION_WORKSPACE={openTab,applyBranding,updateQuestionsBadge};
 })();
