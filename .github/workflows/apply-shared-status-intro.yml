@@ -25,6 +25,15 @@ jobs:
         id: apply
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('scripts/apply_shared_status_intro.py')
+          text=path.read_text(encoding='utf-8')
+          old="updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)"
+          new="updated, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.S)"
+          if old in text:
+              path.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
           set +e
           python scripts/apply_shared_status_intro.py > shared-status-patch.log 2>&1
           CODE=$?
@@ -37,16 +46,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ "${{ steps.apply.outputs.code }}" != "0" ]; then
             git restore v2/ai-ui.js v2/question-bank.js v2/question-workspace.js v2/app.html service-worker.js
-            git add shared-status-patch.log
+            git add scripts/apply_shared_status_intro.py shared-status-patch.log
             git commit -m "Record shared status patch mismatch"
             git push origin HEAD:agent/shared-quiz-status-intro
             exit 1
           fi
           rm -f shared-status-patch.log
-          if git diff --quiet; then
+          git add -A
+          if git diff --cached --quiet; then
             echo "Patch already applied"
             exit 0
           fi
-          git add v2/ai-ui.js v2/question-bank.js v2/question-workspace.js v2/app.html service-worker.js
           git commit -m "Share quiz progress with background generation"
           git push origin HEAD:agent/shared-quiz-status-intro
