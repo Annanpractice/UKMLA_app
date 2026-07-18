@@ -1,6 +1,8 @@
 name: Extract original intro first frame
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [agent/restore-original-intro-media]
   workflow_dispatch:
