@@ -4,7 +4,7 @@
 const SESSION_KEY='ukmlaIntroPlayedV2';
 const FADE_SECONDS=.5;
 const AUTOPLAY_GRACE_MS=1800;
-const MEDIA_TIMEOUT_MS=8000;
+const MEDIA_TIMEOUT_MS=6500;
 let finished=false;
 let playbackStarted=false;
 let sessionShouldBeMarked=false;
