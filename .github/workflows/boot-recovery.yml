@@ -1,0 +1,19 @@
+name: Card startup recovery
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  boot-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate startup JavaScript syntax
+        run: |
+          node --check v2/boot-recovery.js
+          node --check service-worker.js
+          node --check scripts/validate_boot_recovery.js
+      - name: Validate cache-first card startup
+        run: node scripts/validate_boot_recovery.js
