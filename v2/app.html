@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#03152b">
   <title>UKMLA Cards</title>
   <link rel="stylesheet" href="./v2/app.css?v=2">
-  <link rel="stylesheet" href="./v2/intro.css?v=1">
+  <link rel="stylesheet" href="./v2/intro.css?v=2">
   <script src="./v2/boot-recovery.js?v=1" defer></script>
-  <script src="./v2/intro.js?v=2" defer></script>
+  <script src="./v2/intro.js?v=3" defer></script>
   <link rel="stylesheet" href="./v2/psa.css?v=1">
   <link rel="stylesheet" href="./v2/psa-grounding.css?v=1">
   <link rel="stylesheet" href="./v2/biomedical.css?v=1">
@@ -18,8 +18,13 @@
 </head>
 <body>
   <div class="app-intro" id="app-intro" aria-label="UKMLA opening animation">
-    <video class="app-intro-video" id="app-intro-video" src="./assets/ukmla-intro.mp4" preload="auto" playsinline></video>
-    <button class="app-intro-play" id="app-intro-play" type="button" hidden>Tap to play intro</button>
+    <div class="app-intro-poster" id="app-intro-poster" aria-hidden="true">
+      <div class="app-intro-emblem">UKM</div>
+      <strong>UKMLA</strong>
+      <span>Dark card atlas</span>
+    </div>
+    <video class="app-intro-video" id="app-intro-video" src="./assets/ukmla-intro.mp4" preload="auto" muted autoplay playsinline></video>
+    <button class="app-intro-play" id="app-intro-play" type="button" hidden>Tap for sound</button>
     <button class="app-intro-skip" id="app-intro-skip" type="button">Skip</button>
   </div>
   <div id="app-shell">
