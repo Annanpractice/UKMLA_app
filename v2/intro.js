@@ -31,18 +31,36 @@ function initialise(){
     setTimeout(()=>removeOverlay(overlay),immediate?80:540);
   };
 
-  const start=async()=>{
-    if(playButton)playButton.hidden=true;
+  const showPlayButton=label=>{
+    if(!playButton)return;
+    playButton.textContent=label;
+    playButton.hidden=false;
+  };
+
+  const playMuted=async()=>{
     try{
+      video.muted=true;
+      video.volume=1;
+      await video.play();
+      overlay.classList.add('is-playing');
+      showPlayButton('Tap for sound');
+    }catch(_){
+      showPlayButton('Tap to play intro');
+      playButton?.focus({preventScroll:true});
+    }
+  };
+
+  const playWithSound=async(restart=true)=>{
+    if(playButton)playButton.hidden=true;
+    overlay.classList.remove('is-fading');
+    try{
+      if(restart)video.currentTime=0;
       video.muted=false;
       video.volume=1;
       await video.play();
       overlay.classList.add('is-playing');
     }catch(_){
-      if(playButton){
-        playButton.hidden=false;
-        playButton.focus({preventScroll:true});
-      }
+      await playMuted();
     }
   };
 
@@ -51,17 +69,17 @@ function initialise(){
     const remaining=video.duration-video.currentTime;
     if(remaining<=FADE_SECONDS){
       overlay.classList.add('is-fading');
-      video.volume=Math.max(0,Math.min(1,remaining/FADE_SECONDS));
+      if(!video.muted)video.volume=Math.max(0,Math.min(1,remaining/FADE_SECONDS));
     }
   });
   video.addEventListener('ended',()=>finish(false),{once:true});
   video.addEventListener('error',()=>finish(true),{once:true});
-  playButton?.addEventListener('click',start);
+  playButton?.addEventListener('click',()=>void playWithSound(true));
   skipButton?.addEventListener('click',()=>finish(false));
 
-  setTimeout(()=>{if(!finished&&video.paused&&playButton)playButton.hidden=false;},700);
+  setTimeout(()=>{if(!finished&&video.paused)void playMuted();},700);
   setTimeout(()=>{if(!finished)finish(false);},15000);
-  void start();
+  void playWithSound(false);
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialise,{once:true});
