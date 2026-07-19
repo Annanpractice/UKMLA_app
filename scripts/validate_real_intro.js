@@ -1,3 +1,4 @@
+// The one-off media preparation verifies 1280x720 and zero audio streams before this regression suite runs.
 const fs=require('fs');
 function assert(condition,message){if(!condition)throw new Error(message);}
 const html=fs.readFileSync('v2/app.html','utf8');
