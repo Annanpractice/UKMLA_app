@@ -1,6 +1,8 @@
 /* UKMLA Firebase remote sync layer.
    The pasted OpenAI API key is held only in ai-quiz.js memory and is never
    written to localStorage, Firebase, or this repository.
+   ElevenLabs voice settings are loaded by elevenlabs-voice.js and are excluded
+   from the Firebase watched-key list.
 */
 (function () {
   'use strict';
@@ -160,8 +162,19 @@
     document.head.appendChild(script);
   }
 
+  function loadElevenLabsVoiceInterface() {
+    if (document.querySelector('script[data-ukmla-elevenlabs-voice]')) return;
+    const script = document.createElement('script');
+    script.src = 'elevenlabs-voice.js?v=1';
+    script.defer = true;
+    script.dataset.ukmlaElevenlabsVoice = '1';
+    script.onerror = () => status('ElevenLabs voice interface could not be loaded.');
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     makeCloudBar();
     loadAiQuizInterface();
+    loadElevenLabsVoiceInterface();
   });
 })();
