@@ -1,5 +1,5 @@
-// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro ukmla-cards-v16-muted-intro-fallback ukmla-cards-v17-cache-first-card-startup ukmla-cards-v18-robust-mobile-intro ukmla-cards-v19-real-intro-only ukmla-cards-v20-optimised-real-intro ukmla-cards-v21-tap-first-frame-intro ukmla-cards-v22-original-resolution-intro ukmla-cards-v23-original-silent-intro ukmla-cards-v24-clinical-pharmacology ukmla-cards-v25-unlimited-api-repair
-const CACHE_NAME='ukmla-cards-v26-elevenlabs-handsfree';
+// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro ukmla-cards-v16-muted-intro-fallback ukmla-cards-v17-cache-first-card-startup ukmla-cards-v18-robust-mobile-intro ukmla-cards-v19-real-intro-only ukmla-cards-v20-optimised-real-intro ukmla-cards-v21-tap-first-frame-intro ukmla-cards-v22-original-resolution-intro ukmla-cards-v23-original-silent-intro ukmla-cards-v24-clinical-pharmacology ukmla-cards-v25-unlimited-api-repair ukmla-cards-v26-elevenlabs-handsfree
+const CACHE_NAME='ukmla-cards-v27-mobile-handsfree-scroll';
 const RUNTIME_CARD_CACHE='ukmla-runtime-card-data-v1';
 const CORE_ASSETS=[
   './','./index.html','./app.html','./data/conditions.json','./assets/ukmla-intro-first-frame.jpg',
