@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "ukmla-image-bank-v1",
+  "generatedAt": "2026-08-01T15:45:00Z",
+  "policy": {
+    "publicationRule": "Only explicitly reviewed CC0 or CC BY material may enter this approved manifest.",
+    "excludedCollections": [
+      "MedPix",
+      "Indiana U. Chest X-rays",
+      "Radiology Masterclass",
+      "unlicensed web images"
+    ],
+    "allowedLicences": ["CC0 1.0", "CC BY 4.0"]
+  },
+  "images": [
+    {
+      "imageId": "cxr-pneumothorax-ccby4-001",
+      "conditionAliases": ["pneumothorax", "spontaneous pneumothorax", "tension pneumothorax"],
+      "modality": "Chest radiograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Chest_X-ray_of_pneumothorax.png?width=1200",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chest_X-ray_of_pneumothorax.png",
+      "sourceName": "Wikimedia Commons / Journal of Medical Case Reports",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Alex Bonilla et al., Journal of Medical Case Reports, CC BY 4.0",
+      "neutralAlt": "A chest radiograph presented for clinical interpretation.",
+      "teachingFinding": "Pleural line with absent peripheral lung markings, compatible with pneumothorax.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "ct-appendicitis-ccby4-001",
+      "conditionAliases": ["appendicitis", "acute appendicitis"],
+      "modality": "Contrast-enhanced CT abdomen and pelvis",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Contrast-enhanced_CT_scan_(coronal)_of_abdomen_and_pelvis_showing_acute_appendicitis.jpg?width=1200",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Contrast-enhanced_CT_scan_(coronal)_of_abdomen_and_pelvis_showing_acute_appendicitis.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Goleisureintl, Wikimedia Commons, CC BY 4.0",
+      "neutralAlt": "A coronal contrast-enhanced CT image of the abdomen and pelvis for interpretation.",
+      "teachingFinding": "Dilated thick-walled appendix with periappendiceal inflammatory fat stranding.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-nodular-melanoma-ccby4-001",
+      "conditionAliases": ["melanoma", "malignant melanoma", "nodular melanoma"],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Photography_of_nodular_melanoma.jpg?width=1200",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Photography_of_nodular_melanoma.jpg",
+      "sourceName": "DermNetNZ / StatPearls via Wikimedia Commons",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "DermNetNZ, CC BY 4.0",
+      "neutralAlt": "A clinical skin photograph presented for diagnostic interpretation.",
+      "teachingFinding": "Raised irregular pigmented lesion with features concerning for nodular melanoma.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    }
+  ]
+}
