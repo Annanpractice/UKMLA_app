@@ -61,6 +61,24 @@
     },Math.min(delay,2147483647));
   }
 
+  function loadMedicalImageExtension(){
+    if(!document.querySelector('link[data-ukmla-image-bank]')){
+      const style=document.createElement('link');
+      style.rel='stylesheet';
+      style.href='./v2/image-bank.css?v=1';
+      style.dataset.ukmlaImageBank='1';
+      document.head.appendChild(style);
+    }
+    if(!document.querySelector('script[data-ukmla-image-bank]')){
+      const script=document.createElement('script');
+      script.src='./v2/image-bank.js?v=1';
+      script.async=false;
+      script.dataset.ukmlaImageBank='1';
+      document.head.appendChild(script);
+    }
+  }
+
   applyCurrentTheme();
+  loadMedicalImageExtension();
   scheduleMidnightRefresh();
 })();
