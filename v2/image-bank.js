@@ -1,9 +1,10 @@
 (function(){
   'use strict';
 
-  const MANIFEST_URL='./data/image-bank.json?v=1';
+  const MANIFEST_URL='./data/image-bank.json?v=2';
   const PREF_KEY='ukmlaImageQuestionsEnabledV1';
   const MAX_IMAGES_PER_SET=1;
+  const MAX_INIT_ATTEMPTS=240;
   const COMPATIBLE_TYPES=new Set([
     'sparse_most_likely_diagnosis',
     'close_mimic_discrimination',
@@ -19,7 +20,6 @@
   let patchReady=false;
   let activeBuildImages=[];
   let currentPresentation=null;
-  let observer=null;
 
   function core(){return window.UKMLA_V2;}
   function schema(){return window.UKMLA_V2_AI_SCHEMA;}
@@ -79,7 +79,7 @@
 
   function compareRank(left,right){
     const a=candidateRank(left),b=candidateRank(right);
-    for(let i=0;i<a.length;i++){if(a[i]!==b[i])return a[i]-b[i];}
+    for(let index=0;index<a.length;index++)if(a[index]!==b[index])return a[index]-b[index];
     return 0;
   }
 
@@ -132,23 +132,23 @@
   function imageInstruction(config){
     const rows=imageRows(config);
     if(!rows.length)return'';
-    return`\n\nMEDICAL IMAGE REQUIREMENT:\n${JSON.stringify(rows)}\nThe corresponding image inputs are attached in the same order. Each listed question must depend materially on visual interpretation of its image while retaining its assigned question type. Refer briefly to the image or modality in the stem. Do not state the target diagnosis or the hidden teaching finding in the stem or lead-in. Do not invent findings absent from the image. The application will attach immutable source and licence metadata after generation.`;
+    return`\n\nMEDICAL IMAGE REQUIREMENT:\n${JSON.stringify(rows)}\nThe corresponding image inputs are attached in the same order. Each listed question must depend materially on visual interpretation of its image while retaining its assigned question type. Refer briefly to the image or modality in the stem. Do not state the target diagnosis or hidden teaching finding in the stem or lead-in. Do not invent findings absent from the image. The application restores immutable source and licence metadata after generation.`;
   }
 
   function findConfig(args){return args.find(value=>value&&typeof value==='object'&&Array.isArray(value.conditions))||null;}
 
   function patchPrompts(api){
     const names=['generationPrompt','checkpointPrompt','repairPrompt','targetedRepairPrompt','sbaAuditPrompt','combinedCheckpointPrompt'];
-    names.forEach(name=>{
+    for(const name of names){
       const original=api[name];
-      if(typeof original!=='function'||original.__imagePatched)return;
+      if(typeof original!=='function'||original.__imagePatched)continue;
       const wrapped=function(...args){
         const output=original.apply(api,args);
         return typeof output==='string'?output+imageInstruction(findConfig(args)):output;
       };
       wrapped.__imagePatched=true;
       api[name]=wrapped;
-    });
+    }
   }
 
   function lockQuestionImages(set,config){
@@ -162,7 +162,8 @@
 
   function patchSchema(){
     const api=schema();
-    if(!api||api.__medicalImagePatched)return false;
+    if(!api)return false;
+    if(api.__medicalImagePatched)return true;
     api.__medicalImagePatched=true;
     patchPrompts(api);
     const originalValidate=api.validate.bind(api);
@@ -197,7 +198,9 @@
 
   function patchTransport(){
     const api=transport();
-    if(!api||api.__medicalImagePatched||typeof api.send!=='function')return false;
+    if(!api)return false;
+    if(api.__medicalImagePatched)return true;
+    if(typeof api.send!=='function')return false;
     api.__medicalImagePatched=true;
     const original=api.send.bind(api);
     api.send=(token,body)=>original(token,appendImageInputs(body));
@@ -206,7 +209,9 @@
 
   function patchEngine(){
     const api=engine();
-    if(!api||api.__medicalImagePatched||typeof api.runPipeline!=='function')return false;
+    if(!api)return false;
+    if(api.__medicalImagePatched)return true;
+    if(typeof api.runPipeline!=='function')return false;
     api.__medicalImagePatched=true;
     const original=api.runPipeline.bind(api);
     api.runPipeline=async config=>{
@@ -221,30 +226,6 @@
       }finally{activeBuildImages=[];}
     };
     return true;
-  }
-
-  function updateControlCount(){
-    const field=document.querySelector('.image-question-toggle');
-    const detail=field?.querySelector('small');
-    if(detail)detail.textContent=`${approvedImages().length} licence-reviewed pilot images; used only when a compatible target is available.`;
-  }
-
-  function mountControl(){
-    const workspace=document.querySelector('[data-ukmla-question-workspace="ai"]');
-    if(!workspace)return;
-    const existing=workspace.querySelector('#ai-image-questions');
-    if(existing){
-      existing.checked=enabled();
-      updateControlCount();
-      return;
-    }
-    const button=workspace.querySelector('#ai-start');
-    if(!button)return;
-    const field=document.createElement('label');
-    field.className='image-question-toggle';
-    field.innerHTML=`<input id="ai-image-questions" type="checkbox" ${enabled()?'checked':''}><span><strong>Include approved medical images</strong><small>${approvedImages().length} licence-reviewed pilot images; used only when a compatible target is available.</small></span>`;
-    button.before(field);
-    field.querySelector('input').onchange=event=>setEnabled(event.target.checked);
   }
 
   function findingHtml(image){
@@ -270,7 +251,17 @@
     if(!stem)return;
     stem.insertAdjacentHTML('beforebegin',figureHtml(image,currentPresentation.answered));
     const img=card.querySelector('.medical-question-image img');
-    if(img)img.onerror=()=>{img.closest('figure').classList.add('image-load-failed');img.replaceWith(Object.assign(document.createElement('p'),{textContent:'The image could not be loaded. Open the source link below.'}));};
+    if(img)img.onerror=()=>{
+      const figure=img.closest('figure');
+      figure?.classList.add('image-load-failed');
+      img.replaceWith(Object.assign(document.createElement('p'),{textContent:'The image could not be loaded. Open the source link below.'}));
+    };
+  }
+
+  function scheduleDecoration(){
+    requestAnimationFrame(decorateCurrentQuestion);
+    setTimeout(decorateCurrentQuestion,80);
+    setTimeout(decorateCurrentQuestion,220);
   }
 
   async function questionForEvent(event){
@@ -298,18 +289,20 @@
     }else if(event.kind==='answered'&&currentPresentation&&currentPresentation.quizId===event.quizId&&currentPresentation.questionId===String(event.questionId)){
       currentPresentation.answered=true;
     }else return;
-    requestAnimationFrame(()=>{decorateCurrentQuestion();setTimeout(decorateCurrentQuestion,80);});
+    scheduleDecoration();
   }
 
-  function initialisePatches(){
+  function initialisePatches(attempt=0){
     if(patchReady)return;
     const ready=patchSchema()&&patchTransport()&&patchEngine();
-    if(!ready){setTimeout(initialisePatches,80);return;}
+    if(!ready){
+      if(attempt<MAX_INIT_ATTEMPTS)setTimeout(()=>initialisePatches(attempt+1),50);
+      else console.error('UKMLA medical-image extension could not initialise its generation hooks.');
+      return;
+    }
     patchReady=true;
-    const app=document.getElementById('app');
-    if(app){observer=new MutationObserver(()=>{mountControl();decorateCurrentQuestion();});observer.observe(app,{childList:true,subtree:true});}
     document.addEventListener('ukmlaLearningEvent',event=>void handleLearningEvent(event.detail));
-    mountControl();
+    document.dispatchEvent(new CustomEvent('ukmlaImageGenerationHooksReady'));
   }
 
   const manifestPromise=fetch(MANIFEST_URL,{cache:'no-cache'})
@@ -317,14 +310,17 @@
     .then(value=>{
       manifest=value&&Array.isArray(value.images)?value:manifest;
       manifestReady=true;
-      mountControl();
-      updateControlCount();
       document.dispatchEvent(new CustomEvent('ukmlaImageBankReady',{detail:{count:approvedImages().length}}));
       return manifest;
     })
-    .catch(error=>{manifestReady=true;mountControl();updateControlCount();console.warn('UKMLA image bank unavailable:',error);return manifest;});
+    .catch(error=>{
+      manifestReady=true;
+      console.warn('UKMLA image bank unavailable:',error);
+      document.dispatchEvent(new CustomEvent('ukmlaImageBankReady',{detail:{count:0,error:true}}));
+      return manifest;
+    });
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialisePatches,{once:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initialisePatches(),{once:true});
   else initialisePatches();
 
   window.UKMLA_IMAGE_BANK={manifest:()=>manifest,approvedImages,imagesForCondition,prepareConditions,enabled,setEnabled};
