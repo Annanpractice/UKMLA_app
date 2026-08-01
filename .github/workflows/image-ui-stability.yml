@@ -1,0 +1,26 @@
+name: Medical image UI stability
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  stability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check image extension syntax
+        run: |
+          node --check v2/image-bank.js
+          node --check v2/image-mode-control.js
+          node --check v2/daily-theme.js
+      - name: Prove repeated mounts settle
+        run: node scripts/test-image-ui-stability.mjs

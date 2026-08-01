@@ -24,9 +24,7 @@
     }catch(_){return null;}
   }
 
-  function themeForDate(date=new Date()){
-    return THEMES[date.getDay()]||THEMES[1];
-  }
+  function themeForDate(date=new Date()){return THEMES[date.getDay()]||THEMES[1];}
 
   function applyTheme(theme,source='calendar'){
     const root=document.documentElement;
@@ -35,12 +33,7 @@
     root.style.colorScheme='dark';
     const meta=document.querySelector('meta[name="theme-color"]');
     if(meta)meta.setAttribute('content',theme.themeColor);
-    window.UKMLA_DAILY_THEME={
-      id:theme.id,
-      name:theme.name,
-      source,
-      themes:THEMES.map(item=>({id:item.id,name:item.name}))
-    };
+    window.UKMLA_DAILY_THEME={id:theme.id,name:theme.name,source,themes:THEMES.map(item=>({id:item.id,name:item.name}))};
     document.dispatchEvent(new CustomEvent('ukmlaDailyThemeChanged',{detail:window.UKMLA_DAILY_THEME}));
   }
 
@@ -55,10 +48,7 @@
     const next=new Date(now);
     next.setHours(24,0,2,0);
     const delay=Math.max(1000,next.getTime()-now.getTime());
-    setTimeout(()=>{
-      applyCurrentTheme();
-      scheduleMidnightRefresh();
-    },Math.min(delay,2147483647));
+    setTimeout(()=>{applyCurrentTheme();scheduleMidnightRefresh();},Math.min(delay,2147483647));
   }
 
   function appendStyle(href,attribute){
@@ -73,22 +63,26 @@
   function appendScript(src,attribute){
     if(document.querySelector(`script[${attribute}]`))return;
     const script=document.createElement('script');
-    script.src=src;
     script.async=false;
+    script.src=src;
     script.setAttribute(attribute,'1');
     document.head.appendChild(script);
   }
 
+  function medicalImagesDisabled(){
+    try{return new URLSearchParams(location.search).get('medicalImages')==='off';}
+    catch(_){return false;}
+  }
+
   function loadMedicalImageExtension(){
-    appendStyle('./v2/image-bank.css?v=1','data-ukmla-image-bank');
-    appendStyle('./v2/image-mode-control.css?v=1','data-ukmla-image-mode');
-    appendScript('./v2/image-bank.js?v=1','data-ukmla-image-bank');
-    appendScript('./v2/image-mode-control.js?v=1','data-ukmla-image-mode');
+    if(medicalImagesDisabled())return;
+    appendStyle('./v2/image-bank.css?v=2','data-ukmla-image-bank');
+    appendStyle('./v2/image-mode-control.css?v=2','data-ukmla-image-mode');
+    appendScript('./v2/image-bank.js?v=2','data-ukmla-image-bank');
+    appendScript('./v2/image-mode-control.js?v=2','data-ukmla-image-mode');
   }
 
   applyCurrentTheme();
-  // Emergency circuit-breaker: the image extension is temporarily disabled
-  // while its self-triggering MutationObservers are made idempotent.
-  window.UKMLA_MEDICAL_IMAGE_EXTENSION_DISABLED=true;
+  loadMedicalImageExtension();
   scheduleMidnightRefresh();
 })();
