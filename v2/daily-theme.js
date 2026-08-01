@@ -87,6 +87,8 @@
   }
 
   applyCurrentTheme();
-  loadMedicalImageExtension();
+  // Emergency circuit-breaker: the image extension is temporarily disabled
+  // while its self-triggering MutationObservers are made idempotent.
+  window.UKMLA_MEDICAL_IMAGE_EXTENSION_DISABLED=true;
   scheduleMidnightRefresh();
 })();
