@@ -1,0 +1,84 @@
+name: Medical image bank validation
+
+on:
+  pull_request:
+    paths:
+      - 'data/image-bank.json'
+      - 'v2/image-bank.js'
+      - 'v2/image-bank.css'
+      - 'v2/daily-theme.js'
+      - 'service-worker.js'
+      - 'scripts/build-openi-image-candidates.mjs'
+      - 'scripts/image-search-seeds.json'
+      - '.github/workflows/build-medical-image-candidates.yml'
+  workflow_dispatch:
+    inputs:
+      results_per_term:
+        description: Open-i results to inspect per search term
+        required: false
+        default: '8'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check v2/image-bank.js
+          node --check v2/daily-theme.js
+          node --check scripts/build-openi-image-candidates.mjs
+          node --check service-worker.js
+      - name: Validate approved image manifest policy
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const manifest=JSON.parse(fs.readFileSync('data/image-bank.json','utf8'));
+          const allowed=new Set(['CC0 1.0','CC BY 4.0']);
+          if(manifest.schemaVersion!=='ukmla-image-bank-v1')throw new Error('Unexpected image-bank schema.');
+          if(!Array.isArray(manifest.images)||!manifest.images.length)throw new Error('Approved manifest is empty.');
+          const ids=new Set();
+          for(const image of manifest.images){
+            if(ids.has(image.imageId))throw new Error(`Duplicate imageId: ${image.imageId}`);
+            ids.add(image.imageId);
+            if(image.approved!==true)throw new Error(`${image.imageId}: unapproved row in public manifest.`);
+            if(!allowed.has(image.licence))throw new Error(`${image.imageId}: licence is not allow-listed.`);
+            for(const field of ['imageUrl','sourcePage','licenceUrl']){
+              if(!/^https:\/\//.test(String(image[field]||'')))throw new Error(`${image.imageId}: invalid ${field}.`);
+            }
+            if(!Array.isArray(image.conditionAliases)||!image.conditionAliases.length)throw new Error(`${image.imageId}: condition aliases missing.`);
+            if(!image.attribution||!image.neutralAlt||!image.teachingFinding)throw new Error(`${image.imageId}: required education metadata missing.`);
+          }
+          console.log(`Validated ${manifest.images.length} approved images.`);
+          NODE
+      - name: Validate search terms
+        run: node -e "const x=require('./scripts/image-search-seeds.json'); if(!Array.isArray(x.terms)||x.terms.length<1) process.exit(1); console.log(x.terms.length+' search terms');"
+
+  catalogue:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Query Open-i into a non-publishing review catalogue
+        env:
+          OPENI_RESULTS_PER_TERM: ${{ inputs.results_per_term }}
+        run: node scripts/build-openi-image-candidates.mjs
+      - name: Upload review catalogue
+        uses: actions/upload-artifact@v4
+        with:
+          name: openi-image-candidates
+          path: artifacts/openi-image-candidates.json
+          if-no-files-found: error
+          retention-days: 14

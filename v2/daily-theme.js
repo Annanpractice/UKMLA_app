@@ -61,6 +61,32 @@
     },Math.min(delay,2147483647));
   }
 
+  function appendStyle(href,attribute){
+    if(document.querySelector(`link[${attribute}]`))return;
+    const style=document.createElement('link');
+    style.rel='stylesheet';
+    style.href=href;
+    style.setAttribute(attribute,'1');
+    document.head.appendChild(style);
+  }
+
+  function appendScript(src,attribute){
+    if(document.querySelector(`script[${attribute}]`))return;
+    const script=document.createElement('script');
+    script.src=src;
+    script.async=false;
+    script.setAttribute(attribute,'1');
+    document.head.appendChild(script);
+  }
+
+  function loadMedicalImageExtension(){
+    appendStyle('./v2/image-bank.css?v=1','data-ukmla-image-bank');
+    appendStyle('./v2/image-mode-control.css?v=1','data-ukmla-image-mode');
+    appendScript('./v2/image-bank.js?v=1','data-ukmla-image-bank');
+    appendScript('./v2/image-mode-control.js?v=1','data-ukmla-image-mode');
+  }
+
   applyCurrentTheme();
+  loadMedicalImageExtension();
   scheduleMidnightRefresh();
 })();
