@@ -79,6 +79,17 @@
     let prepared=preparedConditions(source,questionTypes);
     if(hasImage(prepared))return prepared;
 
+    const selectedImageIndex=source.findIndex(condition=>imageBank()?.imagesForCondition?.(condition)?.length);
+    const compatibleSwapIndex=source.findIndex((_,index)=>
+      index!==selectedImageIndex&&COMPATIBLE_TYPES.has(questionTypes?.[index])
+    );
+    if(selectedImageIndex>=0&&compatibleSwapIndex>=0){
+      const swapped=source.map(condition=>({...condition}));
+      [swapped[selectedImageIndex],swapped[compatibleSwapIndex]]=[swapped[compatibleSwapIndex],swapped[selectedImageIndex]];
+      prepared=preparedConditions(swapped,questionTypes);
+      if(hasImage(prepared))return prepared;
+    }
+
     const topicIds=new Set(source.map(condition=>condition.topicId).filter(Boolean));
     if(topicIds.size<=1){
       const topic=source[0]?.topic||source[0]?.topicName||'this topic';
