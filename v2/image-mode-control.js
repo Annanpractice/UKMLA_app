@@ -129,7 +129,7 @@
 
   function patchEngine(){
     const api=engine();
-    if(!api||!imageBank()||api.__medicalImageModePatched||typeof api.runPipeline!=='function')return false;
+    if(!api||!api.__medicalImagePatched||!imageBank()||api.__medicalImageModePatched||typeof api.runPipeline!=='function')return false;
     api.__medicalImageModePatched=true;
     const original=api.runPipeline.bind(api);
     api.runPipeline=async config=>{
