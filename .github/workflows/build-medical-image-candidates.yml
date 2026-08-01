@@ -1,0 +1,33 @@
+name: Build medical image candidates
+
+on:
+  workflow_dispatch:
+    inputs:
+      results_per_term:
+        description: Open-i results to inspect per search term
+        required: false
+        default: '8'
+
+permissions:
+  contents: read
+
+jobs:
+  catalogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Query Open-i into a non-publishing review catalogue
+        env:
+          OPENI_RESULTS_PER_TERM: ${{ inputs.results_per_term }}
+        run: node scripts/build-openi-image-candidates.mjs
+      - name: Upload review catalogue
+        uses: actions/upload-artifact@v4
+        with:
+          name: openi-image-candidates
+          path: artifacts/openi-image-candidates.json
+          if-no-files-found: error
+          retention-days: 14
