@@ -1,6 +1,6 @@
 {
   "schemaVersion": "ukmla-image-bank-v1",
-  "generatedAt": "2026-08-01T16:05:00Z",
+  "generatedAt": "2026-08-01T16:10:00Z",
   "policy": {
     "publicationRule": "Only explicitly reviewed CC0 or CC BY material with clear educational relevance may enter this approved manifest.",
     "excludedCollections": [
@@ -16,7 +16,7 @@
       "imageId": "cxr-pneumothorax-ccby4-001",
       "conditionAliases": ["pneumothorax", "spontaneous pneumothorax", "tension pneumothorax"],
       "modality": "Chest radiograph",
-      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Chest_X-ray_of_pneumothorax.png?width=1200",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Chest_X-ray_of_pneumothorax.png",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Chest_X-ray_of_pneumothorax.png",
       "sourceName": "Wikimedia Commons / Journal of Medical Case Reports",
       "licence": "CC BY 4.0",
@@ -31,7 +31,7 @@
       "imageId": "cxr-haemothorax-ccby4-001",
       "conditionAliases": ["haemothorax", "hemothorax", "traumatic haemothorax", "traumatic hemothorax"],
       "modality": "Portable chest radiograph",
-      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Hemothorax.jpg?width=1200",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Hemothorax.jpg",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Hemothorax.jpg",
       "sourceName": "Wikimedia Commons / International Journal of Surgery Case Reports",
       "licence": "CC BY 4.0",
@@ -46,7 +46,7 @@
       "imageId": "clinical-nodular-melanoma-ccby4-001",
       "conditionAliases": ["melanoma", "malignant melanoma", "nodular melanoma"],
       "modality": "Clinical photograph",
-      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Photography_of_nodular_melanoma.jpg?width=1200",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Photography_of_nodular_melanoma.jpg",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Photography_of_nodular_melanoma.jpg",
       "sourceName": "DermNetNZ / StatPearls via Wikimedia Commons",
       "licence": "CC BY 4.0",
