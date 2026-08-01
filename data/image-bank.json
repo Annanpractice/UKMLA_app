@@ -1,6 +1,6 @@
 {
   "schemaVersion": "ukmla-image-bank-v1",
-  "generatedAt": "2026-08-01T16:10:00Z",
+  "generatedAt": "2026-08-01T17:20:00Z",
   "policy": {
     "publicationRule": "Only explicitly reviewed CC0 or CC BY material with clear educational relevance may enter this approved manifest.",
     "excludedCollections": [
@@ -9,12 +9,19 @@
       "Radiology Masterclass",
       "unlicensed web images"
     ],
-    "allowedLicences": ["CC0 1.0", "CC BY 4.0"]
+    "allowedLicences": [
+      "CC0 1.0",
+      "CC BY 4.0"
+    ]
   },
   "images": [
     {
       "imageId": "cxr-pneumothorax-ccby4-001",
-      "conditionAliases": ["pneumothorax", "spontaneous pneumothorax", "tension pneumothorax"],
+      "conditionAliases": [
+        "pneumothorax",
+        "spontaneous pneumothorax",
+        "tension pneumothorax"
+      ],
       "modality": "Chest radiograph",
       "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Chest_X-ray_of_pneumothorax.png",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Chest_X-ray_of_pneumothorax.png",
@@ -29,7 +36,12 @@
     },
     {
       "imageId": "cxr-haemothorax-ccby4-001",
-      "conditionAliases": ["haemothorax", "hemothorax", "traumatic haemothorax", "traumatic hemothorax"],
+      "conditionAliases": [
+        "haemothorax",
+        "hemothorax",
+        "traumatic haemothorax",
+        "traumatic hemothorax"
+      ],
       "modality": "Portable chest radiograph",
       "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Hemothorax.jpg",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Hemothorax.jpg",
@@ -44,7 +56,11 @@
     },
     {
       "imageId": "clinical-nodular-melanoma-ccby4-001",
-      "conditionAliases": ["melanoma", "malignant melanoma", "nodular melanoma"],
+      "conditionAliases": [
+        "melanoma",
+        "malignant melanoma",
+        "nodular melanoma"
+      ],
       "modality": "Clinical photograph",
       "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Photography_of_nodular_melanoma.jpg",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Photography_of_nodular_melanoma.jpg",
@@ -54,6 +70,231 @@
       "attribution": "DermNetNZ, CC BY 4.0",
       "neutralAlt": "A clinical skin photograph presented for diagnostic interpretation.",
       "teachingFinding": "Raised irregular pigmented lesion with features concerning for nodular melanoma.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "cxr-bronchopneumonia-ccby4-001",
+      "conditionAliases": [
+        "bronchopneumonia",
+        "pneumonia",
+        "community acquired pneumonia",
+        "community-acquired pneumonia",
+        "hospital acquired pneumonia",
+        "hospital-acquired pneumonia",
+        "aspiration pneumonia"
+      ],
+      "modality": "Chest radiograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X-ray%20of%20bronchopneumonia.png",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:X-ray%20of%20bronchopneumonia.png",
+      "sourceName": "Wikimedia Commons / IDKD Springer Series",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "T. Franquet and J. H. Chung, CC BY 4.0",
+      "neutralAlt": "A posteroanterior chest radiograph presented for clinical interpretation.",
+      "teachingFinding": "Multifocal bilateral patchy air-space consolidation consistent with bronchopneumonia.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "ecg-anterior-stemi-ccby4-001",
+      "conditionAliases": [
+        "ST elevation myocardial infarction",
+        "ST-elevation myocardial infarction",
+        "STEMI",
+        "acute myocardial infarction",
+        "anterior myocardial infarction",
+        "acute coronary syndrome"
+      ],
+      "modality": "12-lead electrocardiogram",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/ST%20elevation%20myocardial%20infarction%20ECG.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:ST%20elevation%20myocardial%20infarction%20ECG.jpg",
+      "sourceName": "Wikimedia Commons / Cureus",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Cureus 2018 article authors, CC BY 4.0",
+      "neutralAlt": "A 12-lead electrocardiogram presented for clinical interpretation.",
+      "teachingFinding": "Marked ST-segment elevation across the anterior precordial leads, consistent with an anterior STEMI.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "fundus-diabetic-retinopathy-ccby4-001",
+      "conditionAliases": [
+        "diabetic retinopathy",
+        "background diabetic retinopathy",
+        "non-proliferative diabetic retinopathy",
+        "nonproliferative diabetic retinopathy",
+        "proliferative diabetic retinopathy"
+      ],
+      "modality": "Fundus photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Fundus%20-%20diabetic%20retinopathy.png",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Fundus%20-%20diabetic%20retinopathy.png",
+      "sourceName": "Wikimedia Commons / PLOS ONE",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Hao et al., PLOS ONE, CC BY 4.0",
+      "neutralAlt": "A retinal fundus photograph presented for clinical interpretation.",
+      "teachingFinding": "Retinal microaneurysms, small haemorrhages and hard exudates compatible with diabetic retinopathy.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-superficial-bcc-cc0-001",
+      "conditionAliases": [
+        "basal cell carcinoma",
+        "basal-cell carcinoma",
+        "BCC",
+        "non-melanoma skin cancer",
+        "non melanoma skin cancer"
+      ],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Superficial%20basal%20cell%20carcinoma.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Superficial%20basal%20cell%20carcinoma.jpg",
+      "sourceName": "Wikimedia Commons / US National Cancer Institute",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Kelly Nelson, M.D., National Cancer Institute, CC0 1.0",
+      "neutralAlt": "A clinical skin photograph presented for diagnostic interpretation.",
+      "teachingFinding": "A reddish-brown, slightly raised superficial lesion with an appearance consistent with basal-cell carcinoma.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-erythema-migrans-cc0-001",
+      "conditionAliases": [
+        "erythema migrans",
+        "Lyme disease",
+        "lyme borreliosis",
+        "Borrelia burgdorferi infection"
+      ],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Atypical%20erythema%20migrans%201%20week%20after%20initial%20presentation.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Atypical%20erythema%20migrans%201%20week%20after%20initial%20presentation.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Mikael Häggström, M.D., CC0 1.0",
+      "neutralAlt": "A clinical photograph of an erythematous skin lesion presented for interpretation.",
+      "teachingFinding": "An enlarging erythematous plaque that later evolved into a more typical erythema migrans pattern.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-bells-palsy-cc0-001",
+      "conditionAliases": [
+        "Bell's palsy",
+        "Bells palsy",
+        "facial nerve palsy",
+        "lower motor neurone facial palsy",
+        "lower motor neuron facial palsy"
+      ],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bell%27s%20Palsy%20smiling.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Bell%27s%20Palsy%20smiling.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Shantoo, CC0 1.0",
+      "neutralAlt": "A facial movement photograph presented for neurological interpretation.",
+      "teachingFinding": "Unilateral lower motor neurone facial weakness producing asymmetry while smiling.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "xray-hip-fracture-cc0-001",
+      "conditionAliases": [
+        "hip fracture",
+        "neck of femur fracture",
+        "femoral neck fracture",
+        "intracapsular hip fracture",
+        "fractured neck of femur"
+      ],
+      "modality": "Hip radiograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X-ray%20of%20mildly%20compressed%20hip%20fracture.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:X-ray%20of%20mildly%20compressed%20hip%20fracture.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Mikael Häggström, M.D., CC0 1.0",
+      "neutralAlt": "A hip radiograph presented for clinical interpretation.",
+      "teachingFinding": "A subtle impacted or compressed femoral-neck fracture.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-inverse-psoriasis-cc0-001",
+      "conditionAliases": [
+        "psoriasis",
+        "inverse psoriasis",
+        "flexural psoriasis",
+        "intertriginous psoriasis"
+      ],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Inverse%20psoriasis.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Inverse%20psoriasis.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Ahithopel, CC0 1.0",
+      "neutralAlt": "A clinical photograph of a flexural skin eruption presented for interpretation.",
+      "teachingFinding": "A smooth erythematous plaque in a skin fold with relatively little surface scale, consistent with inverse psoriasis.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "clinical-scabies-hand-cc0-001",
+      "conditionAliases": [
+        "scabies",
+        "Sarcoptes scabiei infestation",
+        "scabies infestation"
+      ],
+      "modality": "Clinical photograph",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Scabies%20on%20an%20adult%20hand%2001.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Scabies%20on%20an%20adult%20hand%2001.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC0 1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Taofeeq Abdulkareem, CC0 1.0",
+      "neutralAlt": "A clinical photograph of a hand rash presented for interpretation.",
+      "teachingFinding": "Papular and excoriated lesions on the hand in a distribution compatible with scabies.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "cxr-bilateral-pleural-effusions-ccby4-001",
+      "conditionAliases": [
+        "pleural effusion",
+        "bilateral pleural effusions",
+        "pleural fluid"
+      ],
+      "modality": "Two-view chest radiographs",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Two-view%20chest%20radiograph%20depicting%20bilateral%20pleural%20effusions.webp",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Two-view%20chest%20radiograph%20depicting%20bilateral%20pleural%20effusions.webp",
+      "sourceName": "Wikimedia Commons / Journal of Medical Case Reports",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Chloe Kupelian, CC BY 4.0",
+      "neutralAlt": "Frontal and lateral chest radiographs presented for clinical interpretation.",
+      "teachingFinding": "Bilateral dependent pleural fluid with basal veiling and blunting of the costophrenic angles.",
+      "approved": true,
+      "reviewedAt": "2026-08-01"
+    },
+    {
+      "imageId": "ct-acute-appendicitis-ccby4-001",
+      "conditionAliases": [
+        "appendicitis",
+        "acute appendicitis"
+      ],
+      "modality": "Contrast-enhanced CT abdomen and pelvis",
+      "imageUrl": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Contrast-enhanced%20CT%20scan%20%28coronal%29%20of%20abdomen%20and%20pelvis%20showing%20acute%20appendicitis.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Contrast-enhanced%20CT%20scan%20%28coronal%29%20of%20abdomen%20and%20pelvis%20showing%20acute%20appendicitis.jpg",
+      "sourceName": "Wikimedia Commons",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Goleisureintl, CC BY 4.0",
+      "neutralAlt": "A coronal contrast-enhanced CT image of the abdomen and pelvis presented for interpretation.",
+      "teachingFinding": "A dilated thick-walled appendix with surrounding periappendiceal fat stranding, consistent with acute appendicitis.",
       "approved": true,
       "reviewedAt": "2026-08-01"
     }

@@ -2,7 +2,9 @@
 
 ## Scope
 
-The first release is a deliberately small pilot. It adds at most one medical image to a generated ten-question UKMLA set and only when the selected condition and question type are suitable for visual interpretation.
+The image bank remains a curated pilot. It adds at most one medical image to a generated ten-question UKMLA set and only when the selected condition and question type are suitable for visual interpretation.
+
+The current approved manifest contains 14 images mapped to pneumothorax, haemothorax, melanoma, pneumonia, STEMI, diabetic retinopathy, basal-cell carcinoma, erythema migrans, Bell's palsy, hip fracture, psoriasis, scabies, pleural effusion and acute appendicitis.
 
 ## Approved manifest
 
@@ -38,14 +40,15 @@ When image questions are enabled:
 
 1. the normal answered-coverage scheduler selects ten conditions;
 2. a compatible selected condition receives an approved image where available;
-3. if none matches, one condition may be replaced only by an image-backed condition from the same topic, prioritising uncovered and least-answered conditions;
-4. the approved image is sent to the OpenAI Responses request as an `input_image`;
-5. every model checkpoint receives the same image and locked target metadata;
-6. deterministic validation requires the stem to refer to the image or modality, prohibits writing the target diagnosis in the stem, and restores immutable image metadata after every model call;
-7. the rendered question shows the image, attribution and licence; the teaching finding appears only after an answer.
+3. **Prefer one** may replace a condition only with an image-backed condition from the same topic;
+4. **Require exactly one** first tries a direct match, then a compatible-slot move and same-topic replacement; in all-topic builds it may finally select another image-backed condition while preserving topic diversity;
+5. the approved image is sent to the OpenAI Responses request as an `input_image`;
+6. every model checkpoint receives the same image and locked target metadata;
+7. deterministic validation requires the stem to refer to the image or modality, prohibits writing the target diagnosis in the stem, and restores immutable image metadata after every model call;
+8. the rendered question shows the image, attribution and licence; the teaching finding appears only after an answer.
 
 The image does not bypass any existing generation, audit, distractor, repair, shuffle or final-validation checkpoint.
 
 ## Failure behaviour
 
-If the manifest or an image cannot be loaded, ordinary text-only generation continues. The question renderer provides a source link when an externally hosted image fails. No progress data or API key is stored by this feature.
+If the manifest or an image cannot be loaded, **Prefer one** can continue as text-only generation. **Require exactly one** stops before the OpenAI request when no approved image can be placed. The question renderer provides a source link when an externally hosted image fails. No progress data or API key is stored by this feature.
