@@ -4,6 +4,7 @@
   const MODE_KEY='ukmlaImageQuestionModeV1';
   const LEGACY_KEY='ukmlaImageQuestionsEnabledV1';
   const MODES=new Set(['off','prefer','require']);
+  const MAX_INIT_ATTEMPTS=240;
   const COMPATIBLE_TYPES=new Set([
     'sparse_most_likely_diagnosis',
     'close_mimic_discrimination',
@@ -13,13 +14,19 @@
     'escalation_referral_disposition'
   ]);
 
-  let patched=false;
-  let observer=null;
+  let enginePatched=false;
+  let aiMountPatched=false;
+  let listenersBound=false;
+  let mountScheduled=false;
 
   function core(){return window.UKMLA_V2;}
   function engine(){return window.UKMLA_V2_AI_ENGINE;}
   function imageBank(){return window.UKMLA_IMAGE_BANK;}
   function clean(value){return String(value??'').replace(/\s+/g,' ').trim();}
+  function setText(node,value){if(node&&node.textContent!==value){node.textContent=value;return true;}return false;}
+  function setValue(node,value){if(node&&node.value!==value){node.value=value;return true;}return false;}
+  function setHidden(node,value){if(node&&node.hidden!==value){node.hidden=value;return true;}return false;}
+  function setDisabled(node,value){if(node&&node.disabled!==value){node.disabled=value;return true;}return false;}
 
   function mode(){
     const stored=clean(localStorage.getItem(MODE_KEY)).toLowerCase();
@@ -29,12 +36,13 @@
 
   function syncLegacyPreference(value){
     imageBank()?.setEnabled?.(value!=='off');
-    localStorage.setItem(LEGACY_KEY,value==='off'?'0':'1');
+    const legacy=value==='off'?'0':'1';
+    if(localStorage.getItem(LEGACY_KEY)!==legacy)localStorage.setItem(LEGACY_KEY,legacy);
   }
 
   function setMode(value){
     const next=MODES.has(value)?value:'prefer';
-    localStorage.setItem(MODE_KEY,next);
+    if(localStorage.getItem(MODE_KEY)!==next)localStorage.setItem(MODE_KEY,next);
     syncLegacyPreference(next);
     updateControl();
     document.dispatchEvent(new CustomEvent('ukmlaImageQuestionModeChanged',{detail:{mode:next}}));
@@ -53,17 +61,12 @@
 
   function compareRank(left,right){
     const a=candidateRank(left),b=candidateRank(right);
-    for(let index=0;index<a.length;index++){
-      if(a[index]!==b[index])return a[index]-b[index];
-    }
+    for(let index=0;index<a.length;index++)if(a[index]!==b[index])return a[index]-b[index];
     return 0;
   }
 
   function hasImage(conditions){return (conditions||[]).some(condition=>Boolean(condition?.image));}
-
-  function preparedConditions(conditions,questionTypes){
-    return imageBank()?.prepareConditions?.(conditions,questionTypes)||(conditions||[]).map(condition=>({...condition}));
-  }
+  function preparedConditions(conditions,questionTypes){return imageBank()?.prepareConditions?.(conditions,questionTypes)||(conditions||[]).map(condition=>({...condition}));}
 
   function stripImages(conditions){
     return (conditions||[]).map(condition=>{
@@ -80,9 +83,7 @@
     if(hasImage(prepared))return prepared;
 
     const selectedImageIndex=source.findIndex(condition=>imageBank()?.imagesForCondition?.(condition)?.length);
-    const compatibleSwapIndex=source.findIndex((_,index)=>
-      index!==selectedImageIndex&&COMPATIBLE_TYPES.has(questionTypes?.[index])
-    );
+    const compatibleSwapIndex=source.findIndex((_,index)=>index!==selectedImageIndex&&COMPATIBLE_TYPES.has(questionTypes?.[index]));
     if(selectedImageIndex>=0&&compatibleSwapIndex>=0){
       const swapped=source.map(condition=>({...condition}));
       [swapped[selectedImageIndex],swapped[compatibleSwapIndex]]=[swapped[compatibleSwapIndex],swapped[selectedImageIndex]];
@@ -98,14 +99,10 @@
 
     const all=core()?.App?.conditions||[];
     const usedConditions=new Set(source.map(condition=>condition.id||condition.conditionId));
-    const compatibleSlots=source.map((condition,index)=>({condition,index}))
-      .filter(item=>COMPATIBLE_TYPES.has(questionTypes?.[item.index]));
+    const compatibleSlots=source.map((condition,index)=>({condition,index})).filter(item=>COMPATIBLE_TYPES.has(questionTypes?.[item.index]));
 
     for(const slot of compatibleSlots){
-      const occupiedTopics=new Set(source
-        .filter((_,index)=>index!==slot.index)
-        .map(condition=>condition.topicId)
-        .filter(Boolean));
+      const occupiedTopics=new Set(source.filter((_,index)=>index!==slot.index).map(condition=>condition.topicId).filter(Boolean));
       const replacements=all.filter(condition=>
         !usedConditions.has(condition.id)&&
         !occupiedTopics.has(condition.topicId)&&
@@ -140,7 +137,8 @@
 
   function patchEngine(){
     const api=engine();
-    if(!api||!api.__medicalImagePatched||!imageBank()||api.__medicalImageModePatched||typeof api.runPipeline!=='function')return false;
+    if(!api||!api.__medicalImagePatched||!imageBank()||typeof api.runPipeline!=='function')return false;
+    if(api.__medicalImageModePatched){enginePatched=true;return true;}
     api.__medicalImageModePatched=true;
     const original=api.runPipeline.bind(api);
     api.runPipeline=async config=>{
@@ -155,18 +153,20 @@
         return original(config);
       }
 
-      const conditions=selectedMode==='require'
-        ?requireImageConditions(config.conditions,config.questionTypes)
-        :config.conditions;
+      const conditions=selectedMode==='require'?requireImageConditions(config.conditions,config.questionTypes):config.conditions;
       const set=await original({...config,conditions});
       const count=Number(set?.imageBank?.imageCount)||0;
-      if(selectedMode==='require'&&count!==1){
-        throw new Error('The build did not preserve exactly one approved image question, so it was not saved.');
-      }
+      if(selectedMode==='require'&&count!==1)throw new Error('The build did not preserve exactly one approved image question, so it was not saved.');
       set.imageBank={...(set.imageBank||{}),mode:selectedMode,required:selectedMode==='require'};
       return set;
     };
+    enginePatched=true;
     return true;
+  }
+
+  function resolveWorkspace(root){
+    if(root?.matches?.('[data-ukmla-question-workspace="ai"]'))return root;
+    return root?.querySelector?.('[data-ukmla-question-workspace="ai"]')||document.querySelector('[data-ukmla-question-workspace="ai"]');
   }
 
   function scopePool(workspace){
@@ -180,7 +180,7 @@
 
   function availability(workspace){
     const bank=imageBank();
-    if(!bank)return 0;
+    if(!bank||!workspace)return 0;
     return scopePool(workspace).filter(condition=>bank.imagesForCondition?.(condition)?.length).length;
   }
 
@@ -193,69 +193,107 @@
     return'No approved image-backed condition is available in this scope. The build will stop before contacting OpenAI.';
   }
 
-  function updateControl(){
-    const workspace=document.querySelector('[data-ukmla-question-workspace="ai"]');
-    if(!workspace)return;
+  function updateControl(root){
+    const workspace=resolveWorkspace(root);
+    if(!workspace)return false;
     const select=workspace.querySelector('#ai-image-mode');
-    if(select&&select.value!==mode())select.value=mode();
-    const detail=workspace.querySelector('#ai-image-mode-detail');
-    if(detail)detail.textContent=helperText(workspace);
-    const legacy=workspace.querySelector('.image-question-toggle');
-    if(legacy)legacy.hidden=true;
+    setValue(select,mode());
+    setText(workspace.querySelector('#ai-image-mode-detail'),helperText(workspace));
+    setHidden(workspace.querySelector('.image-question-toggle'),true);
+    const scopeSelect=workspace.querySelector('#ai-mode');
+    setDisabled(select,Boolean(scopeSelect?.disabled||workspace.querySelector('#ai-start')?.disabled));
+    return true;
   }
 
-  function mountControl(){
-    const workspace=document.querySelector('[data-ukmla-question-workspace="ai"]');
-    if(!workspace)return;
-    const legacy=workspace.querySelector('.image-question-toggle');
-    if(legacy)legacy.hidden=true;
+  function mountControl(root){
+    const workspace=resolveWorkspace(root);
+    if(!workspace)return false;
+    setHidden(workspace.querySelector('.image-question-toggle'),true);
 
     const existing=workspace.querySelector('#ai-image-mode');
-    if(existing){updateControl();return;}
+    if(existing){updateControl(workspace);return true;}
 
     const scopeSelect=workspace.querySelector('#ai-mode');
     const scopeField=scopeSelect?.closest('.field');
-    if(!scopeSelect||!scopeField)return;
+    if(!scopeSelect||!scopeField)return false;
 
     let row=workspace.querySelector('.image-scope-row');
     if(!row){
       row=document.createElement('div');
       row.className='image-scope-row';
       scopeField.before(row);
-      scopeField.style.marginTop='0';
+      if(scopeField.style.marginTop!=='0px'&&scopeField.style.marginTop!=='0')scopeField.style.marginTop='0';
       row.appendChild(scopeField);
-    }
+    }else if(scopeField.parentElement!==row)row.insertBefore(scopeField,row.firstChild||null);
 
     const field=document.createElement('div');
     field.className='field image-mode-field';
-    field.innerHTML=`<label for="ai-image-mode">Medical images</label><select class="select" id="ai-image-mode"><option value="off">Off</option><option value="prefer">Prefer one</option><option value="require">Require exactly one</option></select><small class="question-source-note" id="ai-image-mode-detail"></small>`;
+    field.innerHTML='<label for="ai-image-mode">Medical images</label><select class="select" id="ai-image-mode"><option value="off">Off</option><option value="prefer">Prefer one</option><option value="require">Require exactly one</option></select><small class="question-source-note" id="ai-image-mode-detail"></small>';
     row.appendChild(field);
 
     const select=field.querySelector('#ai-image-mode');
-    select.value=mode();
-    select.disabled=Boolean(scopeSelect.disabled||workspace.querySelector('#ai-start')?.disabled);
     select.addEventListener('change',event=>setMode(event.target.value));
-    scopeSelect.addEventListener('change',()=>setTimeout(updateControl,0));
-    workspace.querySelector('#ai-topic')?.addEventListener('change',updateControl);
-    updateControl();
+    if(scopeSelect.dataset.ukmlaImageModeBound!=='1'){
+      scopeSelect.dataset.ukmlaImageModeBound='1';
+      scopeSelect.addEventListener('change',()=>scheduleMount(workspace));
+    }
+    const topic=workspace.querySelector('#ai-topic');
+    if(topic&&topic.dataset.ukmlaImageModeBound!=='1'){
+      topic.dataset.ukmlaImageModeBound='1';
+      topic.addEventListener('change',()=>scheduleMount(workspace));
+    }
+    workspace.dataset.ukmlaImageModeMounted='1';
+    updateControl(workspace);
+    document.dispatchEvent(new CustomEvent('ukmlaImageModeMounted',{detail:{workspace}}));
+    return true;
   }
 
-  function initialise(){
-    if(!patched){
-      if(!patchEngine()){setTimeout(initialise,80);return;}
-      patched=true;
-      syncLegacyPreference(mode());
+  function scheduleMount(root){
+    if(mountScheduled)return;
+    mountScheduled=true;
+    requestAnimationFrame(()=>{
+      mountScheduled=false;
+      mountControl(root);
+    });
+  }
+
+  function patchAiMount(){
+    const api=window.UKMLA_V2_AI;
+    if(!api||typeof api.mount!=='function')return false;
+    if(api.mount.__medicalImageModePatched){aiMountPatched=true;return true;}
+    const original=api.mount.bind(api);
+    const wrapped=function(container,...args){
+      const result=original(container,...args);
+      mountControl(container);
+      return result;
+    };
+    wrapped.__medicalImageModePatched=true;
+    api.mount=wrapped;
+    aiMountPatched=true;
+    return true;
+  }
+
+  function bindLifecycleListeners(){
+    if(listenersBound)return;
+    listenersBound=true;
+    document.addEventListener('ukmlaImageBankReady',()=>scheduleMount());
+    window.addEventListener('hashchange',()=>scheduleMount());
+  }
+
+  function initialise(attempt=0){
+    const ready=patchEngine()&&patchAiMount();
+    if(!ready){
+      if(attempt<MAX_INIT_ATTEMPTS)setTimeout(()=>initialise(attempt+1),50);
+      else console.error('UKMLA medical-image mode control could not initialise.');
+      return;
     }
-    const app=document.getElementById('app');
-    if(app&&!observer){
-      observer=new MutationObserver(()=>mountControl());
-      observer.observe(app,{childList:true,subtree:true});
-    }
+    syncLegacyPreference(mode());
+    bindLifecycleListeners();
     mountControl();
   }
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialise,{once:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initialise(),{once:true});
   else initialise();
 
-  window.UKMLA_IMAGE_MODE={mode,setMode,requireImageConditions,availability};
+  window.UKMLA_IMAGE_MODE={mode,setMode,requireImageConditions,availability,mountControl,updateControl};
 })();
