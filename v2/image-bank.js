@@ -223,9 +223,21 @@
     return true;
   }
 
+  function updateControlCount(){
+    const field=document.querySelector('.image-question-toggle');
+    const detail=field?.querySelector('small');
+    if(detail)detail.textContent=`${approvedImages().length} licence-reviewed pilot images; used only when a compatible target is available.`;
+  }
+
   function mountControl(){
     const workspace=document.querySelector('[data-ukmla-question-workspace="ai"]');
-    if(!workspace||workspace.querySelector('#ai-image-questions'))return;
+    if(!workspace)return;
+    const existing=workspace.querySelector('#ai-image-questions');
+    if(existing){
+      existing.checked=enabled();
+      updateControlCount();
+      return;
+    }
     const button=workspace.querySelector('#ai-start');
     if(!button)return;
     const field=document.createElement('label');
@@ -235,18 +247,28 @@
     field.querySelector('input').onchange=event=>setEnabled(event.target.checked);
   }
 
+  function findingHtml(image){
+    if(!image?.teachingFinding)return'';
+    return`<div class="medical-image-finding"><strong>Image finding</strong><span>${core()?.escapeHtml?.(image.teachingFinding)||image.teachingFinding}</span></div>`;
+  }
+
   function figureHtml(image,answered){
-    const finding=answered&&image.teachingFinding?`<div class="medical-image-finding"><strong>Image finding</strong><span>${core()?.escapeHtml?.(image.teachingFinding)||image.teachingFinding}</span></div>`:'';
-    return`<figure class="medical-question-image" data-medical-image-id="${image.imageId}"><a href="${image.url}" target="_blank" rel="noopener noreferrer"><img src="${image.url}" alt="${core()?.escapeHtml?.(image.alt)||image.alt}" loading="eager" referrerpolicy="no-referrer"></a><figcaption><span>${core()?.escapeHtml?.(image.modality)||image.modality}</span><a href="${image.sourcePage}" target="_blank" rel="noopener noreferrer">${core()?.escapeHtml?.(image.attribution)||image.attribution}</a><a href="${image.licenceUrl}" target="_blank" rel="noopener noreferrer">${image.licence}</a></figcaption>${finding}</figure>`;
+    return`<figure class="medical-question-image" data-medical-image-id="${image.imageId}"><a href="${image.url}" target="_blank" rel="noopener noreferrer"><img src="${image.url}" alt="${core()?.escapeHtml?.(image.alt)||image.alt}" loading="eager" referrerpolicy="no-referrer"></a><figcaption><span>${core()?.escapeHtml?.(image.modality)||image.modality}</span><a href="${image.sourcePage}" target="_blank" rel="noopener noreferrer">${core()?.escapeHtml?.(image.attribution)||image.attribution}</a><a href="${image.licenceUrl}" target="_blank" rel="noopener noreferrer">${image.licence}</a></figcaption>${answered?findingHtml(image):''}</figure>`;
   }
 
   function decorateCurrentQuestion(){
     if(!currentPresentation?.question?.image)return;
     const card=[...document.querySelectorAll('.quiz-card')].find(node=>node.querySelector('.quiz-stem'));
     if(!card)return;
+    const image=currentPresentation.question.image;
+    const existing=card.querySelector(`[data-medical-image-id="${image.imageId}"]`);
+    if(existing){
+      if(currentPresentation.answered&&!existing.querySelector('.medical-image-finding'))existing.insertAdjacentHTML('beforeend',findingHtml(image));
+      return;
+    }
     const stem=card.querySelector('.quiz-stem');
-    if(!stem||card.querySelector(`[data-medical-image-id="${currentPresentation.question.image.imageId}"]`))return;
-    stem.insertAdjacentHTML('beforebegin',figureHtml(currentPresentation.question.image,currentPresentation.answered));
+    if(!stem)return;
+    stem.insertAdjacentHTML('beforebegin',figureHtml(image,currentPresentation.answered));
     const img=card.querySelector('.medical-question-image img');
     if(img)img.onerror=()=>{img.closest('figure').classList.add('image-load-failed');img.replaceWith(Object.assign(document.createElement('p'),{textContent:'The image could not be loaded. Open the source link below.'}));};
   }
@@ -257,7 +279,9 @@
       return active.questions.find((question,index)=>String(question.id||index+1)===String(event.questionId))||null;
     }
     if(bank()?.loadSet){
-      const set=await bank().loadSet(event.quizId);
+      const attempt=bank()?.attemptById?.(event.quizId);
+      const setId=attempt?.setId||event.quizId;
+      const set=await bank().loadSet(setId);
       return set?.questions?.find((question,index)=>String(question.id||index+1)===String(event.questionId))||null;
     }
     return null;
@@ -266,6 +290,8 @@
   async function handleLearningEvent(event){
     if(!event||!event.quizId)return;
     if(event.kind==='presented'){
+      currentPresentation=null;
+      document.querySelectorAll('.medical-question-image').forEach(node=>node.remove());
       const question=await questionForEvent(event);
       if(!question?.image)return;
       currentPresentation={quizId:event.quizId,questionId:String(event.questionId),question,answered:false};
@@ -288,8 +314,15 @@
 
   const manifestPromise=fetch(MANIFEST_URL,{cache:'no-cache'})
     .then(response=>{if(!response.ok)throw new Error(`Image manifest ${response.status}`);return response.json();})
-    .then(value=>{manifest=value&&Array.isArray(value.images)?value:manifest;manifestReady=true;document.dispatchEvent(new CustomEvent('ukmlaImageBankReady',{detail:{count:approvedImages().length}}));return manifest;})
-    .catch(error=>{manifestReady=true;console.warn('UKMLA image bank unavailable:',error);return manifest;});
+    .then(value=>{
+      manifest=value&&Array.isArray(value.images)?value:manifest;
+      manifestReady=true;
+      mountControl();
+      updateControlCount();
+      document.dispatchEvent(new CustomEvent('ukmlaImageBankReady',{detail:{count:approvedImages().length}}));
+      return manifest;
+    })
+    .catch(error=>{manifestReady=true;mountControl();updateControlCount();console.warn('UKMLA image bank unavailable:',error);return manifest;});
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialisePatches,{once:true});
   else initialisePatches();
