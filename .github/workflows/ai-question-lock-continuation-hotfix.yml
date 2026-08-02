@@ -1,0 +1,19 @@
+name: AI question-lock continuation hotfix
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  continuation-hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Reproduce and prevent terminal continuation signal
+        run: node scripts/test-ai-question-lock-continuation-hotfix.mjs
