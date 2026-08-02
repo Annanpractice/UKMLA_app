@@ -1,0 +1,29 @@
+name: AI repair budget regression
+
+on:
+  pull_request:
+    paths:
+      - 'v2/ai-unlimited-repair.js'
+      - 'scripts/test-ai-repair-budget.mjs'
+      - 'service-worker.js'
+      - '.github/workflows/ai-repair-budget-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check v2/ai-unlimited-repair.js
+          node --check scripts/test-ai-repair-budget.mjs
+          node --check service-worker.js
+      - name: Exercise bounded repair continuation
+        run: node scripts/test-ai-repair-budget.mjs
