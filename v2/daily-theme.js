@@ -82,7 +82,17 @@
     appendScript('./v2/image-mode-control.js?v=2','data-ukmla-image-mode');
   }
 
+  function loadQuestionTypePlanner(attempt=0){
+    const imageModeReady=Boolean(window.UKMLA_V2_AI_ENGINE?.__medicalImageModePatched);
+    if(medicalImagesDisabled()||imageModeReady||attempt>=240){
+      appendScript('./v2/ai-type-planner.js?v=1','data-ukmla-type-planner');
+      return;
+    }
+    setTimeout(()=>loadQuestionTypePlanner(attempt+1),50);
+  }
+
   applyCurrentTheme();
   loadMedicalImageExtension();
+  loadQuestionTypePlanner();
   scheduleMidnightRefresh();
 })();

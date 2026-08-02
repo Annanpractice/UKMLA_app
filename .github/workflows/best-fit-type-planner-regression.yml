@@ -1,0 +1,28 @@
+name: Best-fit question-type planner regression
+
+on:
+  pull_request:
+    paths:
+      - 'v2/ai-type-planner.js'
+      - 'v2/daily-theme.js'
+      - 'service-worker.js'
+      - 'scripts/test-ai-type-planner.mjs'
+      - '.github/workflows/best-fit-type-planner-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  planner-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check planner syntax
+        run: node --check v2/ai-type-planner.js
+      - name: Run planner regression
+        run: node scripts/test-ai-type-planner.mjs
