@@ -52,21 +52,24 @@
   }
 
   function appendStyle(href,attribute){
-    if(document.querySelector(`link[${attribute}]`))return;
+    if(document.querySelector(`link[${attribute}]`))return null;
     const style=document.createElement('link');
     style.rel='stylesheet';
     style.href=href;
     style.setAttribute(attribute,'1');
     document.head.appendChild(style);
+    return style;
   }
 
   function appendScript(src,attribute){
-    if(document.querySelector(`script[${attribute}]`))return;
+    const existing=document.querySelector(`script[${attribute}]`);
+    if(existing)return existing;
     const script=document.createElement('script');
     script.async=false;
     script.src=src;
     script.setAttribute(attribute,'1');
     document.head.appendChild(script);
+    return script;
   }
 
   function medicalImagesDisabled(){
@@ -91,8 +94,21 @@
     setTimeout(()=>loadQuestionTypePlanner(attempt+1),50);
   }
 
+  let extensionsStarted=false;
+  function startQuestionBuildExtensions(){
+    if(extensionsStarted)return;
+    extensionsStarted=true;
+    loadMedicalImageExtension();
+    loadQuestionTypePlanner();
+  }
+
+  function loadEditorialPipelineFirst(){
+    if(window.UKMLA_EDITORIAL_PIPELINE_READY){startQuestionBuildExtensions();return;}
+    document.addEventListener('ukmlaEditorialPipelineReady',startQuestionBuildExtensions,{once:true});
+    appendScript('./v2/ai-editorial-pipeline.js?v=1','data-ukmla-editorial-pipeline');
+  }
+
   applyCurrentTheme();
-  loadMedicalImageExtension();
-  loadQuestionTypePlanner();
+  loadEditorialPipelineFirst();
   scheduleMidnightRefresh();
 })();
