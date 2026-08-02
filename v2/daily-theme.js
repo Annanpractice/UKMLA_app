@@ -91,8 +91,18 @@
     setTimeout(()=>loadQuestionTypePlanner(attempt+1),50);
   }
 
+  function loadQuestionLockContinuationHotfix(attempt=0){
+    const ready=Boolean(window.UKMLA_AI_QUESTION_LOCK_REPAIR&&window.UKMLA_V2_AI_ENGINE?.__questionLockRepairContinuation);
+    if(ready){
+      appendScript('./v2/ai-question-lock-continuation-hotfix.js?v=1','data-ukmla-question-lock-continuation-hotfix');
+      return;
+    }
+    if(attempt<240)setTimeout(()=>loadQuestionLockContinuationHotfix(attempt+1),50);
+  }
+
   applyCurrentTheme();
   loadMedicalImageExtension();
   loadQuestionTypePlanner();
+  loadQuestionLockContinuationHotfix();
   scheduleMidnightRefresh();
 })();
