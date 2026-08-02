@@ -224,12 +224,25 @@ schema.validate=function validateWithQuestionLocks(set,config,stage='final'){
     lockedSnapshots:snapshots
   };
   latestLedger=ledger;
-  publishLedger(config);
   return errors;
 };
 
 schema.repairPlan=function questionLockedRepairPlan(errors,candidate,forcedTier){
   const config=latestValidation?.config;
+  const stage=latestValidation?.stage||latestJob?.currentStage||'final';
+  const ledger=ledgerFor(errors,candidate,config,stage);
+  const previousSnapshots=latestValidation?.lockedSnapshots||{};
+  latestValidation={
+    ...(latestValidation||{}),
+    stage,
+    stageId:ledger.stageId,
+    config,
+    candidate:clone(candidate),
+    errors:[...(errors||[])],
+    lockedSnapshots:{...previousSnapshots,...lockedSnapshots(candidate,ledger.unresolvedQuestionNumbers)}
+  };
+  latestLedger=ledger;
+  publishLedger(config);
   const filtered=filteredErrors(errors,candidate,config);
   const plan=originalRepairPlan(filtered,candidate,forcedTier);
   if(plan.tier===REGEN_TIER){
