@@ -82,7 +82,12 @@
     appendScript('./v2/image-mode-control.js?v=2','data-ukmla-image-mode');
   }
 
+  function loadQuestionTypePlanner(){
+    appendScript('./v2/ai-type-planner.js?v=1','data-ukmla-type-planner');
+  }
+
   applyCurrentTheme();
   loadMedicalImageExtension();
+  loadQuestionTypePlanner();
   scheduleMidnightRefresh();
 })();
