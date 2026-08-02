@@ -1,0 +1,19 @@
+name: AI question-lock repair regression
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  question-lock-repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate question-level checkpoint repair
+        run: node scripts/test-ai-question-lock-repair.mjs
