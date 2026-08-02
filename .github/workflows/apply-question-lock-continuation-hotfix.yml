@@ -1,0 +1,105 @@
+name: Apply question-lock continuation hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/question-lock-continuation-signal
+
+permissions:
+  contents: write
+
+jobs:
+  apply-hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/question-lock-continuation-signal
+          fetch-depth: 0
+      - name: Patch continuation handling and regression
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime = Path('v2/ai-unlimited-repair.js')
+          text = runtime.read_text()
+          old = """function isExhaustedValidationRepair(error,job){
+  const message=clean(error?.message||error);
+  return Boolean(job?.repair?.exhausted)&&/targeted field, affected-question and full-set repair were exhausted/i.test(message);
+}"""
+          new = """function isExhaustedValidationRepair(error,job){
+  const message=clean(error?.message||error);
+  const savedMessage=clean(job?.lastMessage);
+  return Boolean(job?.repair?.exhausted)&&(
+    /targeted field, affected-question and full-set repair were exhausted/i.test(message)||
+    /targeted field, affected-question and full-set repair were exhausted/i.test(savedMessage)||
+    /continuing unresolved question repair/i.test(message)
+  );
+}"""
+          if old not in text:
+              raise SystemExit('exhaustion classifier target not found')
+          text = text.replace(old, new, 1)
+
+          old = """document.addEventListener('ukmlaV2AiProgress',event=>{
+  const detail=event.detail;
+  if(!detail)return;
+  latestJob=detail;
+  if(detail.checkpointProgress?.stageId&&detail.checkpointProgress.stageId!==detail.currentStage)delete detail.checkpointProgress;
+  if(latestLedger&&detail.currentStage===latestLedger.stageId&&detail.status!=='complete')applyLedger(detail,latestLedger);
+  if(detail.repair?.exhausted&&latestValidation?.candidate){
+    detail.status='repairing';
+    detail.currentSet=clone(latestValidation.candidate);
+    detail.lastMessage=`${detail.repair.stageLabel||schema.stageLabel?.(detail.currentStage)||'Validation checkpoint'} · continuing unresolved question repair`;
+    applyLedger(detail,latestLedger);
+  }
+  updateProgressDetail(detail);
+});"""
+          new = """document.addEventListener('ukmlaV2AiProgress',event=>{
+  const incoming=event.detail;
+  if(!incoming)return;
+  const detail=clone(incoming);
+  if(detail.checkpointProgress?.stageId&&detail.checkpointProgress.stageId!==detail.currentStage)delete detail.checkpointProgress;
+  if(latestLedger&&detail.currentStage===latestLedger.stageId&&detail.status!=='complete')applyLedger(detail,latestLedger);
+  if(detail.repair?.exhausted&&latestValidation?.candidate){
+    detail.status='repairing';
+    detail.currentSet=clone(latestValidation.candidate);
+    detail.lastMessage=`${detail.repair.stageLabel||schema.stageLabel?.(detail.currentStage)||'Validation checkpoint'} · continuing unresolved question repair`;
+    applyLedger(detail,latestLedger);
+    const stored=engine.loadJob?.();
+    if(stored?.id&&stored.id===detail.id)core()?.saveJson?.(JOB_KEY,detail);
+  }
+  latestJob=detail;
+  updateProgressDetail(detail);
+});"""
+          if old not in text:
+              raise SystemExit('progress listener target not found')
+          runtime.write_text(text.replace(old, new, 1))
+
+          test = Path('scripts/test-ai-question-lock-repair.mjs')
+          text = test.read_text()
+          old = """      savedJob={...job,status:'paused',currentSet:{questions:Array.from({length:10},(_,index)=>question(index+1,'old'))},repair:{stageId:'options_category',stageLabel:'Option and answer-category review',tier:'set',tierLabel:'Full-set fallback repair',exhausted:true}};
+      document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:savedJob}));
+      throw new Error('Option and answer-category review stopped after targeted field, affected-question and full-set repair were exhausted.');"""
+          new = """      const exhaustedJob={...job,status:'paused',currentSet:{questions:Array.from({length:10},(_,index)=>question(index+1,'old'))},lastMessage:'Option and answer-category review stopped after targeted field, affected-question and full-set repair were exhausted.',repair:{stageId:'options_category',stageLabel:'Option and answer-category review',tier:'set',tierLabel:'Full-set fallback repair',exhausted:true}};
+      savedJob=clone(exhaustedJob);
+      document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:exhaustedJob}));
+      assert.match(exhaustedJob.lastMessage,/stopped after targeted field/i,'progress listeners must not mutate the engine retry signal');
+      throw new Error(exhaustedJob.lastMessage);"""
+          if old not in text:
+              raise SystemExit('regression target not found')
+          test.write_text(text.replace(old, new, 1))
+
+          worker = Path('service-worker.js')
+          text = worker.read_text()
+          text = text.replace('ukmla-cards-v39-best-fit-balanced-planner\nconst CACHE_NAME=', 'ukmla-cards-v39-best-fit-balanced-planner ukmla-cards-v40-question-lock-repair-progress\nconst CACHE_NAME=', 1)
+          text = text.replace("const CACHE_NAME='ukmla-cards-v40-question-lock-repair-progress';", "const CACHE_NAME='ukmla-cards-v41-question-lock-continuation-hotfix';", 1)
+          worker.write_text(text)
+          PY
+      - name: Commit hotfix
+        run: |
+          rm .github/workflows/apply-question-lock-continuation-hotfix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Fix question-lock continuation signal"
+          git push origin HEAD:hotfix/question-lock-continuation-signal
