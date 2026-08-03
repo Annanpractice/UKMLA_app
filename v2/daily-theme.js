@@ -94,6 +94,20 @@
     setTimeout(()=>loadQuestionTypePlanner(attempt+1),50);
   }
 
+  function loadPharmacologyAnalytics(attempt=0){
+    const ready=Boolean(
+      window.UKMLA_V2&&
+      window.UKMLA_PHARMACOLOGY&&
+      window.UKMLA_QUESTION_BANK&&
+      window.UKMLA_QUESTION_ANALYTICS
+    );
+    if(ready||attempt>=240){
+      appendScript('./v2/pharmacology-analytics.js?v=1','data-ukmla-pharmacology-analytics');
+      return;
+    }
+    setTimeout(()=>loadPharmacologyAnalytics(attempt+1),50);
+  }
+
   let extensionsStarted=false;
   function startQuestionBuildExtensions(){
     if(extensionsStarted)return;
@@ -110,5 +124,6 @@
 
   applyCurrentTheme();
   loadEditorialPipelineFirst();
+  loadPharmacologyAnalytics();
   scheduleMidnightRefresh();
 })();
