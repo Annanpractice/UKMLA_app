@@ -4,6 +4,15 @@
   const ALL_TOPICS='__all_topics__';
   let scheduled=false;
 
+  function loadSprankiPack(){
+    if(window.UKMLA_SPRANKI_LOCAL_PACK||document.getElementById('spranki-local-pack-loader'))return;
+    const script=document.createElement('script');
+    script.id='spranki-local-pack-loader';
+    script.src='./v2/spranki-local-pack.js?v=1';
+    script.defer=true;
+    document.head.appendChild(script);
+  }
+
   function onUnscopedCardsRoute(){
     const raw=(location.hash||'#/home').replace(/^#\/?/,'');
     const [route,...rest]=raw.split('/');
@@ -34,6 +43,7 @@
   }
 
   function initialise(){
+    loadSprankiPack();
     const app=document.getElementById('app');
     if(!app){setTimeout(initialise,80);return;}
     new MutationObserver(schedule).observe(app,{childList:true,subtree:true});
