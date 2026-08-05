@@ -118,6 +118,18 @@ async function syncFirebase(){
   try{await timing()?.sync?.();return true;}
   catch(error){console.warn('Recovered timing history is queued for Firebase:',error);return false;}
 }
+function storeImmediate(run){
+  const localBefore=read(RUNS_KEY,[])||[];
+  const local=saveCompact([...localBefore,run],RUNS_KEY,MAX_RUNS);
+  const pending=saveCompact([...(read(PENDING_KEY,[])||[]),run],PENDING_KEY,MAX_PENDING);
+  const model=rebuildModel(local);
+  updateNote('Timing model updated locally',Number(model?.runCount)||0);
+  void saveDurable(local).catch(()=>{});
+  void syncFirebase().then(synced=>{
+    if(synced)updateNote('Firebase timing model synced',Number(model?.runCount)||0);
+  });
+  return{local,pending,model};
+}
 async function mergeHistory(extraRuns=[]){
   const localBefore=read(RUNS_KEY,[])||[];
   const durable=await durableRuns();
@@ -145,10 +157,10 @@ async function recover(extraRuns=[]){
   })().finally(()=>{recoveryPromise=null;});
   return recoveryPromise;
 }
-async function recordSet(set){
+function recordSet(set){
   const run=runFromSet(set);
   if(!run)return null;
-  await recover([run]);
+  storeImmediate(run);
   return run;
 }
 function patchEngine(attempt=0){
@@ -162,7 +174,7 @@ function patchEngine(attempt=0){
   const original=api.runPipeline.bind(api);
   api.runPipeline=async function runPipelineWithDurableTiming(config={}){
     const set=await original(config);
-    await recordSet(set);
+    recordSet(set);
     return set;
   };
   return true;
