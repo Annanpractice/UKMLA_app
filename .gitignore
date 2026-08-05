@@ -1,0 +1,4 @@
+# Local/private study media — never deploy through GitHub Pages
+private-media/
+*.apkg
+spranki-local-image-pack*.zip
