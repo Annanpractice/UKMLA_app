@@ -270,6 +270,9 @@
       if(head?.nextSibling)app.insertBefore(panel,head.nextSibling);else if(head)head.insertAdjacentElement('afterend',panel);else app.prepend(panel);
     }
     const copy=statusText();
+    const signature=JSON.stringify([statusCache.cached,statusCache.checking,statusCache.error,statusCache.record?.storedAt]);
+    if(panel.dataset.signature===signature)return;
+    panel.dataset.signature=signature;
     panel.classList.toggle('spranki-ready',statusCache.cached);
     panel.innerHTML=`
       <div class="spranki-cache-state"><span class="spranki-cache-dot" aria-hidden="true"></span><div class="spranki-cache-copy"><strong>${escapeHtml(copy.title)}</strong><span>${escapeHtml(copy.detail)}</span></div></div>
@@ -287,7 +290,7 @@
       title.textContent='Caching Spranki image file…';
       detail.textContent='Keep this tab open while the browser stores the APKG and builds the 953-image locator.';
       try{await cacheFile(file);core()?.toast?.('Spranki image file cached');}
-      catch(error){statusCache={cached:false,checking:false,error:error.message,record:null};renderAll();core()?.toast?.(error.message);}
+      catch(error){await refreshStatus(true);core()?.toast?.(error.message);}
     };
     panel.querySelector('#spranki-remove-cache')?.addEventListener('click',async()=>{
       if(!confirm('Remove the cached Spranki APKG from this browser?'))return;
