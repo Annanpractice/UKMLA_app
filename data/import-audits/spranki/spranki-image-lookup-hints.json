@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "spranki-image-lookup-hints-v1",
+  "source": "!Spranki Clinical V1 12.9.25.apkg",
+  "notice": "These are metadata-only search and tagging hints. No Spranki image binaries are included. Verify the original source licence or obtain a separately licensed replacement before public use.",
+  "candidates": [
+    {"condition":"Contact dermatitis","originalFilename":"960px-Dermatitis2015.jpg","width":960,"height":794,"suggestedTags":["dermatology","rash","contact-dermatitis"]},
+    {"condition":"Meniscal tear","originalFilename":"960px-Meniscal_Tear_MRI.jpg","width":960,"height":948,"suggestedTags":["musculoskeletal","knee","MRI","meniscal-tear"]},
+    {"condition":"Wolff–Parkinson–White syndrome","originalFilename":"960px-Wpw2_(CardioNetworks_ECGpedia).svg.png","width":960,"height":720,"suggestedTags":["cardiology","ECG","pre-excitation","WPW"]},
+    {"condition":"Scaphoid fracture","originalFilename":"800px-Wrist_fracture_-_Scaphoid_fracture_1_--_Smart-Servier.png","width":800,"height":559,"suggestedTags":["musculoskeletal","wrist","fracture","scaphoid"]},
+    {"condition":"Appendicitis","originalFilename":"960px-Depiction_of_a_person_suffering_from_Appendicitis.png","width":960,"height":614,"suggestedTags":["gastroenterology","surgery","right-lower-quadrant","appendicitis"]},
+    {"condition":"Acute bronchitis","originalFilename":"960px-Depiction_of_a_person_suffering_from_Bronchitis.png","width":960,"height":614,"suggestedTags":["respiratory","cough","bronchitis"]},
+    {"condition":"Brugada syndrome","originalFilename":"960px-Brugada_syndrome_type1_example3_(CardioNetworks_ECGpedia).png","width":960,"height":567,"suggestedTags":["cardiology","ECG","Brugada","type-1"]},
+    {"condition":"Ventricular tachycardia","originalFilename":"960px-Electrocardiogram_of_Ventricular_Tachycardia.png","width":960,"height":503,"suggestedTags":["cardiology","ECG","ventricular-tachycardia","resuscitation"]},
+    {"condition":"Intussusception","originalFilename":"960px-Ultrasound_of_target_sign_in_intussusception_of_the_right_bowel.png","width":960,"height":345,"suggestedTags":["paediatrics","ultrasound","target-sign","intussusception"]},
+    {"condition":"Subdural haemorrhage","originalFilename":"609px-Illustration_depicting_hemorrhages_by_location_within_the_different_layers_of_the_meninges_(left_of_image)_an.png","width":609,"height":376,"suggestedTags":["neurology","head-injury","subdural","meninges"]},
+    {"condition":"Vitamin B12 deficiency / pernicious anaemia","originalFilename":"472px-Image_of_the_tongue_in_a_B12-deficient_patient_without_a_history_of_gastrectomy.webp.png","width":472,"height":315,"suggestedTags":["haematology","glossitis","B12-deficiency","pernicious-anaemia"]},
+    {"condition":"Brain abscess","originalFilename":"250px-Brain_abscess_-_MRI_T1_KM_axial.jpg","width":250,"height":307,"suggestedTags":["neurology","infection","MRI","brain-abscess"]},
+    {"condition":"Atopic eczema","originalFilename":"250px-Atopic_dermatitis_child_1.jpg","width":250,"height":260,"suggestedTags":["dermatology","paediatrics","atopic-eczema"]},
+    {"condition":"Pseudogout","originalFilename":"960px-Birefringence_microscopy_of_pseudogout,_annotated.jpg","width":960,"height":870,"suggestedTags":["rheumatology","microscopy","CPPD","positive-birefringence"]},
+    {"condition":"Motor neurone disease","originalFilename":"960px-ALS_Affected_neurons_and_muscles.png","width":960,"height":852,"suggestedTags":["neurology","motor-neurone-disease","ALS","upper-and-lower-motor-neuron"]},
+    {"condition":"Multiple myeloma","originalFilename":"960px-Osteolytic_Lesions.jpg","width":960,"height":758,"suggestedTags":["haematology","radiograph","lytic-lesions","multiple-myeloma"]},
+    {"condition":"Retinal detachment","originalFilename":"960px-Distacco_di_retina.jpg","width":960,"height":559,"suggestedTags":["ophthalmology","retina","retinal-detachment"]},
+    {"condition":"Aortic dissection","originalFilename":"960px-Descending_(Type_B_Stanford)_Aortic_Dissection.PNG","width":960,"height":362,"suggestedTags":["cardiology","CT","aortic-dissection","Stanford-B"]},
+    {"condition":"Varicose veins","originalFilename":"Varicose_Veins_(Echogram).png","width":640,"height":480,"suggestedTags":["vascular","ultrasound","varicose-veins"]},
+    {"condition":"Scabies","originalFilename":"500px-Scabies_infection_on_an_adult_hand.jpg","width":500,"height":719,"suggestedTags":["dermatology","infection","scabies","hand"]},
+    {"condition":"Ectopic pregnancy","originalFilename":"Ectopicleftmass.PNG","width":468,"height":307,"suggestedTags":["obstetrics","ultrasound","ectopic-pregnancy","adnexal-mass"]},
+    {"condition":"Cardiac tamponade","originalFilename":"Blausen_0164_CardiacTamponade_02.png","width":360,"height":480,"suggestedTags":["cardiology","pericardium","cardiac-tamponade"]},
+    {"condition":"Migraine with aura","originalFilename":"330px-Migraine-aura-aka-scintillating-scotoma-anecdoteal-depiction.png","width":330,"height":220,"suggestedTags":["neurology","migraine","aura","scintillating-scotoma"]},
+    {"condition":"Rheumatoid arthritis","originalFilename":"250px-X-ray_of_rheumatoid_arthritis_of_the_shoulder.jpg","width":250,"height":288,"suggestedTags":["rheumatology","radiograph","rheumatoid-arthritis","shoulder"]},
+    {"condition":"Asbestosis","originalFilename":"250px-Asbestosis_and_cryptococcosis_-_Pleural_plaque_-_X-ray_Case_194_(5998756067).jpg","width":250,"height":231,"suggestedTags":["respiratory","chest-X-ray","pleural-plaque","asbestos"]}
+  ]
+}
