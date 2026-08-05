@@ -7,7 +7,12 @@
   "noteTypes": ["Cloze-Spranki V4"],
   "noteFields": ["Text","Extra","Personal Notes","AMBOSS","References / Additional Resources","UK guidelines","Feedback","Note ID"],
   "mediaFiles": 953,
-  "imageFiles": 952,
+  "imageFiles": 953,
+  "imageDetection": {
+    "method": "file-content inspection",
+    "extensionlessImages": 1,
+    "note": "The earlier extension-filtered count of 952 omitted one extensionless AVIF image."
+  },
   "conditionTagEntries": 945,
   "topics": [
     {"name":"General Practice","taggedNoteReferences":1827},
@@ -55,6 +60,7 @@
   "copyrightHandling": {
     "imagesCopiedToPublicRepo": false,
     "cardTextCopiedToPublicRepo": false,
-    "uploadedArtifacts": "metadata, hashes, tags, counts and mapping hints only"
+    "localImagePackCreated": true,
+    "uploadedArtifacts": "metadata, hashes, tags, counts, mapping hints and a local extraction tool only"
   }
 }
