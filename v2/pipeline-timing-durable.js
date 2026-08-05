@@ -96,7 +96,6 @@ async function saveDurable(rows){
 async function questionBankRuns(){
   const api=bank();
   if(!api?.bankIndex||!api?.loadSet)return[];
-  try{await api.reconcileIndex?.();}catch(_){/* existing index remains usable */}
   const records=api.bankIndex().filter(record=>['ai','knowledge'].includes(record?.sourceType)).slice(0,MAX_RUNS);
   const rows=[];
   for(const record of records){
@@ -120,25 +119,28 @@ async function syncFirebase(){
   catch(error){console.warn('Recovered timing history is queued for Firebase:',error);return false;}
 }
 async function mergeHistory(extraRuns=[]){
-  const combined=uniqueRuns([
-    ...(read(RUNS_KEY,[])||[]),
-    ...await durableRuns(),
-    ...await questionBankRuns(),
-    ...(extraRuns||[])
-  ]).slice(-MAX_RUNS);
+  const localBefore=read(RUNS_KEY,[])||[];
+  const durable=await durableRuns();
+  const knownBefore=uniqueRuns([...localBefore,...durable]);
+  const knownIds=new Set(knownBefore.map(run=>run.runId));
+  const bankRows=await questionBankRuns();
+  const combined=uniqueRuns([...knownBefore,...bankRows,...(extraRuns||[])]).slice(-MAX_RUNS);
+  const newlyRecovered=combined.filter(run=>!knownIds.has(run.runId));
   const local=saveCompact(combined,RUNS_KEY,MAX_RUNS);
-  const pending=saveCompact([...(read(PENDING_KEY,[])||[]),...(extraRuns||[]),...combined.filter(run=>run.recoveredFromQuestionBank)],PENDING_KEY,MAX_PENDING);
+  const pending=saveCompact([...(read(PENDING_KEY,[])||[]),...newlyRecovered],PENDING_KEY,MAX_PENDING);
   await saveDurable(local);
   const model=rebuildModel(local);
   updateNote('Recovered timing history',Number(model?.runCount)||0);
-  return{runs:local,pending,model};
+  return{runs:local,pending,model,newlyRecovered};
 }
 async function recover(extraRuns=[]){
   if(recoveryPromise)return recoveryPromise;
   recoveryPromise=(async()=>{
     const result=await mergeHistory(extraRuns);
-    const synced=await syncFirebase();
-    if(synced)updateNote('Firebase timing model synced',Number(result.model?.runCount)||0);
+    if(result.pending.length){
+      const synced=await syncFirebase();
+      if(synced)updateNote('Firebase timing model synced',Number(result.model?.runCount)||0);
+    }
     return result;
   })().finally(()=>{recoveryPromise=null;});
   return recoveryPromise;
@@ -177,7 +179,6 @@ function initialise(){
     if(!setId)return scheduleRecovery(100);
     void bank()?.loadSet?.(setId).then(set=>set&&recordSet(set)).catch(()=>scheduleRecovery(100));
   });
-  document.addEventListener('ukmlaQuestionBankChanged',()=>scheduleRecovery(700));
   window.addEventListener('online',()=>scheduleRecovery(100));
 }
 window.UKMLA_PIPELINE_TIMING_DURABLE={recover,recordSet,runFromSet,durableRuns,questionBankRuns};
