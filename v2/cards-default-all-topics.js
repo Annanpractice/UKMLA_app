@@ -3,6 +3,7 @@
 
   const ALL_TOPICS='__all_topics__';
   const SPRANKI_SCRIPTS=[
+    ['./v2/pipeline-timing-durable.js?v=1','pipeline-timing-durable-loader'],
     ['./v2/spranki-local-pack.js?v=2','spranki-local-pack-loader'],
     ['./v2/spranki-image-map-01.js?v=1','spranki-image-map-01-loader'],
     ['./v2/spranki-image-map-02.js?v=1','spranki-image-map-02-loader'],
@@ -37,7 +38,7 @@
     featurePromise=(async()=>{
       for(const[src,id]of SPRANKI_SCRIPTS)await loadScript(src,id);
     })().catch(error=>{
-      console.warn('Spranki local image features did not load:',error);
+      console.warn('Optional local features did not load:',error);
       featurePromise=null;
     });
     return featurePromise;
