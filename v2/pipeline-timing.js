@@ -351,7 +351,7 @@ function updateNote(text){
       note.className='question-source-note';
       pipeline.insertAdjacentElement('afterend',note);
     }
-    note.textContent=noteText;
+    if(note.textContent!==noteText)note.textContent=noteText;
     return true;
   };
   if(!mount())setTimeout(mount,0);
