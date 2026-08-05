@@ -2,15 +2,45 @@
   'use strict';
 
   const ALL_TOPICS='__all_topics__';
+  const SPRANKI_SCRIPTS=[
+    ['./v2/spranki-local-pack.js?v=2','spranki-local-pack-loader'],
+    ['./v2/spranki-image-map-01.js?v=1','spranki-image-map-01-loader'],
+    ['./v2/spranki-image-map-02.js?v=1','spranki-image-map-02-loader'],
+    ['./v2/spranki-image-map-03.js?v=1','spranki-image-map-03-loader'],
+    ['./v2/spranki-image-map-04.js?v=1','spranki-image-map-04-loader'],
+    ['./v2/spranki-image-map-05.js?v=1','spranki-image-map-05-loader'],
+    ['./v2/spranki-image-map-06.js?v=1','spranki-image-map-06-loader'],
+    ['./v2/spranki-image-map-07.js?v=1','spranki-image-map-07-loader'],
+    ['./v2/spranki-image-map-08.js?v=1','spranki-image-map-08-loader'],
+    ['./v2/spranki-image-map-09.js?v=1','spranki-image-map-09-loader'],
+    ['./v2/spranki-image-map-data.js?v=1','spranki-image-map-data-loader'],
+    ['./v2/spranki-card-images.js?v=1','spranki-card-images-loader']
+  ];
   let scheduled=false;
+  let featurePromise=null;
 
-  function loadSprankiPack(){
-    if(window.UKMLA_SPRANKI_LOCAL_PACK||document.getElementById('spranki-local-pack-loader'))return;
-    const script=document.createElement('script');
-    script.id='spranki-local-pack-loader';
-    script.src='./v2/spranki-local-pack.js?v=1';
-    script.defer=true;
-    document.head.appendChild(script);
+  function loadScript(src,id){
+    if(document.getElementById(id))return Promise.resolve();
+    return new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.id=id;
+      script.src=src;
+      script.defer=true;
+      script.onload=()=>resolve();
+      script.onerror=()=>reject(new Error(`Could not load ${src}.`));
+      document.head.appendChild(script);
+    });
+  }
+
+  function loadSprankiFeatures(){
+    if(featurePromise)return featurePromise;
+    featurePromise=(async()=>{
+      for(const[src,id]of SPRANKI_SCRIPTS)await loadScript(src,id);
+    })().catch(error=>{
+      console.warn('Spranki local image features did not load:',error);
+      featurePromise=null;
+    });
+    return featurePromise;
   }
 
   function onUnscopedCardsRoute(){
@@ -43,7 +73,7 @@
   }
 
   function initialise(){
-    loadSprankiPack();
+    void loadSprankiFeatures();
     const app=document.getElementById('app');
     if(!app){setTimeout(initialise,80);return;}
     new MutationObserver(schedule).observe(app,{childList:true,subtree:true});
