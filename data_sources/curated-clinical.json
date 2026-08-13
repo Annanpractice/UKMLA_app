@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "ukmla-curated-clinical-1",
+  "reviewed": "2026-08-13",
+  "purpose": "Evidence-reviewed clinical additions and replacements for the generated UKMLA card dataset.",
+  "conditions": [
+    {
+      "mode": "add",
+      "topic": "Infectious Disease",
+      "name": "Coxsackie / enterovirus infection",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Typical hand-foot-and-mouth disease/herpangina is clinical: fever/sore throat, painful oral ulcers and vesicles on hands/feet; no routine tests. If severe/atypical, neonatal, CNS or cardiac features, discuss targeted enterovirus PCR.",
+        "treatment": "Supportive: fluids, soft/cool foods, paracetamol or ibuprofen if suitable; no antibiotics for uncomplicated viral disease and no routine antiviral treatment.",
+        "escalation": "Same-day/ED if dehydration, sepsis, meningism/encephalopathy, neonatal illness, immunocompromise, or suspected myocarditis/pericarditis (chest pain, dyspnoea, palpitations/syncope).",
+        "mimics": "HSV gingivostomatitis, aphthous ulcers, chickenpox, scarlet fever, mpox, meningococcal disease; pleurodynia can mimic ACS, PE or pneumonia.",
+        "redFlags": "Unable to maintain fluids/low urine, altered consciousness or meningism, rapidly worsening systemic illness, chest pain with dyspnoea/palpitations/syncope, or a febrile/unwell neonate."
+      },
+      "sourceReview": [
+        "NHS: Hand, foot and mouth disease",
+        "Leeds Teaching Hospitals NHS Trust: Enterovirus PCR clinical indications",
+        "UK NHS enterovirus laboratory guidance"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Musculoskeletal / Rheumatology Conditions",
+      "name": "Costochondritis",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Clinical after excluding serious chest-pain causes: localised parasternal pain is reproducible by palpation and worse with movement/deep inspiration. Reproducibility supports the diagnosis but does not itself exclude ACS; investigate cardiac/pulmonary causes according to risk and presentation.",
+        "treatment": "Reassure, modify provoking activity and consider local heat; paracetamol. If an NSAID is suitable, Tayside first-choice ibuprofen at the lowest effective dose for the shortest time (e.g. 200–400 mg up to TDS; max 1.2 g/day OTC), assessing GI/renal/CV risk and gastroprotection need.",
+        "escalation": "Urgent/ED assessment if ACS, PE, aortic dissection, pneumothorax or sepsis is possible; review persistent/recurrent pain, focal swelling (Tietze syndrome), fever/systemic illness or diagnostic uncertainty.",
+        "mimics": "ACS, pericarditis, pulmonary embolism, pneumothorax, pneumonia/pleurisy, GORD, intercostal muscle strain, Tietze syndrome, herpes zoster.",
+        "redFlags": "Pressure/heaviness or exertional pain, radiation to arm/jaw/back, dyspnoea, syncope, haemoptysis, hypoxia, shock, fever/rigors, unequal pulses or rapidly worsening severe pain."
+      },
+      "sourceReview": [
+        "NHS Nottinghamshire: Costochondritis",
+        "NHS Tayside Area Formulary: NSAIDs — ibuprofen first choice, lowest dose/shortest duration",
+        "UK ibuprofen product information / NHS adult dosing"
+      ]
+    },
+    {
+      "mode": "replace",
+      "topic": "Ent Problems",
+      "name": "Labyrinthitis / vestibular neuritis",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Acute continuous vertigo lasting days with nausea/gait unsteadiness; labyrinthitis has hearing loss/tinnitus, vestibular neuritis does not. HINTS is for acute vestibular syndrome only and should be performed by a trained clinician; include otoscopy and bedside hearing assessment.",
+        "treatment": "For severe symptoms, use a vestibular suppressant/antiemetic only briefly (usually no more than 3 days), e.g. prochlorperazine 5 mg TDS if suitable; encourage early mobilisation and vestibular rehabilitation once tolerated.",
+        "escalation": "Immediate stroke pathway for central signs or unexplained acute vestibular syndrome when trained HINTS is unavailable. Sudden unexplained hearing loss developing over 3 days or less and within the past 30 days requires immediate ENT/ED assessment (within 24 h).",
+        "mimics": "Posterior circulation stroke, BPPV, Ménière disease, vestibular migraine, acoustic neuroma, otitis media, drug toxicity.",
+        "redFlags": "New focal neurology, inability to walk unaided/severe truncal ataxia, direction-changing or vertical nystagmus/skew, severe new headache, or sudden unilateral hearing loss."
+      },
+      "sourceReview": [
+        "NICE NG127: Suspected neurological conditions — acute vestibular syndrome/HINTS",
+        "NICE NG98: Hearing loss in adults — sudden hearing loss referral",
+        "NHS: Labyrinthitis and vestibular neuritis",
+        "NHS Tayside Area Formulary: vestibular disorders/vertigo",
+        "UK prochlorperazine SmPC"
+      ]
+    }
+  ]
+}
