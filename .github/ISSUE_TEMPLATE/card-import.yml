@@ -1,0 +1,27 @@
+name: Import UKMLA cards
+about: Submit validated ukmla-card-import-v1 JSON for permanent inclusion
+labels: ["card-import"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Generate or validate the payload using `CARD_IMPORT_PROMPT.md` or the in-app **Add / import card** tool. Do not include patient-identifiable information.
+  - type: textarea
+    id: payload
+    attributes:
+      label: Card import JSON
+      description: Paste one complete ukmla-card-import-v1 payload. Multiple cards may be included.
+      placeholder: |
+        {"schemaVersion":"ukmla-card-import-v1","cards":[...]}
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I have checked that these are not obvious duplicates of existing cards.
+          required: true
+        - label: The content contains no patient-identifiable information.
+          required: true
