@@ -33,6 +33,7 @@ jobs:
 
           for FILE in \
             v2/core.js \
+            v2/card-importer.js \
             v2/large-storage.js \
             v2/question-bank.js \
             v2/question-analytics.js \
@@ -75,6 +76,7 @@ jobs:
             scripts/build_v2_data.py \
             scripts/biomedical_core.py \
             scripts/normalise_v2_data.py \
+            scripts/import_cards.py \
             scripts/validate_biomedical_module.py
           do
             echo "=== ${FILE} ===" >> validation-diagnostics.txt
@@ -155,6 +157,7 @@ jobs:
           grep -q "question-bank.css" v2/app.html
           grep -q "question-bank.js" v2/app.html
           grep -q "question-analytics.js" v2/app.html
+          grep -q "card-importer.js" v2/app.html
           python - <<'PY'
           from pathlib import Path
           html = Path('v2/app.html').read_text(encoding='utf-8')
@@ -181,6 +184,7 @@ jobs:
           data = json.loads(Path('data/conditions.json').read_text(encoding='utf-8'))
           conditions = data['conditions']
           ids = [item['id'] for item in conditions]
+          names = [(item['topic'].casefold(), item['name'].casefold()) for item in conditions]
           topics = {item['name']: item['count'] for item in data['topics']}
           profiles = {}
           for item in conditions:
@@ -190,18 +194,17 @@ jobs:
           print(f"Extracted topics: {data['topicCount']}")
           print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] == 813
-          assert data['topicCount'] == 25
+          assert data['conditionCount'] >= 813
+          assert data['topicCount'] >= 25
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
-          assert profiles == {
-              'anatomy': 139,
-              'clinical': 415,
-              'law': 69,
-              'physiology': 190,
-          }
-          assert topics['Clinical Anatomy'] == 139
-          assert topics['Clinical Physiology'] == 190
+          assert len(names) == len(set(names))
+          assert profiles.get('anatomy', 0) >= 139
+          assert profiles.get('clinical', 0) >= 415
+          assert profiles.get('law', 0) >= 69
+          assert profiles.get('physiology', 0) >= 190
+          assert topics['Clinical Anatomy'] >= 139
+          assert topics['Clinical Physiology'] >= 190
           assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
           assert all(len(item.get('fields', {})) >= 3 for item in conditions)
           assert all(len(item['fields']) == 5 for item in conditions if item['profile'] in {'anatomy', 'physiology'})
@@ -260,6 +263,7 @@ jobs:
           test -s _site/assets/ukmla-intro.mp4
           test -s _site/assets/ukmla-intro-first-frame.jpg
           test -s _site/v2/core.js
+          test -s _site/v2/card-importer.js
           test -s _site/v2/large-storage.js
           test -s _site/v2/question-bank.js
           test -s _site/v2/question-analytics.js
@@ -283,6 +287,7 @@ jobs:
           test -s _site/v2/psa-runtime.js
           test -s _site/v2/psa.css
           grep -q 'large-storage.js?v=1' _site/index.html
+          grep -q 'card-importer.js?v=1' _site/index.html
           grep -q 'question-bank.js?v=2' _site/index.html
           grep -q 'question-analytics.js' _site/index.html
           grep -q 'question-bank.css' _site/index.html
@@ -311,8 +316,8 @@ jobs:
           python - <<'PY'
           import json
           data = json.load(open('_site/data/conditions.json', encoding='utf-8'))
-          assert data['conditionCount'] == 813
-          assert data['topicCount'] == 25
+          assert data['conditionCount'] >= 813
+          assert data['topicCount'] >= 25
           PY
           ! grep -q 'original-pdf-data' _site/index.html
           ! grep -q '<iframe' _site/index.html
