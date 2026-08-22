@@ -1,0 +1,1 @@
+Temporary integration note for branch add-brainstem-localisation-cards. The neuro-localisation source is data_sources/biomedical-neuro-localisation.tsv and is intended to be imported as Clinical Physiology cards with five authored fields.
