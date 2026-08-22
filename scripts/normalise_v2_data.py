@@ -10,6 +10,7 @@ from biomedical_core import (
     ANATOMY_SOURCE,
     EXPECTED_ANATOMY,
     EXPECTED_PHYSIOLOGY,
+    NEURO_LOCALISATION_SOURCE,
     PHYSIOLOGY_SOURCE,
     load_biomedical_records,
 )
@@ -17,6 +18,7 @@ from biomedical_core import (
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "conditions.json"
 BIOMEDICAL_PROFILES = {"anatomy", "physiology"}
+BIOMEDICAL_SOURCES = (ANATOMY_SOURCE, PHYSIOLOGY_SOURCE, NEURO_LOCALISATION_SOURCE)
 
 
 def clean(value: str) -> str:
@@ -55,7 +57,7 @@ def make_condition_id(topic_id: str, name: str) -> str:
 
 def source_digest() -> str:
     digest = sha1()
-    for path in (ANATOMY_SOURCE, PHYSIOLOGY_SOURCE):
+    for path in BIOMEDICAL_SOURCES:
         digest.update(path.name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
@@ -96,7 +98,7 @@ def main() -> None:
         raise SystemExit(f"Built {anatomy_count} anatomy cards; expected {EXPECTED_ANATOMY}")
     if physiology_count != EXPECTED_PHYSIOLOGY:
         raise SystemExit(f"Built {physiology_count} physiology cards; expected {EXPECTED_PHYSIOLOGY}")
-    if len(records) < 813:
+    if len(records) < 838:
         raise SystemExit(f"Biomedical build unexpectedly contains only {len(records)} total cards")
 
     topics: dict[str, dict[str, object]] = {}
@@ -109,7 +111,7 @@ def main() -> None:
         current["count"] = int(current["count"]) + 1
 
     generated_from = list(payload.get("generatedFrom", []))
-    for path in (ANATOMY_SOURCE, PHYSIOLOGY_SOURCE):
+    for path in BIOMEDICAL_SOURCES:
         relative = str(path.relative_to(ROOT))
         if relative not in generated_from:
             generated_from.append(relative)
