@@ -190,7 +190,7 @@ jobs:
           print(f"Extracted topics: {data['topicCount']}")
           print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] == 813
+          assert data['conditionCount'] == 838
           assert data['topicCount'] == 25
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
@@ -198,10 +198,10 @@ jobs:
               'anatomy': 139,
               'clinical': 415,
               'law': 69,
-              'physiology': 190,
+              'physiology': 215,
           }
           assert topics['Clinical Anatomy'] == 139
-          assert topics['Clinical Physiology'] == 190
+          assert topics['Clinical Physiology'] == 215
           assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
           assert all(len(item.get('fields', {})) >= 3 for item in conditions)
           assert all(len(item['fields']) == 5 for item in conditions if item['profile'] in {'anatomy', 'physiology'})
@@ -311,7 +311,7 @@ jobs:
           python - <<'PY'
           import json
           data = json.load(open('_site/data/conditions.json', encoding='utf-8'))
-          assert data['conditionCount'] == 813
+          assert data['conditionCount'] == 838
           assert data['topicCount'] == 25
           PY
           ! grep -q 'original-pdf-data' _site/index.html
