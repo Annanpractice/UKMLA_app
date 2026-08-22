@@ -7,10 +7,11 @@ from typing import Any, Callable
 ROOT = Path(__file__).resolve().parents[1]
 ANATOMY_SOURCE = ROOT / "data_sources" / "biomedical-anatomy.tsv"
 PHYSIOLOGY_SOURCE = ROOT / "data_sources" / "biomedical-physiology.tsv"
+NEURO_LOCALISATION_SOURCE = ROOT / "data_sources" / "biomedical-neuro-localisation.tsv"
 ANATOMY_TOPIC = "Clinical Anatomy"
 PHYSIOLOGY_TOPIC = "Clinical Physiology"
 EXPECTED_ANATOMY = 139
-EXPECTED_PHYSIOLOGY = 190
+EXPECTED_PHYSIOLOGY = 215
 
 
 def _rows(path: Path, columns: int) -> list[list[str]]:
@@ -58,11 +59,11 @@ def load_biomedical_records(
     clean: Callable[[str], str],
 ) -> list[dict[str, Any]]:
     anatomy_rows = _rows(ANATOMY_SOURCE, 3)
-    physiology_rows = _rows(PHYSIOLOGY_SOURCE, 6)
+    physiology_rows = _rows(PHYSIOLOGY_SOURCE, 6) + _rows(NEURO_LOCALISATION_SOURCE, 6)
     if len(anatomy_rows) != EXPECTED_ANATOMY:
         raise SystemExit(f"Anatomy source has {len(anatomy_rows)} rows; expected {EXPECTED_ANATOMY}")
     if len(physiology_rows) != EXPECTED_PHYSIOLOGY:
-        raise SystemExit(f"Physiology source has {len(physiology_rows)} rows; expected {EXPECTED_PHYSIOLOGY}")
+        raise SystemExit(f"Physiology sources have {len(physiology_rows)} rows; expected {EXPECTED_PHYSIOLOGY}")
 
     records: list[dict[str, Any]] = []
     anatomy_labels = {
