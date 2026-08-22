@@ -1,4 +1,4 @@
-// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro-fallback ukmla-cards-v17-cache-first-card-startup ukmla-cards-v18-robust-mobile-intro ukmla-cards-v19-real-intro-only ukmla-cards-v20-optimised-real-intro ukmla-cards-v21-tap-first-frame-intro ukmla-cards-v22-original-resolution-intro ukmla-cards-v23-original-silent-intro ukmla-cards-v24-clinical-pharmacology ukmla-cards-v25-unlimited-api-repair ukmla-cards-v26-elevenlabs-handsfree ukmla-cards-v27-mobile-handsfree-scroll ukmla-cards-v28-mobile-search-layout ukmla-cards-v29-voice-tutor-scrubber ukmla-cards-v30-george-default-voice ukmla-cards-v31-elevenlabs-saved-autoload ukmla-cards-v32-condition-performance ukmla-cards-v33-answered-coverage ukmla-cards-v34-coverage-recovery ukmla-cards-v35-daily-colour-themes ukmla-cards-v36-medical-image-questions ukmla-cards-v37-required-image-mode ukmla-cards-v38-stable-image-ui ukmla-cards-v39-best-fit-balanced-planner ukmla-cards-v40-question-lock-repair-progress ukmla-cards-v41-editorial-question-pipeline ukmla-cards-v42-pharmacology-analytics ukmla-cards-v43-mobile-question-tab-scroll ukmla-cards-v44-all-topics-cards-default ukmla-cards-v45-analytics-freshness ukmla-cards-v46-spranki-local-pack ukmla-cards-v48-brainstem-localisation
+// Previous deployed cache markers retained for validation migration: ukmla-cards-v11-sba-runtime-proof ukmla-cards-v13-durable-generated-sets ukmla-cards-v14-generated-set-survival ukmla-cards-v15-shared-status-intro ukmla-cards-v16-muted-intro-fallback ukmla-cards-v17-cache-first-card-startup ukmla-cards-v18-robust-mobile-intro ukmla-cards-v19-real-intro-only ukmla-cards-v20-optimised-real-intro ukmla-cards-v21-tap-first-frame-intro ukmla-cards-v22-original-resolution-intro ukmla-cards-v23-original-silent-intro ukmla-cards-v24-clinical-pharmacology ukmla-cards-v25-unlimited-api-repair ukmla-cards-v26-elevenlabs-handsfree ukmla-cards-v27-mobile-handsfree-scroll ukmla-cards-v28-mobile-search-layout ukmla-cards-v29-voice-tutor-scrubber ukmla-cards-v30-george-default-voice ukmla-cards-v31-elevenlabs-saved-autoload ukmla-cards-v32-condition-performance ukmla-cards-v33-answered-coverage ukmla-cards-v34-coverage-recovery ukmla-cards-v35-daily-colour-themes ukmla-cards-v36-medical-image-questions ukmla-cards-v37-required-image-mode ukmla-cards-v38-stable-image-ui ukmla-cards-v39-best-fit-balanced-planner ukmla-cards-v40-question-lock-repair-progress ukmla-cards-v41-editorial-question-pipeline ukmla-cards-v42-pharmacology-analytics ukmla-cards-v43-mobile-question-tab-scroll ukmla-cards-v44-all-topics-cards-default ukmla-cards-v45-analytics-freshness ukmla-cards-v46-spranki-local-pack ukmla-cards-v47-learned-pipeline-timing ukmla-cards-v48-brainstem-localisation
 const CACHE_NAME='ukmla-cards-v49-network-first-card-data';
 const RUNTIME_CARD_CACHE='ukmla-runtime-card-data-v1';
 const CORE_ASSETS=[
@@ -42,11 +42,13 @@ self.addEventListener('fetch',event=>{
   if(url.pathname.endsWith('/assets/ukmla-intro.mp4'))return;
 
   if(url.pathname.endsWith('/data/conditions.json')||url.pathname.endsWith('/data/image-bank.json')){
+    const refresh=fetch(request,{cache:'no-store'})
+      .then(response=>response?.ok?cacheResponse(request,response):null)
+      .catch(()=>null);
+    event.waitUntil(refresh);
     event.respondWith((async()=>{
-      try{
-        const response=await fetch(request,{cache:'no-store'});
-        if(response?.ok)return await cacheResponse(request,response);
-      }catch(_){ }
+      const response=await refresh;
+      if(response)return response;
       const cached=await caches.match(request,{ignoreSearch:true});
       if(cached)return cached;
       throw new Error('Required UKMLA data is unavailable.');
