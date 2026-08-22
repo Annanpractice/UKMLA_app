@@ -9,12 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ANATOMY = ROOT / "data_sources" / "biomedical-anatomy.tsv"
 PHYSIOLOGY = ROOT / "data_sources" / "biomedical-physiology.tsv"
+NEURO_LOCALISATION = ROOT / "data_sources" / "biomedical-neuro-localisation.tsv"
 DATA = ROOT / "data" / "conditions.json"
 APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
-EXPECTED_PHYSIOLOGY = 190
-EXPECTED_TOTAL = 813
+EXPECTED_PHYSIOLOGY = 215
+EXPECTED_TOTAL = 838
 EXPECTED_TOPICS = 25
 
 ANATOMY_SENTINELS = {
@@ -40,6 +41,9 @@ PHYSIOLOGY_SENTINELS = {
     "AV-node blood supply",
     "Oxygen-induced hypercapnia in COPD",
     "Winter’s formula",
+    "Brainstem Rule of 4s",
+    "Medial medullary syndrome",
+    "One-and-a-half syndrome",
 }
 
 
@@ -145,11 +149,11 @@ def validate_generated_data() -> dict[str, object]:
 
 def main() -> None:
     anatomy_rows = read_tsv(ANATOMY, 3)
-    physiology_rows = read_tsv(PHYSIOLOGY, 6)
+    physiology_rows = read_tsv(PHYSIOLOGY, 6) + read_tsv(NEURO_LOCALISATION, 6)
     if len(anatomy_rows) != EXPECTED_ANATOMY:
         raise SystemExit(f"Anatomy source has {len(anatomy_rows)} rows; expected {EXPECTED_ANATOMY}")
     if len(physiology_rows) != EXPECTED_PHYSIOLOGY:
-        raise SystemExit(f"Physiology source has {len(physiology_rows)} rows; expected {EXPECTED_PHYSIOLOGY}")
+        raise SystemExit(f"Physiology sources have {len(physiology_rows)} rows; expected {EXPECTED_PHYSIOLOGY}")
     assert_unique_names(anatomy_rows, "anatomy")
     assert_unique_names(physiology_rows, "physiology")
     require_sentinels(anatomy_rows, ANATOMY_SENTINELS, "anatomy")
