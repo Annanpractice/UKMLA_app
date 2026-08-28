@@ -58,17 +58,17 @@
     const node=button();
     if(!node)return;
     const label=node.querySelector('.handsfree-label');
-    if(label)label.textContent='I.A.I.S';
+    if(label&&label.textContent!=='I.A.I.S')label.textContent='I.A.I.S';
     node.setAttribute('aria-label','I.A.I.S Socratic tutor');
     node.setAttribute('aria-pressed',state.active?'true':'false');
     node.classList.toggle('active',state.active);
     const oldSetup=document.getElementById('handsfree-setup');
-    if(oldSetup)oldSetup.hidden=true;
+    if(oldSetup&&!oldSetup.hidden)oldSetup.hidden=true;
   }
 
   function setStatus(message,mode='idle'){
     const node=status();
-    if(node){node.hidden=!message;node.textContent=message||'';node.dataset.mode=mode;}
+    if(node){node.hidden=!message;if(node.textContent!==(message||''))node.textContent=message||'';node.dataset.mode=mode;}
     syncButton();
   }
 
