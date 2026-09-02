@@ -10,11 +10,13 @@ const legacyMount=typeof legacy.mount==='function'?legacy.mount.bind(legacy):nul
 const worker=(localStorage.getItem('ukmlaJarvis2WorkerUrlV1')||'https://jarvis-2.iainpfs.workers.dev').trim().replace(/\/+$/,'');
 let available=false;
 let checked=false;
+let lastContainer=null;
 
 function expose(){
   window.UKMLA_V2_AI={
     ...durable,
     mount(container){
+      lastContainer=container||lastContainer;
       if(available&&durableMount)return durableMount(container);
       if(legacyMount)return legacyMount(container);
       return null;
@@ -36,6 +38,7 @@ async function probe(){
   }
   checked=true;
   expose();
+  if(available&&lastContainer?.isConnected&&durableMount)durableMount(lastContainer);
   document.dispatchEvent(new CustomEvent('ukmlaJarvis2Capability',{detail:{available,checked}}));
 }
 
