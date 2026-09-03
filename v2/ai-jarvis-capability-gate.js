@@ -7,7 +7,12 @@ if(!legacy||!durable||legacy===durable)return;
 
 const durableMount=typeof durable.mount==='function'?durable.mount.bind(durable):null;
 const legacyMount=typeof legacy.mount==='function'?legacy.mount.bind(legacy):null;
-const worker=(localStorage.getItem('ukmlaJarvis2WorkerUrlV1')||'https://jarvis-2.iainpfs.workers.dev').trim().replace(/\/+$/,'');
+const WORKER_KEY='ukmlaJarvis2WorkerUrlV1';
+const DEFAULT_WORKER='https://jarvis-2.j74569738.workers.dev';
+const OLD_DEFAULT_WORKER='https://jarvis-2.iainpfs.workers.dev';
+const savedWorker=(localStorage.getItem(WORKER_KEY)||'').trim().replace(/\/+$/,'');
+const worker=(!savedWorker||savedWorker===OLD_DEFAULT_WORKER)?DEFAULT_WORKER:savedWorker;
+if(worker!==savedWorker){try{localStorage.setItem(WORKER_KEY,worker);}catch(_){}}
 let available=false;
 let checked=false;
 let lastContainer=null;
@@ -39,7 +44,7 @@ async function probe(){
   checked=true;
   expose();
   if(available&&lastContainer?.isConnected&&durableMount)durableMount(lastContainer);
-  document.dispatchEvent(new CustomEvent('ukmlaJarvis2Capability',{detail:{available,checked}}));
+  document.dispatchEvent(new CustomEvent('ukmlaJarvis2Capability',{detail:{available,checked,worker}}));
 }
 
 expose();
