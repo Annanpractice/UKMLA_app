@@ -152,6 +152,7 @@
     if(scope==='antimicrobials')return items.filter(item=>item.section==='Antimicrobials'||item.antimicrobial);
     if(scope==='cardiovascular')return items.filter(item=>item.section==='Cardiovascular'||item.section==='Anticoagulation');
     if(scope==='high-risk')return items.filter(item=>['High-risk medicines','Geriatrics & frailty'].includes(item.section));
+    if(scope==='oncology')return items.filter(item=>item.section==='Oncology & SACT'||item.oncology);
     if(scope==='paediatrics')return items.filter(item=>item.paediatric);
     if(scope==='topical')return items.filter(item=>item.section==='Topical & dermatology');
     if(scope==='emergency')return items.filter(item=>item.section==='Emergency & acute');
@@ -191,6 +192,7 @@
         <option value="cardiovascular">Cardiovascular &amp; anticoagulation</option>
         <option value="antimicrobials">Antimicrobials</option>
         <option value="emergency">Emergency medicines</option>
+        <option value="oncology">Oncology &amp; SACT toxicities</option>
         <option value="paediatrics">Paediatrics</option>
         <option value="high-risk">High-risk medicines &amp; frailty</option>
         <option value="topical">Topical &amp; dermatology</option>
@@ -318,7 +320,7 @@
     if(scope==='calculations'){
       return core().shuffle(calculationTemplates()).slice(0,10).map((template,index)=>buildCalculationQuestion(template,index+1));
     }
-    const baseCalcCount=scope==='paediatrics'?3:scope==='topical'?1:scope==='mixed'?3:2;
+    const baseCalcCount=scope==='oncology'?0:scope==='paediatrics'?3:scope==='topical'?1:scope==='mixed'?3:2;
     const calcCount=Math.max(baseCalcCount,10-Math.min(pool.length,10-baseCalcCount));
     const cardCount=10-calcCount;
     const targets=core().selectCoverageCandidates(pool,Math.min(cardCount,pool.length),{uniqueTopics:false});
