@@ -51,9 +51,9 @@ jobs:
 
       - name: Confirm deployed module references
         run: |
-          grep -q 'pharmacology-data.js?v=1' v2/app.html
+          grep -q 'pharmacology-data.js?v=2' v2/app.html
           grep -q 'pharmacology-ai.js?v=1' v2/app.html
-          grep -q 'pharmacology.js?v=1' v2/app.html
+          grep -q 'pharmacology.js?v=2' v2/app.html
           grep -q 'pharmacology-data.js' service-worker.js
           for FILE in v2/pharmacology-data-*.js; do grep -q "$(basename "$FILE")" v2/app.html; grep -q "$(basename "$FILE")" service-worker.js; done
           grep -q 'pharmacology-ai.js' service-worker.js

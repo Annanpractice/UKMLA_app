@@ -26,14 +26,16 @@ function loadData(){
 const data=loadData();
 assert.equal(data.schemaVersion,'ukmla-pharmacology-v1');
 assert.equal(data.topic,'Clinical Pharmacology & Safe Prescribing');
-assert.equal(data.checkedDate,'2026-07-19');
-assert.equal(data.cards.length,108);
-assert.equal(new Set(data.cards.map(card=>card.name)).size,108);
+assert.equal(data.checkedDate,'2026-09-05');
+assert.equal(data.cards.length,130);
+assert.equal(new Set(data.cards.map(card=>card.name)).size,130);
+assert(data.sections.includes('Oncology & SACT'));
 assert.deepEqual(Array.from(data.fieldOrder),['indication','prescribe','checkMonitor','interactionsAvoid','toxicityAct']);
 
 const requiredFields=new Set(data.fieldOrder);
 for(const card of data.cards){
   assert(card.name&&card.section);
+  assert(data.sections.includes(card.section),`Unlisted pharmacology section: ${card.section}`);
   assert.deepEqual(new Set(Object.keys(card.fields)),requiredFields);
   assert(Object.values(card.fields).every(value=>String(value).trim()));
   assert(Array.isArray(card.sourceRefs)&&card.sourceRefs.length);
@@ -55,7 +57,17 @@ const names=new Set(data.cards.map(card=>card.name));
   'Haloperidol for acute delirium',
   'Topical corticosteroid potency ladder',
   'Paediatric mg/kg dose calculation',
-  'Cockcroft–Gault creatinine clearance'
+  'Cockcroft–Gault creatinine clearance',
+  'Antidepressant adverse effects and withdrawal',
+  'Benzodiazepine, Z-drug and gabapentinoid safety',
+  'Antipsychotics in dementia',
+  'Clozapine emergencies',
+  'Nitrofurantoin pulmonary and hepatic toxicity',
+  'Patient receiving SACT: first assessment and immediate actions',
+  'Tumour lysis syndrome and time-critical rasburicase',
+  'Immune-checkpoint inhibitor pneumonitis',
+  'Fluoropyrimidines and DPD deficiency',
+  'SACT extravasation and infusion reactions'
 ].forEach(name=>assert(names.has(name),`Missing sentinel card: ${name}`));
 
 const counts=data.cards.reduce((result,card)=>{
@@ -63,8 +75,11 @@ const counts=data.cards.reduce((result,card)=>{
   return result;
 },{});
 assert.equal(counts.Cardiovascular,26);
-assert.equal(counts.Antimicrobials,23);
+assert.equal(counts.Antimicrobials,24);
 assert.equal(counts['Emergency & acute'],18);
+assert.equal(counts['High-risk medicines'],18);
+assert.equal(counts['Geriatrics & frailty'],9);
+assert.equal(counts['Oncology & SACT'],13);
 assert(data.cards.filter(card=>card.paediatric).length>=10);
 assert(data.cards.filter(card=>card.calculationRequired).length>=18);
 assert(data.cards.filter(card=>card.antimicrobial).length>=20);
@@ -114,17 +129,19 @@ sandbox.window=sandbox;
 sandbox.UKMLA_V2=fakeCore;
 sandbox.UKMLA_PHARMACOLOGY_DATA=data;
 vm.createContext(sandbox);
-vm.runInContext(read('v2/pharmacology.js'),sandbox,{filename:'pharmacology.js'});
+const pharmacologyRuntime=read('v2/pharmacology.js');
+vm.runInContext(pharmacologyRuntime,sandbox,{filename:'pharmacology.js'});
 assert(sandbox.UKMLA_PHARMACOLOGY);
+assert(pharmacologyRuntime.includes('<option value="oncology">Oncology &amp; SACT toxicities</option>'));
 assert(sandbox.UKMLA_PHARMACOLOGY.injectData());
-assert.equal(app.conditions.length,108);
+assert.equal(app.conditions.length,130);
 assert.equal(app.topics.length,1);
-assert.equal(app.topics[0].count,108);
+assert.equal(app.topics[0].count,130);
 assert.equal(app.conditions[0].profile,'pharmacology');
 assert.deepEqual(new Set(Object.keys(app.conditions[0].fields)),new Set(['mimics','treatment','investigations','redFlags','escalation']));
 assert(Object.keys(fakeCore.TYPE_LABELS).filter(key=>key.startsWith('pharm_')).length===10);
 
-for(const scope of ['calculations','mixed','cardiovascular','antimicrobials','paediatrics','high-risk','topical','emergency']){
+for(const scope of ['calculations','mixed','cardiovascular','antimicrobials','paediatrics','high-risk','topical','emergency','oncology']){
   const set=sandbox.UKMLA_PHARMACOLOGY.selectPlan(scope);
   assert.equal(set.length,10,`${scope} did not create ten questions`);
   assert.equal(new Set(set.map(question=>question.id)).size,10,`${scope} produced duplicate IDs`);
@@ -132,6 +149,9 @@ for(const scope of ['calculations','mixed','cardiovascular','antimicrobials','pa
   assert(set.every(question=>question.options.length===5));
   assert(set.every(question=>new Set(question.options.map(option=>option.text)).size===5));
 }
+const oncology=sandbox.UKMLA_PHARMACOLOGY.selectPlan('oncology');
+assert(oncology.every(question=>question.section==='Oncology & SACT'));
+assert(oncology.every(question=>!question.calculationRequired));
 const calculations=sandbox.UKMLA_PHARMACOLOGY.selectPlan('calculations');
 assert(calculations.every(question=>question.questionType==='pharm_dose_calculation'));
 assert(calculations.every(question=>question.calculationRequired));
