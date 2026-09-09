@@ -1,8 +1,8 @@
 # Clinical Pharmacology & Safe Prescribing source framework
 
-Checked: **5 September 2026**
+Checked: **9 September 2026**
 
-This module adds a first-class **Clinical Pharmacology & Safe Prescribing** topic to the UKMLA card atlas. It contains 130 five-field cards:
+This module adds a first-class **Clinical Pharmacology & Safe Prescribing** topic to the UKMLA card atlas. It contains 136 five-field cards:
 
 1. Indication / recognise
 2. Prescribe
@@ -20,6 +20,7 @@ The cards are concise revision prompts, not a substitute for checking the curren
 - anticoagulation, VTE duration and reversal
 - CAP, atypical pneumonia, HAP and common day-to-day antimicrobials
 - insulin, methotrexate, lithium, opioids and other high-risk medicines
+- practical strong-opioid prescribing: morphine/oxycodone IR versus MR formulations, oral-liquid mg-to-mL calculation, palliative breakthrough dosing, oral-to-SC conversion, opioid switching and renal/frailty safety
 - frailty, renal function, falls and acute-illness medicine review
 - antidepressants, sedatives, dementia medicines, clozapine, antithyroid medicines, PPIs and respiratory preventer safety
 - systemic anticancer therapy recognition, cytopenias, tumour lysis, fluoropyrimidines, immunotherapy toxicity, signature cytotoxic toxicities and extravasation
@@ -54,6 +55,13 @@ The cards are concise revision prompts, not a substitute for checking the curren
 - NICE and SPS monitoring guidance
 - current product information and online BNF/BNFc for indication-specific dosing, renal/hepatic adjustment, interactions, monitoring and reversal
 
+### Opioid and palliative prescribing
+
+- Scottish Palliative Care Guidelines / Right Decisions, *Calculations in palliative care*: breakthrough doses commonly 1/6–1/10 of the total 24-hour dose; oral-to-SC morphine/oxycodone teaching conversion of approximately 2:1; and a safety reduction when changing between opioids
+- NHS Scotland / Right Decisions, *Just in Case* opioid guidance: calculate breakthrough dosing individually, use oxycodone breakthrough with regular oxycodone, and seek specialist advice in severe renal impairment
+- NHS Greater Glasgow & Clyde, *Safer Use of Opioids*: confirm formulation and frequency, avoid IR/MR mix-ups, and recognise the oral-to-parenteral bioavailability change
+- current BNF/SmPC for individual formulations. Zomorph and Longtec are 12-hour modified/prolonged-release products; early end-of-dose pain should prompt regimen review rather than being taught as a routine 8–10-hour dosing interval
+
 ### General medicine and older-adult medicine
 
 - [Scottish Government, *Polypharmacy Guidance: Appropriate Prescribing, Making Medicines Safe, Effective and Sustainable 2026–2029*](https://www.gov.scot/publications/polypharmacy-guidance-appropriate-prescribing-making-medicines-safe-effective-sustainable-2026-2029/)
@@ -78,6 +86,9 @@ The cards are concise revision prompts, not a substitute for checking the curren
 
 - Exact doses are taught only with their clinical context, route, frequency, duration and relevant maximum.
 - Paediatric calculations distinguish mg/kg **per dose** from mg/kg **per day** and require practical formulation conversion.
+- Opioid liquid calculations start from the prescribed **mg** dose and then use the verified product concentration to derive mL.
+- Palliative breakthrough-dose and oral-to-SC rules are labelled as approximate Scottish teaching conversions rather than universal equianalgesic constants.
+- Modified-release opioid preparations are kept distinct from immediate-release rescue preparations; a patient reporting early end-of-dose pain is reviewed rather than automatically moved to an 8–10-hour MR schedule.
 - DOAC questions distinguish acute loading, standard treatment, extended prevention and the separate decision about treatment duration.
 - Renal questions distinguish Cockcroft–Gault creatinine clearance from eGFR when medicine licensing or patient factors require it.
 - Antibiotic questions preserve severity, allergy, site penetration, culture results, IV-to-oral review and local resistance policy.
