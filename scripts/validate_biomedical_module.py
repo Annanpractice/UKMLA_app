@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 838
+EXPECTED_TOTAL = 841
 EXPECTED_TOPICS = 25
 
 ANATOMY_SENTINELS = {
@@ -44,6 +44,15 @@ PHYSIOLOGY_SENTINELS = {
     "Brainstem Rule of 4s",
     "Medial medullary syndrome",
     "One-and-a-half syndrome",
+}
+
+CURATED_CLINICAL_SENTINELS = {
+    "Urinary tract infection",
+    "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)",
+    "Severe androgen excess / postmenopausal hyperandrogenism",
+    "Coxsackie / enterovirus infection",
+    "Costochondritis",
+    "Labyrinthitis / vestibular neuritis",
 }
 
 
@@ -102,6 +111,7 @@ def validate_generated_data() -> dict[str, object]:
     conditions = payload["conditions"]
     anatomy = [item for item in conditions if item.get("profile") == "anatomy"]
     physiology = [item for item in conditions if item.get("profile") == "physiology"]
+    clinical = [item for item in conditions if item.get("profile") == "clinical"]
 
     if payload.get("conditionCount") != EXPECTED_TOTAL:
         raise SystemExit(f"Generated total is {payload.get('conditionCount')}; expected {EXPECTED_TOTAL}")
@@ -131,10 +141,22 @@ def validate_generated_data() -> dict[str, object]:
 
     generated_anatomy_names = {item["name"] for item in anatomy}
     generated_physiology_names = {item["name"] for item in physiology}
+    generated_clinical_names = {item["name"] for item in clinical}
     if not ANATOMY_SENTINELS <= generated_anatomy_names:
         raise SystemExit("One or more anatomy sentinels were lost during build")
     if not PHYSIOLOGY_SENTINELS <= generated_physiology_names:
         raise SystemExit("One or more physiology sentinels were lost during build")
+    if not CURATED_CLINICAL_SENTINELS <= generated_clinical_names:
+        raise SystemExit("One or more curated clinical cards were not applied")
+    if "Polycystic ovary syndrome" in generated_clinical_names:
+        raise SystemExit("Legacy PCOS card survived the PMOS curated replacement")
+
+    pmos = next(item for item in clinical if item["name"] == "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)")
+    androgen = next(item for item in clinical if item["name"] == "Severe androgen excess / postmenopausal hyperandrogenism")
+    if "AMH" not in pmos["fields"]["investigations"] or "adolescents" not in pmos["fields"]["investigations"].lower():
+        raise SystemExit("PMOS card is missing diagnostic update sentinels")
+    if ">5 nmol/L" not in androgen["fields"]["investigations"]:
+        raise SystemExit("Androgen-excess card is missing the severe testosterone threshold")
 
     return {
         "totalCards": len(conditions),
@@ -144,6 +166,7 @@ def validate_generated_data() -> dict[str, object]:
         "biomedicalCards": len(anatomy) + len(physiology),
         "schemaVersion": payload.get("schemaVersion"),
         "biomedicalSourceDigest": payload.get("biomedicalSourceDigest"),
+        "curatedClinicalSourceDigest": payload.get("curatedClinicalSourceDigest"),
     }
 
 
