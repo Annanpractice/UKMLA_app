@@ -23,6 +23,43 @@
       ]
     },
     {
+      "mode": "replace",
+      "topic": "Lady Problems",
+      "name": "Polycystic ovary syndrome",
+      "newName": "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Adults: after excluding alternatives, diagnose with 2 of 3 — ovulatory dysfunction/irregular cycles, clinical or biochemical hyperandrogenism, or polycystic ovarian morphology on ultrasound or elevated AMH. If irregular cycles plus hyperandrogenism are already present, ultrasound/AMH is not required. In adolescents require both irregular cycles and hyperandrogenism; do not use ultrasound or AMH diagnostically. Assess BP/lipids and glycaemia; a 75-g OGTT is the most accurate glycaemic test.",
+        "treatment": "Lifestyle management and long-term metabolic risk reduction; COCP can treat irregular cycles/hirsutism if suitable. Consider metformin primarily for metabolic indications, especially in adults with BMI ≥25 kg/m²; letrozole is first-line pharmacological ovulation induction when infertility due to anovulation is the issue, usually specialist-led.",
+        "escalation": "Refer endocrine/gynae for rapid or severe virilisation, markedly elevated androgens, diagnostic uncertainty, infertility requiring treatment, prolonged amenorrhoea/endometrial-risk concerns or major metabolic complications.",
+        "mimics": "Androgen-secreting ovarian/adrenal tumour, ovarian hyperthecosis, non-classic CAH, Cushing syndrome, hyperprolactinaemia, thyroid disease, severe insulin-resistance syndromes, hypothalamic amenorrhoea and exogenous androgens.",
+        "redFlags": "Rapid-onset virilisation, deepening voice/clitoromegaly, new severe androgen excess after menopause, pelvic/adrenal mass, markedly elevated testosterone, abnormal uterine bleeding or significant diabetes/metabolic disease."
+      },
+      "sourceReview": [
+        "Endocrine Society/International PCOS Network 2026: PMOS name change",
+        "2023 International Evidence-based Guideline for PCOS/PMOS",
+        "Monash Centre for Health Research and Implementation: PMOS guideline resources"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Lady Problems",
+      "name": "Severe androgen excess / postmenopausal hyperandrogenism",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Measure testosterone, SHBG with a free-testosterone index, androstenedione, DHEAS, 17-hydroxyprogesterone, oestradiol, LH and FSH; ask specifically about exogenous testosterone exposure and screen for Cushing syndrome only when clinically indicated. Prefer/confirm significant testosterone elevation with LC-MS/MS. Testosterone >5 nmol/L warrants urgent ovarian/adrenal imaging. Predominant testosterone excess suggests an ovarian source; marked DHEAS/androstenedione elevation raises adrenal suspicion. Small ovarian androgen-secreting tumours can be occult on imaging.",
+        "treatment": "Treat the cause. Androgen-secreting ovarian/adrenal tumours usually require surgical assessment; postmenopausal ovarian hyperthecosis is commonly treated with bilateral oophorectomy. If ovarian surgery is declined or contraindicated, specialist GnRH suppression may reduce ovarian androgen production; spironolactone/finasteride can improve symptoms but do not remove an underlying tumour.",
+        "escalation": "Urgent endocrine/gynaecology assessment for rapid onset/progression, overt virilisation, testosterone >5 nmol/L or suspected neoplastic androgen excess; arrange ovarian and/or adrenal imaging according to the biochemical pattern.",
+        "mimics": "PMOS, ovarian hyperthecosis, androgen-secreting ovarian tumour, adrenal tumour, non-classic CAH, Cushing syndrome, severe insulin-resistance syndromes and prescribed/inadvertently transferred exogenous androgens.",
+        "redFlags": "New or rapidly progressive postmenopausal hirsutism, deepening voice, clitoromegaly, rapidly progressive androgenic alopecia, increased muscle mass, erythrocytosis, pelvic/adrenal mass or severe biochemical androgen excess."
+      },
+      "sourceReview": [
+        "Society for Endocrinology Clinical Practice Guideline for the Evaluation of Androgen Excess in Women, 2025",
+        "JCEM review: Postmenopausal Hyperandrogenism",
+        "Endocrine Society/International PCOS Network PMOS resources"
+      ]
+    },
+    {
       "mode": "add",
       "topic": "Infectious Disease",
       "name": "Coxsackie / enterovirus infection",
