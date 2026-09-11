@@ -1,8 +1,27 @@
 {
   "schemaVersion": "ukmla-curated-clinical-1",
-  "reviewed": "2026-08-13",
+  "reviewed": "2026-09-11",
   "purpose": "Evidence-reviewed clinical additions and replacements for the generated UKMLA card dataset.",
   "conditions": [
+    {
+      "mode": "replace",
+      "topic": "Renal Problems",
+      "name": "Urinary tract infection",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Clinical diagnosis. Do not use urine dipsticks to diagnose UTI in adults aged 65 years or over or in people with an indwelling urinary catheter. Send urine culture when indicated, including men, pregnancy, recurrent/atypical UTI, pyelonephritis, treatment failure and suspected catheter-associated UTI; obtain before antibiotics where feasible.",
+        "treatment": "Uncomplicated lower UTI in a non-pregnant younger woman: follow current local/NICE antimicrobial guidance, commonly nitrofurantoin if renal function is suitable. In older or catheterised adults, treat only when compatible clinical features support infection; do not treat asymptomatic bacteriuria.",
+        "escalation": "Same-day/urgent assessment for pyelonephritis or sepsis, pregnancy with systemic illness, AKI, obstruction/retention, catheter-associated systemic illness, inability to maintain oral intake or marked clinical deterioration.",
+        "mimics": "STI/urethritis, vaginitis, overactive bladder, interstitial cystitis, stones, bladder cancer and prostatitis; in older adults also consider pneumonia/other infection, dehydration, constipation, urinary retention, pain, medication effects and metabolic causes of delirium.",
+        "redFlags": "Fever or hypothermia, flank pain, rigors, vomiting, hypotension, AKI/oliguria, obstruction/retention, visible haematuria or systemic deterioration. New delirium in a frail older adult warrants urgent assessment, but delirium or bacteriuria alone does not diagnose UTI."
+      },
+      "sourceReview": [
+        "NICE NG109: Lower UTI antimicrobial prescribing",
+        "NICE NG113: Catheter-associated UTI antimicrobial prescribing",
+        "NICE QS90: UTI in adults",
+        "SAPG: UTI decision aids for people aged 65 years and over"
+      ]
+    },
     {
       "mode": "add",
       "topic": "Infectious Disease",
