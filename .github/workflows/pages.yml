@@ -147,9 +147,9 @@ jobs:
           assert 'AI-generated UKMLA quiz' not in ai_ui
           assert 'Generate 10-question AI quiz' not in ai_ui
 
-          for marker in ['Faster combined review (trial)', 'Legacy separate reviews', 'OPTION NORMALISATION']:
+          for marker in ['Faster combined review (trial)', 'Legacy separate reviews', 'OPTION NORMALISATION', 'ANSWER-CATEGORY ALIGNMENT']:
               assert marker in pipeline, marker
-          for marker in ['ANSWER-CATEGORY ALIGNMENT', 'OPTIONS MUST BE ANSWER LABELS', 'At least three of the four wrong options']:
+          for marker in ['OPTIONS MUST BE ANSWER LABELS', 'At least three of the four wrong options']:
               assert marker in audit, marker
           for marker in ['Return only atomic text patches', 'Affected-question repair', 'Full-set fallback repair']:
               assert marker in repair, marker
