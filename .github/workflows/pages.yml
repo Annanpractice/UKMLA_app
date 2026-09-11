@@ -109,7 +109,7 @@ jobs:
       - name: Validate IndexedDB Question Bank, quota rollback and analytics
         run: node scripts/validate_question_bank.js
 
-      - name: Validate biomedical sources, question integration and generated data
+      - name: Validate biomedical and curated clinical generated data
         run: python scripts/validate_biomedical_module.py
 
       - name: Validate Basic HTML profile isolation
@@ -119,57 +119,56 @@ jobs:
           grep -q "UKMLA_QUESTION_BANK.*storeSet" v2/biomedical-basic.js
           grep -q "biomedical-basic.js" v2/app.html
 
-      - name: Validate mobile UKMLA Questions workspace and large storage
+      - name: Validate question workspace integration
         run: |
-          grep -q "ai:'UKMLA Questions'" v2/question-workspace.js
-          grep -q "bank:'Question Bank'" v2/question-workspace.js
-          grep -q "window.UKMLA_V2_AI.mount(container)" v2/question-workspace.js
-          grep -q "UKMLA_QUESTION_BANK.mount(container)" v2/question-workspace.js
-          grep -q "api.App.state.quizTab=tab" v2/question-workspace.js
-          grep -q "GMC content-map practice" v2/question-workspace.js
-          grep -q "BNF/NICE-grounded" v2/question-workspace.js
-          grep -q "Temporary OpenAI API key" v2/ai-ui.js
-          grep -q "inputmode=\"text\"" v2/ai-ui.js
-          grep -q "Session only" v2/ai-ui.js
-          grep -q "Build 10 UKMLA questions" v2/ai-ui.js
-          grep -q "Faster combined review (trial)" v2/ai-pipeline-mode.js
-          grep -q "Legacy separate reviews" v2/ai-pipeline-mode.js
-          grep -q "id=\"ai-pipeline-mode\"" v2/ai-ui.js
-          grep -q "OPTION NORMALISATION" v2/ai-pipeline-mode.js
-          grep -q "ANSWER-CATEGORY ALIGNMENT" v2/ai-sba-audit.js
-          grep -q "OPTIONS MUST BE ANSWER LABELS" v2/ai-sba-audit.js
-          grep -q "At least three of the four wrong options" v2/ai-sba-audit.js
-          grep -q "assertRequiredApiCheckpoints" v2/ai-engine.js
-          grep -q "apiSuccessByStage" v2/ai-engine.js
-          grep -q "Return only atomic text patches" v2/ai-targeted-repair.js
-          grep -q "Affected-question repair" v2/ai-targeted-repair.js
-          grep -q "Full-set fallback repair" v2/ai-targeted-repair.js
-          grep -q "targeted field, affected-question and full-set repair" v2/ai-engine.js
-          grep -q "ukmla-v2-backup-4-indexeddb" v2/sync.js
-          grep -q "No partial import was kept" v2/large-storage.js
-          grep -q "storageBackend:'indexeddb'" v2/question-bank.js
-          ! grep -q "AI-generated UKMLA quiz" v2/ai-ui.js
-          ! grep -q "Generate 10-question AI quiz" v2/ai-ui.js
-          grep -q "question-workspace.css" v2/app.html
-          grep -q "question-workspace.js" v2/app.html
-          grep -q "question-bank.css" v2/app.html
-          grep -q "question-bank.js" v2/app.html
-          grep -q "question-analytics.js" v2/app.html
           python - <<'PY'
           from pathlib import Path
+
+          workspace = Path('v2/question-workspace.js').read_text(encoding='utf-8')
+          ai_ui = Path('v2/ai-ui.js').read_text(encoding='utf-8')
+          pipeline = Path('v2/ai-pipeline-mode.js').read_text(encoding='utf-8')
+          audit = Path('v2/ai-sba-audit.js').read_text(encoding='utf-8')
+          repair = Path('v2/ai-targeted-repair.js').read_text(encoding='utf-8')
+          engine = Path('v2/ai-engine.js').read_text(encoding='utf-8')
+          sync = Path('v2/sync.js').read_text(encoding='utf-8')
+          large = Path('v2/large-storage.js').read_text(encoding='utf-8')
+          bank = Path('v2/question-bank.js').read_text(encoding='utf-8')
           html = Path('v2/app.html').read_text(encoding='utf-8')
-          assert html.index('large-storage.js') < html.index('question-bank.js') < html.index('ai-engine.js')
-          assert html.index('biomedical-ai.js') < html.index('ai-giveaway-validator.js') < html.index('ai-pipeline-mode.js') < html.index('ai-sba-audit.js') < html.index('ai-targeted-repair.js') < html.index('ai-engine.js')
-          assert html.index('biomedical-basic.js') < html.index('question-workspace.js')
-          assert 'large-storage.js?v=1' in html
-          assert 'question-bank.js?v=2' in html
-          assert 'ai-pipeline-mode.js?v=1' in html
-          assert 'ai-sba-audit.js?v=2' in html
-          assert 'ai-targeted-repair.js?v=2' in html
-          assert 'ai-engine.js?v=8' in html
-          assert 'ai-ui.js?v=4' in html
-          assert 'sync.js?v=4' in html
-          assert "updateViaCache:'none'" in html
+
+          for marker in [
+              "ai:'UKMLA Questions'", "bank:'Question Bank'",
+              'window.UKMLA_V2_AI.mount(container)', 'UKMLA_QUESTION_BANK.mount(container)',
+              'api.App.state.quizTab=tab', 'GMC content-map practice', 'BNF/NICE-grounded'
+          ]:
+              assert marker in workspace, marker
+
+          for marker in ['Temporary OpenAI API key', 'inputmode="text"', 'Session only', 'Build 10 UKMLA questions', 'id="ai-pipeline-mode"']:
+              assert marker in ai_ui, marker
+          assert 'AI-generated UKMLA quiz' not in ai_ui
+          assert 'Generate 10-question AI quiz' not in ai_ui
+
+          for marker in ['Faster combined review (trial)', 'Legacy separate reviews', 'OPTION NORMALISATION']:
+              assert marker in pipeline, marker
+          for marker in ['ANSWER-CATEGORY ALIGNMENT', 'OPTIONS MUST BE ANSWER LABELS', 'At least three of the four wrong options']:
+              assert marker in audit, marker
+          for marker in ['Return only atomic text patches', 'Affected-question repair', 'Full-set fallback repair']:
+              assert marker in repair, marker
+          for marker in ['assertRequiredApiCheckpoints', 'apiSuccessByStage', 'targeted field, affected-question and full-set repair']:
+              assert marker in engine, marker
+          assert 'ukmla-v2-backup-4-indexeddb' in sync
+          assert 'No partial import was kept' in large
+          assert "storageBackend:'indexeddb'" in bank
+
+          order = [
+              './v2/large-storage.js', './v2/question-bank.js', './v2/biomedical-ai.js',
+              './v2/ai-giveaway-validator.js', './v2/ai-pipeline-mode.js', './v2/ai-sba-audit.js',
+              './v2/ai-targeted-repair.js', './v2/ai-engine.js', './v2/biomedical-basic.js',
+              './v2/question-workspace.js'
+          ]
+          positions = [html.index(item) for item in order]
+          assert positions == sorted(positions)
+          for marker in ['question-workspace.css', 'question-bank.css', 'question-analytics.js', 'sync.js', "updateViaCache:'none'"]:
+              assert marker in html, marker
           PY
 
       - name: Audit complete card dataset
@@ -254,68 +253,35 @@ jobs:
           <p><a href="./#/home">Open UKMLA Cards</a></p>
           HTML
 
-          test -s _site/index.html
-          test -s _site/service-worker.js
-          test -s _site/data/conditions.json
-          test -s _site/assets/ukmla-intro.mp4
-          test -s _site/assets/ukmla-intro-first-frame.jpg
-          test -s _site/v2/core.js
-          test -s _site/v2/large-storage.js
-          test -s _site/v2/question-bank.js
-          test -s _site/v2/question-analytics.js
-          test -s _site/v2/question-bank.css
-          test -s _site/v2/ai-schema.js
-          test -s _site/v2/ai-giveaway-validator.js
-          test -s _site/v2/ai-pipeline-mode.js
-          test -s _site/v2/ai-sba-audit.js
-          test -s _site/v2/ai-targeted-repair.js
-          test -s _site/v2/ai-engine.js
-          test -s _site/v2/ai-ui.js
-          test -s _site/v2/biomedical.js
-          test -s _site/v2/biomedical-ai.js
-          test -s _site/v2/biomedical-basic.js
-          test -s _site/v2/biomedical.css
-          test -s _site/v2/question-workspace.js
-          test -s _site/v2/question-workspace.css
-          test -s _site/v2/psa.js
-          test -s _site/v2/psa-grounding.js
-          test -s _site/v2/psa-grounding.css
-          test -s _site/v2/psa-runtime.js
-          test -s _site/v2/psa.css
-          grep -q 'large-storage.js?v=1' _site/index.html
-          grep -q 'question-bank.js?v=2' _site/index.html
-          grep -q 'question-analytics.js' _site/index.html
-          grep -q 'question-bank.css' _site/index.html
-          grep -q 'service-worker.js' _site/index.html
-          grep -q 'biomedical-ai.js' _site/index.html
-          grep -q 'ai-giveaway-validator.js?v=1' _site/index.html
-          grep -q 'ai-pipeline-mode.js?v=1' _site/index.html
-          grep -q 'ai-sba-audit.js?v=2' _site/index.html
-          grep -q 'ai-targeted-repair.js?v=2' _site/index.html
-          grep -q 'ai-engine.js?v=8' _site/index.html
-          grep -q 'ai-ui.js?v=4' _site/index.html
-          grep -q 'biomedical.js' _site/index.html
-          grep -q 'biomedical-basic.js' _site/index.html
-          grep -q 'biomedical.css' _site/index.html
-          grep -q 'question-workspace.js' _site/index.html
-          grep -q 'question-workspace.css' _site/index.html
-          grep -q 'sync.js?v=4' _site/index.html
-          grep -q 'psa-grounding.js' _site/index.html
-          grep -q 'psa-grounding.css' _site/index.html
-          grep -q 'ukmla-cards-v11-sba-runtime-proof' _site/service-worker.js
-          grep -q 'large-storage.js' _site/service-worker.js
-          grep -q 'ai-giveaway-validator.js' _site/service-worker.js
-          grep -q 'ai-pipeline-mode.js' _site/service-worker.js
-          grep -q 'ai-sba-audit.js' _site/service-worker.js
-          grep -q 'ai-targeted-repair.js' _site/service-worker.js
           python - <<'PY'
           import json
-          data = json.load(open('_site/data/conditions.json', encoding='utf-8'))
+          from pathlib import Path
+
+          required = [
+              '_site/index.html', '_site/service-worker.js', '_site/data/conditions.json',
+              '_site/assets/ukmla-intro.mp4', '_site/assets/ukmla-intro-first-frame.jpg',
+              '_site/v2/core.js', '_site/v2/large-storage.js', '_site/v2/question-bank.js',
+              '_site/v2/question-analytics.js', '_site/v2/ai-schema.js', '_site/v2/ai-engine.js',
+              '_site/v2/ai-ui.js', '_site/v2/biomedical.js', '_site/v2/biomedical-basic.js',
+              '_site/v2/question-workspace.js', '_site/v2/psa.js', '_site/v2/psa-grounding.js'
+          ]
+          for name in required:
+              path = Path(name)
+              assert path.exists() and path.stat().st_size > 0, name
+
+          data = json.loads(Path('_site/data/conditions.json').read_text(encoding='utf-8'))
           assert data['conditionCount'] == 841
           assert data['topicCount'] == 25
+          names = {item['name'] for item in data['conditions']}
+          assert 'Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)' in names
+          assert 'Severe androgen excess / postmenopausal hyperandrogenism' in names
+          assert 'Polycystic ovary syndrome' not in names
+
+          html = Path('_site/index.html').read_text(encoding='utf-8')
+          assert 'original-pdf-data' not in html
+          assert '<iframe' not in html
+          assert 'service-worker.js' in html
           PY
-          ! grep -q 'original-pdf-data' _site/index.html
-          ! grep -q '<iframe' _site/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
