@@ -17,6 +17,7 @@ from biomedical_core import (
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "conditions.json"
+CURATED_CLINICAL = ROOT / "data_sources" / "curated-clinical.json"
 BIOMEDICAL_PROFILES = {"anatomy", "physiology"}
 BIOMEDICAL_SOURCES = (ANATOMY_SOURCE, PHYSIOLOGY_SOURCE, NEURO_LOCALISATION_SOURCE)
 
@@ -65,6 +66,73 @@ def source_digest() -> str:
     return digest.hexdigest()
 
 
+def clinical_labels() -> dict[str, str]:
+    return {
+        "investigations": "Investigations",
+        "treatment": "Treatment",
+        "escalation": "Escalation",
+        "mimics": "Mimics",
+        "redFlags": "Red flags",
+    }
+
+
+def apply_curated_clinical(records: list[dict[str, object]]) -> list[dict[str, object]]:
+    if not CURATED_CLINICAL.exists():
+        return records
+
+    payload = json.loads(CURATED_CLINICAL.read_text(encoding="utf-8"))
+    patches = payload.get("conditions", [])
+    if not isinstance(patches, list):
+        raise SystemExit("curated-clinical.json conditions must be a list")
+
+    index: dict[tuple[str, str], int] = {
+        (topic_name(str(record.get("topic", ""))).casefold(), clean(str(record.get("name", ""))).casefold()): position
+        for position, record in enumerate(records)
+        if record.get("profile") == "clinical"
+    }
+
+    required_fields = set(clinical_labels())
+    for patch in patches:
+        mode = clean(str(patch.get("mode", ""))).lower()
+        topic = topic_name(str(patch.get("topic", "")))
+        target_name = clean(str(patch.get("name", "")))
+        final_name = clean(str(patch.get("newName", ""))) or target_name
+        fields = patch.get("fields", {})
+        if mode not in {"add", "replace"}:
+            raise SystemExit(f"Unsupported curated clinical mode: {mode!r}")
+        if not topic or not target_name or not isinstance(fields, dict):
+            raise SystemExit("Invalid curated clinical entry")
+        if set(fields) != required_fields or any(not clean(str(value)) for value in fields.values()):
+            raise SystemExit(f"Curated clinical card {target_name!r} must contain all five clinical fields")
+
+        record: dict[str, object] = {
+            "topic": topic,
+            "name": final_name,
+            "profile": "clinical",
+            "fields": {key: clean(str(value)) for key, value in fields.items()},
+            "labels": clinical_labels(),
+        }
+        target_key = (topic.casefold(), target_name.casefold())
+        final_key = (topic.casefold(), final_name.casefold())
+
+        if mode == "replace":
+            position = index.get(target_key)
+            if position is None:
+                raise SystemExit(f"Curated replacement target not found: {topic} / {target_name}")
+            records[position] = record
+            del index[target_key]
+            if final_key in index:
+                raise SystemExit(f"Curated replacement would duplicate: {topic} / {final_name}")
+            index[final_key] = position
+        else:
+            if final_key in index:
+                raise SystemExit(f"Curated addition already exists: {topic} / {final_name}")
+            index[final_key] = len(records)
+            records.append(record)
+
+    return records
+
+
 def main() -> None:
     payload = json.loads(DATA.read_text(encoding="utf-8"))
     records = [
@@ -78,16 +146,17 @@ def main() -> None:
         clean=clean,
     )
     records.extend(biomedical)
+    records = apply_curated_clinical(records)
 
     for record in records:
-        name = topic_name(record["topic"])
+        name = topic_name(str(record["topic"]))
         tid = make_topic_id(name)
         record["topic"] = name
         record["topicId"] = tid
-        record["id"] = make_condition_id(tid, record["name"])
-        record["search"] = clean(" ".join([name, record["name"], *record.get("fields", {}).values()]))
+        record["id"] = make_condition_id(tid, str(record["name"]))
+        record["search"] = clean(" ".join([name, str(record["name"]), *[str(value) for value in record.get("fields", {}).values()]]))
 
-    records.sort(key=lambda record: (record["topic"].casefold(), record["name"].casefold()))
+    records.sort(key=lambda record: (str(record["topic"]).casefold(), str(record["name"]).casefold()))
     ids = [record["id"] for record in records]
     if len(ids) != len(set(ids)):
         raise SystemExit("Normalisation produced duplicate condition IDs")
@@ -103,7 +172,7 @@ def main() -> None:
 
     topics: dict[str, dict[str, object]] = {}
     for record in records:
-        current = topics.setdefault(record["topicId"], {
+        current = topics.setdefault(str(record["topicId"]), {
             "id": record["topicId"],
             "name": record["topic"],
             "count": 0,
@@ -115,10 +184,16 @@ def main() -> None:
         relative = str(path.relative_to(ROOT))
         if relative not in generated_from:
             generated_from.append(relative)
+    if CURATED_CLINICAL.exists():
+        relative = str(CURATED_CLINICAL.relative_to(ROOT))
+        if relative not in generated_from:
+            generated_from.append(relative)
 
-    payload["schemaVersion"] = "ukmla-v2-data-2-biomedical"
+    payload["schemaVersion"] = "ukmla-v2-data-3-curated-clinical"
     payload["generatedFrom"] = generated_from
     payload["biomedicalSourceDigest"] = source_digest()
+    if CURATED_CLINICAL.exists():
+        payload["curatedClinicalSourceDigest"] = sha1(CURATED_CLINICAL.read_bytes()).hexdigest()
     payload["conditionCount"] = len(records)
     payload["topicCount"] = len(topics)
     payload["topics"] = sorted(topics.values(), key=lambda item: str(item["name"]).casefold())
