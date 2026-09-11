@@ -26,9 +26,9 @@ function loadData(){
 const data=loadData();
 assert.equal(data.schemaVersion,'ukmla-pharmacology-v1');
 assert.equal(data.topic,'Clinical Pharmacology & Safe Prescribing');
-assert.equal(data.checkedDate,'2026-09-09');
-assert.equal(data.cards.length,136);
-assert.equal(new Set(data.cards.map(card=>card.name)).size,136);
+assert.equal(data.checkedDate,'2026-09-11');
+assert.equal(data.cards.length,139);
+assert.equal(new Set(data.cards.map(card=>card.name)).size,139);
 assert(data.sections.includes('Oncology & SACT'));
 assert.deepEqual(Array.from(data.fieldOrder),['indication','prescribe','checkMonitor','interactionsAvoid','toxicityAct']);
 
@@ -52,6 +52,9 @@ const names=new Set(data.cards.map(card=>card.name));
   'Pre-hospital suspected meningococcal disease',
   'Cellulitis and erysipelas',
   'MRSA cellulitis or severe skin infection',
+  'Suspected UTI in adults aged 65 years and over',
+  'Asymptomatic bacteriuria and the positive-urine trap',
+  'Catheter-associated UTI',
   'Provoked versus unprovoked VTE duration',
   'Extended VTE prevention dose',
   'Haloperidol for acute delirium',
@@ -81,14 +84,14 @@ const counts=data.cards.reduce((result,card)=>{
   return result;
 },{});
 assert.equal(counts.Cardiovascular,26);
-assert.equal(counts.Antimicrobials,24);
+assert.equal(counts.Antimicrobials,27);
 assert.equal(counts['Emergency & acute'],18);
 assert.equal(counts['High-risk medicines'],24);
 assert.equal(counts['Geriatrics & frailty'],9);
 assert.equal(counts['Oncology & SACT'],13);
 assert(data.cards.filter(card=>card.paediatric).length>=10);
 assert(data.cards.filter(card=>card.calculationRequired).length>=18);
-assert(data.cards.filter(card=>card.antimicrobial).length>=20);
+assert(data.cards.filter(card=>card.antimicrobial).length>=23);
 
 const events=[];
 const app={
@@ -140,9 +143,9 @@ vm.runInContext(pharmacologyRuntime,sandbox,{filename:'pharmacology.js'});
 assert(sandbox.UKMLA_PHARMACOLOGY);
 assert(pharmacologyRuntime.includes('<option value="oncology">Oncology &amp; SACT toxicities</option>'));
 assert(sandbox.UKMLA_PHARMACOLOGY.injectData());
-assert.equal(app.conditions.length,136);
+assert.equal(app.conditions.length,139);
 assert.equal(app.topics.length,1);
-assert.equal(app.topics[0].count,136);
+assert.equal(app.topics[0].count,139);
 assert.equal(app.conditions[0].profile,'pharmacology');
 assert.deepEqual(new Set(Object.keys(app.conditions[0].fields)),new Set(['mimics','treatment','investigations','redFlags','escalation']));
 assert(Object.keys(fakeCore.TYPE_LABELS).filter(key=>key.startsWith('pharm_')).length===10);
