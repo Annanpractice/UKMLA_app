@@ -136,7 +136,7 @@ jobs:
           grep -q "Legacy separate reviews" v2/ai-pipeline-mode.js
           grep -q "id=\"ai-pipeline-mode\"" v2/ai-ui.js
           grep -q "OPTION NORMALISATION" v2/ai-pipeline-mode.js
-          grep -q "ANSWER-CATEGORY ALIGNMENT" v2/ai-pipeline-mode.js
+          grep -q "ANSWER-CATEGORY ALIGNMENT" v2/ai-sba-audit.js
           grep -q "OPTIONS MUST BE ANSWER LABELS" v2/ai-sba-audit.js
           grep -q "At least three of the four wrong options" v2/ai-sba-audit.js
           grep -q "assertRequiredApiCheckpoints" v2/ai-engine.js
@@ -190,13 +190,13 @@ jobs:
           print(f"Extracted topics: {data['topicCount']}")
           print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] == 838
+          assert data['conditionCount'] == 841
           assert data['topicCount'] == 25
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
           assert profiles == {
               'anatomy': 139,
-              'clinical': 415,
+              'clinical': 418,
               'law': 69,
               'physiology': 215,
           }
@@ -311,7 +311,7 @@ jobs:
           python - <<'PY'
           import json
           data = json.load(open('_site/data/conditions.json', encoding='utf-8'))
-          assert data['conditionCount'] == 838
+          assert data['conditionCount'] == 841
           assert data['topicCount'] == 25
           PY
           ! grep -q 'original-pdf-data' _site/index.html
