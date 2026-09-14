@@ -27,8 +27,8 @@ const data=loadData();
 assert.equal(data.schemaVersion,'ukmla-pharmacology-v1');
 assert.equal(data.topic,'Clinical Pharmacology & Safe Prescribing');
 assert.equal(data.checkedDate,'2026-09-11');
-assert.equal(data.cards.length,139);
-assert.equal(new Set(data.cards.map(card=>card.name)).size,139);
+assert.equal(data.cards.length,142);
+assert.equal(new Set(data.cards.map(card=>card.name)).size,142);
 assert(data.sections.includes('Oncology & SACT'));
 assert.deepEqual(Array.from(data.fieldOrder),['indication','prescribe','checkMonitor','interactionsAvoid','toxicityAct']);
 
@@ -69,6 +69,9 @@ const names=new Set(data.cards.map(card=>card.name));
   'Opioids in renal impairment and frailty',
   'Antidepressant adverse effects and withdrawal',
   'Benzodiazepine, Z-drug and gabapentinoid safety',
+  'Zopiclone — prescribing and safety',
+  'Zolpidem — prescribing and next-day impairment',
+  'Z-drugs — class safety, dependence and deprescribing',
   'Antipsychotics in dementia',
   'Clozapine emergencies',
   'Nitrofurantoin pulmonary and hepatic toxicity',
@@ -87,7 +90,7 @@ assert.equal(counts.Cardiovascular,26);
 assert.equal(counts.Antimicrobials,27);
 assert.equal(counts['Emergency & acute'],18);
 assert.equal(counts['High-risk medicines'],24);
-assert.equal(counts['Geriatrics & frailty'],9);
+assert.equal(counts['Geriatrics & frailty'],12);
 assert.equal(counts['Oncology & SACT'],13);
 assert(data.cards.filter(card=>card.paediatric).length>=10);
 assert(data.cards.filter(card=>card.calculationRequired).length>=18);
@@ -143,9 +146,9 @@ vm.runInContext(pharmacologyRuntime,sandbox,{filename:'pharmacology.js'});
 assert(sandbox.UKMLA_PHARMACOLOGY);
 assert(pharmacologyRuntime.includes('<option value="oncology">Oncology &amp; SACT toxicities</option>'));
 assert(sandbox.UKMLA_PHARMACOLOGY.injectData());
-assert.equal(app.conditions.length,139);
+assert.equal(app.conditions.length,142);
 assert.equal(app.topics.length,1);
-assert.equal(app.topics[0].count,139);
+assert.equal(app.topics[0].count,142);
 assert.equal(app.conditions[0].profile,'pharmacology');
 assert.deepEqual(new Set(Object.keys(app.conditions[0].fields)),new Set(['mimics','treatment','investigations','redFlags','escalation']));
 assert(Object.keys(fakeCore.TYPE_LABELS).filter(key=>key.startsWith('pharm_')).length===10);
