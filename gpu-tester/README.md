@@ -1,19 +1,26 @@
-# UKMLA GPU Tester 0.1.0
+# UKMLA GPU Tester 0.1.1
 
 Separate Android ARM64 diagnostic APK. It does not replace or change the UKMLA reader, Luna or card/question pipeline. Development signed; no internet permission.
 
-1. Download and install `UKMLA-GPU-Tester-v0.1.0-arm64.apk` from this release.
-2. Close the reader to free its model memory. Open **UKMLA GPU Tester**.
-3. Tap **Select existing GGUF** and choose the downloaded Qwen3 GGUF in **Downloads**. It is opened read-only, with no duplicate model copy. A model only inside the reader's private storage cannot be opened by another app; select the original download instead. Cloud-provider streams may not be seekable.
-4. Run **CPU** first, then **OpenCL**, then **Vulkan**, separately. Start at **4 GPU layers**. Keep the screen open. Each worker has a five-minute limit and a Stop button.
-5. Tap **Copy diagnostic report** and paste it into chat. Copy each test before starting another. **Save full report** writes a text file through Android's picker.
+This build follows the Samsung SM-S928B results from 0.1.0: CPU completed normally; Vulkan with 4 offloaded layers reached prompt processing but the Adreno driver rejected the quantised FP16-accumulation compute pipeline; optimized OpenCL with 4 layers completed prompt prefill and sampled the first token, then the worker disappeared during the first generation decode.
 
-Every test uses the same harmless fixed prompt, 4 CPU threads, context 2048, batch/ubatch 64, flash attention disabled, greedy sampling and at most 32 output tokens. Choose 8/16/all GPU layers only after a successful smaller test. Partial GPU offload still uses CPU for remaining layers and some operations; native logs show actual placement. No automatic CPU retry masks GPU failure.
+1. Download and install `UKMLA-GPU-Tester-v0.1.1-arm64.apk`.
+2. Close the reader to free model memory. Open **UKMLA GPU Tester**.
+3. Select the existing local Qwen3 GGUF. It is opened read-only with no model copy.
+4. For the next diagnostic sequence, choose **1 GPU layer** and run **OPENCL (Adreno)**. Copy the report.
+5. Still at **1 GPU layer**, run **OPENCL (generic)**. Copy the report.
+6. Only if one of those completes cleanly should 2 layers be tried. Do not jump to 8/16/all while the 1-layer result is unresolved.
 
-The report includes device/build information, available memory, backend/device logs, model/context/prompt/generation stages, timings, output and Android process-exit information where available. Vulkan additionally records the numeric driver version and limits. Logs persist across tester restarts. Ordinary native worker crashes are separate from the UI; a system-wide driver failure can still affect the whole device. Normal termination/Stop can produce a signal exit; the report records that distinction. This is not unrestricted system logcat and does not guarantee a full native stack trace.
+The optimized OpenCL backend explicitly enables `GGML_OPENCL_USE_ADRENO_KERNELS`. The generic OpenCL backend explicitly disables both `GGML_OPENCL_USE_ADRENO_KERNELS` and `GGML_OPENCL_USE_ADRENO_BIN_KERNELS`. This makes the comparison meaningful while leaving the model, prompt, context, batch size and sampling identical.
 
-OpenCL uses the phone's optional `libOpenCL.so`, declared in the manifest. Some firmware does not expose it to APKs; a library-unavailable report is a useful result, not proof that the GPU itself is unsupported. Vulkan uses upstream defaults without adopting the unqualified Adreno draft workaround.
+Generation diagnostics are persisted before and after every token sample and every `llama_decode()` call. If the worker is killed inside a driver/runtime call, the last durable `GEN step ...` line should identify the boundary where execution stopped.
 
-Compilation, Android lint, library packaging, APK signature and absence of internet permission are checked in CI. Physical Adreno correctness, performance and crash behaviour cannot be qualified by those checks: this APK exists to collect that evidence on the phone. The generated sentence is only a smoke test, not numerical backend validation.
+Every test uses the same fixed prompt, 4 CPU threads, context 2048, batch/ubatch 64, flash attention disabled, greedy sampling and at most 32 output tokens. GPU tests never silently retry on CPU. Partial GPU offload still uses CPU for remaining layers and some operations; native logs show actual placement.
 
-Pinned llama.cpp: `ec91ab5add06555970f98d9c5361d884f3f530f8`. See `tools/build-native.sh` for pinned Khronos dependencies. CPU, OpenCL and Vulkan are separate statically linked native libraries, and only the selected one is loaded into a fresh `:probe` process. The original public preview signing key is used for this separate development application ID; it is not a production signing secret. Third-party notices are bundled in APK assets.
+The report includes device/build information, available memory, backend/device logs, model/context/prompt/generation stages, timings, output and Android process-exit information where available. Vulkan additionally records driver/version limits. Ordinary native worker crashes are isolated from the tester UI; a system-wide driver failure can still affect the whole device. This is not unrestricted system logcat.
+
+OpenCL uses the phone's optional `libOpenCL.so`, declared in the manifest. The link-time ICD loader is not packaged. Vulkan remains an upstream-default baseline in this build; the purpose of 0.1.1 is to isolate the OpenCL generation failure before introducing additional Vulkan workarounds.
+
+Compilation, Android lint, native library packaging, APK signature, absence of internet permission and worker-process isolation are checked in CI. Physical Adreno correctness and performance still require the phone test.
+
+Pinned llama.cpp: `ec91ab5add06555970f98d9c5361d884f3f530f8`. CPU, optimized OpenCL, generic OpenCL and Vulkan are separate native libraries, and only the selected backend is loaded into a fresh `:probe` process.
