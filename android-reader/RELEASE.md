@@ -2,7 +2,7 @@ Native Android offline reading companion. The existing UKMLA app, Luna, question
 
 **v0.1.3 UI + speech:** the native reader now borrows the established UKMLA web visual language: navy gradient background, dark translucent panels, pale text, rounded controls and the gold accent. This remains a native Android UI rather than a WebView.
 
-Generated local-LLM answers now include **Read answer** and **Stop** controls. Speech is provided by Android's installed `TextToSpeech` engine/voice. The reader does not add INTERNET permission and does not send answer text to a cloud speech service itself. Availability and voice quality depend on the TTS engine/voice installed on the phone.
+Generated local-LLM answers now include **Read answer** and **Stop** controls. Speech is provided by Android's installed `TextToSpeech` engine, but the reader only selects voices Android marks as not requiring a network connection. If no offline voice is installed, speech remains unavailable. The reader does not add INTERNET permission.
 
 Stable inference remains CPU-only after the v0.1.1 Vulkan crash on the S24 Ultra. The shorter contextual prompt, adaptive 4–8 CPU threads, 512-token batching and 128-token response cap remain. Vulkan wiring stays behind an explicit experimental build switch.
 
