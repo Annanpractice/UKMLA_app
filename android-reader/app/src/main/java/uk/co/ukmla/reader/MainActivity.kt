@@ -352,8 +352,8 @@ class MainActivity : Activity() {
                         while(true) { val count=input.read(buffer);if(count<0)break;total+=count;require(total<5L*1024*1024*1024) { "Model exceeds 5 GB; use Q4_K_M" };require(filesDir.usableSpace>count+64L*1024*1024) { "Insufficient storage" };output.write(buffer,0,count) }
                     }
                 }
-                require(temp.renameTo(modelFile)) { "Could not finish import" };loaded=false;openCl.close();openCl=OpenClClient(this)
-                runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Model imported. Return to a card and choose Explain.") } }
+                require(temp.renameTo(modelFile)) { "Could not finish import" };loaded=false
+                runOnUiThread { if(!isDestroyed) { openCl.close();openCl=OpenClClient(this);busy=false;updateStatus("Model imported. Return to a card and choose Explain.") } }
             } catch(e:Exception) { temp.delete();runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Import failed: ${e.message}") } } }
         }
     }
