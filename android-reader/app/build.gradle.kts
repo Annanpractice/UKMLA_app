@@ -7,12 +7,13 @@ android {
         applicationId = "uk.co.ukmla.reader"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.1.2"
         ndk { abiFilters += (project.findProperty("readerAbi") as String? ?: "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild { cmake {
             arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            (project.findProperty("readerExperimentalVulkan") as String?)?.let { arguments += "-DUKMLA_READER_EXPERIMENTAL_VULKAN=$it" }
             (project.findProperty("spirvHeadersDir") as String?)?.let { arguments += "-DSPIRV-Headers_DIR=$it" }
             (project.findProperty("spirvIncludeDir") as String?)?.let { arguments += "-DSPIRV_INCLUDE_DIR=$it" }
             (project.findProperty("vulkanIncludeDir") as String?)?.let { arguments += "-DVulkan_INCLUDE_DIR=$it" }

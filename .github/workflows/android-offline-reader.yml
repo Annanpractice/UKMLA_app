@@ -34,33 +34,6 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
-          sudo apt-get update
-          sudo apt-get install -y glslc spirv-headers
-
-          SPIRV_DIR=$(dirname "$(find /usr -name 'SPIRV-HeadersConfig.cmake' -print -quit)")
-          test -n "$SPIRV_DIR"
-          echo "SPIRV_HEADERS_DIR=$SPIRV_DIR" >> "$GITHUB_ENV"
-
-          mkdir -p android-reader/vendor/SPIRV-Headers
-          curl --fail --retry 3 -L https://github.com/KhronosGroup/SPIRV-Headers/archive/1c6bb2743599e6eb6f37b2969acc0aef812e32e3.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/SPIRV-Headers
-          SPIRV_INCLUDE_DIR="$GITHUB_WORKSPACE/android-reader/vendor/SPIRV-Headers/include"
-          test -f "$SPIRV_INCLUDE_DIR/spirv/unified1/spirv.hpp"
-          echo "SPIRV_INCLUDE_DIR=$SPIRV_INCLUDE_DIR" >> "$GITHUB_ENV"
-
-          mkdir -p android-reader/vendor/Vulkan-Headers
-          curl --fail --retry 3 -L https://github.com/KhronosGroup/Vulkan-Headers/archive/217e93c664ec6704ec2d8c36fa116c1a4a1e2d40.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/Vulkan-Headers
-          VULKAN_INCLUDE_DIR="$GITHUB_WORKSPACE/android-reader/vendor/Vulkan-Headers/include"
-          test -f "$VULKAN_INCLUDE_DIR/vulkan/vulkan.hpp"
-          echo "VULKAN_INCLUDE_DIR=$VULKAN_INCLUDE_DIR" >> "$GITHUB_ENV"
-
-          VULKAN_GLSLC_EXECUTABLE=$(command -v glslc)
-          test -x "$VULKAN_GLSLC_EXECUTABLE"
-          echo "VULKAN_GLSLC_EXECUTABLE=$VULKAN_GLSLC_EXECUTABLE" >> "$GITHUB_ENV"
-
-          VULKAN_LIBRARY="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/28/libvulkan.so"
-          test -f "$VULKAN_LIBRARY"
-          echo "VULKAN_LIBRARY=$VULKAN_LIBRARY" >> "$GITHUB_ENV"
-
           mkdir -p android-reader/vendor/llama.cpp
           curl --fail --retry 3 -L https://github.com/ggml-org/llama.cpp/archive/ec91ab5add06555970f98d9c5361d884f3f530f8.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/llama.cpp
           base64 -d android-reader/preview.keystore.b64 > android-reader/preview.keystore
@@ -71,7 +44,7 @@ jobs:
           python android-reader/tools/build_database.py
       - name: Test and assemble APK
         working-directory: android-reader
-        run: gradle --no-daemon -PspirvHeadersDir="$SPIRV_HEADERS_DIR" -PspirvIncludeDir="$SPIRV_INCLUDE_DIR" -PvulkanIncludeDir="$VULKAN_INCLUDE_DIR" -PvulkanLibrary="$VULKAN_LIBRARY" -PvulkanGlslcExecutable="$VULKAN_GLSLC_EXECUTABLE" :app:testReleaseUnitTest :app:assembleRelease
+        run: gradle --no-daemon :app:testReleaseUnitTest :app:assembleRelease
       - name: Verify offline APK
         run: |
           APK=android-reader/app/build/outputs/apk/release/app-release.apk
@@ -80,8 +53,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep 'lib/arm64-v8a/libreader.so'
           unzip -l "$APK" | grep 'assets/reader.db'
-          cp "$APK" UKMLA-Offline-Reader-v0.1.1-arm64.apk
-          sha256sum UKMLA-Offline-Reader-v0.1.1-arm64.apk > SHA256SUMS.txt
+          cp "$APK" UKMLA-Offline-Reader-v0.1.2-arm64.apk
+          sha256sum UKMLA-Offline-Reader-v0.1.2-arm64.apk > SHA256SUMS.txt
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -98,8 +71,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=offline-reader-v0.1.1
+          TAG=offline-reader-v0.1.2
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.1 (Android preview)' --notes-file android-reader/RELEASE.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.2 (Android preview)' --notes-file android-reader/RELEASE.md
           fi
-          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.1-arm64.apk SHA256SUMS.txt --clobber
+          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.2-arm64.apk SHA256SUMS.txt --clobber

@@ -20,28 +20,25 @@ extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_load(JNIEnv* e,
     unsigned hc=std::thread::hardware_concurrency();
     int threads=std::max(4,std::min(8,(int)(hc ? hc : 6)));
 
-    auto tryLoad=[&](int gpuLayers) {
-        auto mp=llama_model_default_params();
-        mp.n_gpu_layers=gpuLayers;
-        model=llama_model_load_from_file(modelPath.c_str(),mp);
-        if(!model) return false;
+    auto mp=llama_model_default_params();
+    mp.n_gpu_layers=0;
+    model=llama_model_load_from_file(modelPath.c_str(),mp);
+    if(!model) {
+        error(e,"Could not load the Qwen model on CPU. Reimport the recommended GGUF and retry.");
+        return;
+    }
 
-        auto cp=llama_context_default_params();
-        cp.n_ctx=4096;
-        cp.n_batch=512;
-        cp.n_threads=threads;
-        cp.n_threads_batch=threads;
-        cp.abort_callback=[](void*) { return cancelled.load(); };
-        ctx=llama_init_from_model(model,cp);
-        if(ctx) return true;
-
+    auto cp=llama_context_default_params();
+    cp.n_ctx=4096;
+    cp.n_batch=512;
+    cp.n_threads=threads;
+    cp.n_threads_batch=threads;
+    cp.abort_callback=[](void*) { return cancelled.load(); };
+    ctx=llama_init_from_model(model,cp);
+    if(!ctx) {
         llama_model_free(model);
         model=nullptr;
-        return false;
-    };
-
-    if(!tryLoad(99) && !tryLoad(0)) {
-        error(e,"Could not initialise the Qwen model on GPU or CPU. Close other apps and retry.");
+        error(e,"Could not initialise the Qwen model on CPU. Close other apps and retry.");
         return;
     }
 }

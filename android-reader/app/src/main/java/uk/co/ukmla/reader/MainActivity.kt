@@ -146,7 +146,7 @@ class MainActivity : Activity() {
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="*/*";addCategory(Intent.CATEGORY_OPENABLE) },42)
             }
         })
-        box.addView(label("Preview 0.1.0 · ARM64 / Android 9+\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT).\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
+        box.addView(label("Preview 0.1.2 · ARM64 / Android 9+ · CPU inference\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT), CPU inference in the stable preview.\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
         val scroll=ScrollView(this);scroll.addView(box)
         AlertDialog.Builder(this).setTitle("Offline model & attribution").setView(scroll).setPositiveButton("Close",null).show()
     }
