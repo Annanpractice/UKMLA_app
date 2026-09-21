@@ -17,3 +17,6 @@ jobs:
           node-version: '20'
       - name: Validate bounded editorial question workflow
         run: node scripts/test-ai-editorial-pipeline.mjs
+
+      - name: Validate larger question sets and recovery
+        run: node scripts/test-question-batches.mjs

@@ -13,10 +13,10 @@ function engine(){return window.UKMLA_V2_AI_ENGINE;}
 function schema(){return window.UKMLA_V2_AI_SCHEMA;}
 function clean(value){return core().clean(value);}
 function escapeHtml(value){return core().escapeHtml(value);}
-function selectConditions(mode,topicId){
+function selectConditions(mode,topicId,count=10){
   const app=core().App;
   const pool=mode==='topic'?(app.byTopic.get(topicId)||[]):app.conditions;
-  return core().selectCoverageCandidates(pool,10,{uniqueTopics:mode!=='topic'});
+  return core().selectCoverageCandidates(pool,count,{uniqueTopics:mode!=='topic'});
 }
 function workspaceMounted(){return Boolean(root&&root.isConnected&&root.dataset.activeQuestionTab==='ai');}
 function isBuilding(){return Boolean(activeBuildPromise);}
@@ -98,7 +98,8 @@ function pipelineOptions(selected){
 
 function mount(container){
   root=container;
-  const saved=engine().loadJob();
+  const batch=window.UKMLA_QUESTION_BATCHES.load();
+  const saved=batch?.backend==='browser'?{...engine().loadJob(),...batch,status:'paused'}:engine().loadJob();
   const app=core().App;
   const selectedMode=schema().resolvePipelineMode(saved||null);
   const active=isBuilding();
@@ -108,10 +109,12 @@ function mount(container){
       ?`This saved build will resume with ${schema().PIPELINE_LABELS[selectedMode]}. The selector applies to new builds.`
       :'The default combined pipeline uses five model checkpoints, including the independent SBA quality audit.';
 
-  root.innerHTML=`<section class="quiz-layout" data-ukmla-question-workspace="ai"><article class="quiz-card"><div class="eyebrow">GMC content-map structured</div><h2>UKMLA questions</h2><p>Build ten difficult clinical questions from the curated card atlas. All ten decision formats and every clinical quality rule remain mandatory.</p><div class="field"><label>Temporary OpenAI API key</label><input class="input" id="ai-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Paste temporary API key" ${active?'disabled':''}></div><div class="api-session-note"><strong>Session only</strong><span>The key stays in browser memory for this build and is cleared from the field immediately. It is not saved to local storage or sync.</span></div><div class="field" style="margin-top:12px"><label>Question scope</label><select class="select" id="ai-mode" ${active?'disabled':''}><option value="random">All UKMLA topics</option><option value="topic">Selected topic</option></select></div><div class="field" id="ai-topic-field" style="margin-top:12px" hidden><label>Topic</label><select class="select" id="ai-topic" ${active?'disabled':''}>${app.topics.map(topic=>`<option value="${topic.id}">${escapeHtml(topic.name)} (${topic.count})</option>`).join('')}</select></div><div class="field" style="margin-top:12px"><label>Quality pipeline</label><select class="select" id="ai-pipeline-mode" ${active?'disabled':''}>${pipelineOptions(selectedMode)}</select><small class="question-source-note" id="ai-pipeline-note">${escapeHtml(resumeNote)}</small></div><button class="btn primary" id="ai-start" style="width:100%;margin-top:16px" ${active?'disabled':''}>${active?'Generation running in background':'Build 10 UKMLA questions'}</button>${!active&&saved&&saved.status!=='complete'?'<button class="btn" id="ai-resume" style="width:100%;margin-top:9px">Resume saved question build</button><button class="btn danger" id="ai-discard" style="width:100%;margin-top:9px">Discard saved build</button>':''}<div class="background-build-note">Once started, generation is detached from this panel and continues while you use other tabs inside the app. Brief switching to another browser app or tab is tolerated when the mobile browser keeps this page alive. If Android terminates the page, reopen it and resume the saved checkpoint with the API key.</div></article><aside class="quiz-card"><div class="topic-meta"><span>Question quality pipeline</span><strong id="ai-percent">${latestProgress?.percent??saved?.percent??0}%</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" id="ai-progress-fill" style="--value:${latestProgress?.percent??saved?.percent??0}%"></div></div><div class="checkpoint-list" id="ai-checkpoints"></div><p id="ai-status" style="color:var(--muted)">${escapeHtml(latestProgress?.lastMessage||saved?.lastMessage||lastBuildError||'Ready to build.')}</p><small class="question-source-note" id="ai-active-pipeline"></small><small class="question-source-note">UKMLA question sets use the curated card atlas. PSA source verification is separate and uses live BNF/NICE-grounded checks.</small></aside></section><section id="ai-play" style="margin-top:18px"></section>`;
+  root.innerHTML=`<section class="quiz-layout" data-ukmla-question-workspace="ai"><article class="quiz-card"><div class="eyebrow">GMC content-map structured</div><h2>UKMLA questions</h2><p>Build 10, 20 or 30 difficult clinical questions from the curated card atlas. All ten decision formats and every clinical quality rule remain mandatory in each batch.</p><div class="field"><label>Temporary OpenAI API key</label><input class="input" id="ai-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Paste temporary API key" ${active?'disabled':''}></div><div class="api-session-note"><strong>Session only</strong><span>The key stays in browser memory for this build and is cleared from the field immediately. It is not saved to local storage or sync.</span></div><div class="field" style="margin-top:12px"><label>Question scope</label><select class="select" id="ai-mode" ${active?'disabled':''}><option value="random">All UKMLA topics</option><option value="topic">Selected topic</option></select></div><div class="field" id="ai-topic-field" style="margin-top:12px" hidden><label>Topic</label><select class="select" id="ai-topic" ${active?'disabled':''}>${app.topics.map(topic=>`<option value="${topic.id}">${escapeHtml(topic.name)} (${topic.count})</option>`).join('')}</select></div>${window.UKMLA_QUESTION_BATCHES.control(active)}<div class="field" style="margin-top:12px"><label>Quality pipeline</label><select class="select" id="ai-pipeline-mode" ${active?'disabled':''}>${pipelineOptions(selectedMode)}</select><small class="question-source-note" id="ai-pipeline-note">${escapeHtml(resumeNote)}</small></div><button class="btn primary" id="ai-start" style="width:100%;margin-top:16px" ${active?'disabled':''}>${active?'Generation running in background':'Build 10 UKMLA questions'}</button>${!active&&saved&&saved.status!=='complete'?'<button class="btn" id="ai-resume" style="width:100%;margin-top:9px">Resume saved question build</button><button class="btn danger" id="ai-discard" style="width:100%;margin-top:9px">Discard saved build</button>':''}<div class="background-build-note">Once started, generation is detached from this panel and continues while you use other tabs inside the app. Brief switching to another browser app or tab is tolerated when the mobile browser keeps this page alive. If Android terminates the page, reopen it and resume the saved checkpoint with the API key.</div></article><aside class="quiz-card"><div class="topic-meta"><span>Question quality pipeline</span><strong id="ai-percent">${latestProgress?.percent??saved?.percent??0}%</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" id="ai-progress-fill" style="--value:${latestProgress?.percent??saved?.percent??0}%"></div></div><div class="checkpoint-list" id="ai-checkpoints"></div><p id="ai-status" style="color:var(--muted)">${escapeHtml(latestProgress?.lastMessage||saved?.lastMessage||lastBuildError||'Ready to build.')}</p><small class="question-source-note" id="ai-active-pipeline"></small><small class="question-source-note">UKMLA question sets use the curated card atlas. PSA source verification is separate and uses live BNF/NICE-grounded checks.</small></aside></section><section id="ai-play" style="margin-top:18px"></section>`;
   root.dataset.activeQuestionTab='ai';
   drawProgress(latestProgress||saved||{pipelineMode:selectedMode,percent:0,lastMessage:'Ready to build.'});
 
+  const countSelect=root.querySelector('#ai-count');
+  if(countSelect)countSelect.onchange=()=>{root.querySelector('#ai-start').textContent=`Build ${countSelect.value} UKMLA questions`;};
   const mode=root.querySelector('#ai-mode');
   const pipelineSelect=root.querySelector('#ai-pipeline-mode');
   if(mode)mode.onchange=()=>{const field=root?.querySelector('#ai-topic-field');if(field)field.hidden=mode.value!=='topic';};
@@ -125,7 +128,7 @@ function mount(container){
   };
   root.querySelector('#ai-start')?.addEventListener('click',()=>void start(false));
   root.querySelector('#ai-resume')?.addEventListener('click',()=>void start(true));
-  root.querySelector('#ai-discard')?.addEventListener('click',()=>{engine().clearJob();lastBuildError='';mount(container);});
+  root.querySelector('#ai-discard')?.addEventListener('click',()=>{engine().clearJob();window.UKMLA_QUESTION_BATCHES.clear();lastBuildError='';mount(container);});
 
   if(completedSet){
     const play=root.querySelector('#ai-play');
@@ -166,7 +169,11 @@ async function start(resume){
   const token=clean(tokenInput?.value);
   if(token.length<20){core().toast('Paste the temporary API key.');return null;}
 
+  let batch=resume?window.UKMLA_QUESTION_BATCHES.load():null;
+  if(batch?.backend!=='browser')batch=null;
+  if(!resume&&window.UKMLA_QUESTION_BATCHES.load()){core().toast('Resume or discard the saved build before starting another set.');return null;}
   let job=resume?engine().loadJob():null;
+  if(batch?.backend==='browser')job={...job,conditions:batch.conditions,topic:batch.topic,questionTypes:schema().TYPES.map(item=>item[0])};
   let conditions,questionTypes,topic,pipelineMode;
   if(job){
     conditions=job.conditions;
@@ -177,12 +184,14 @@ async function start(resume){
     pipelineMode=schema().setPipelineMode(root.querySelector('#ai-pipeline-mode').value);
     const mode=root.querySelector('#ai-mode').value;
     const topicId=root.querySelector('#ai-topic').value;
-    conditions=selectConditions(mode,topicId);
-    if(conditions.length!==10){core().toast('The selected scope does not contain ten usable cards.');return null;}
+    const count=window.UKMLA_QUESTION_BATCHES.count(root.querySelector('#ai-count')?.value);
+    conditions=selectConditions(mode,topicId,count);
+    if(conditions.length!==count){core().toast(`The selected scope does not contain ${count} usable cards.`);return null;}
     questionTypes=schema().TYPES.map(item=>item[0]);
     topic=mode==='topic'?core().topicById(topicId).name:'All UKMLA topics';
   }
 
+  if(!batch&&conditions.length>10)batch=window.UKMLA_QUESTION_BATCHES.create(conditions,topic,'browser');
   if(tokenInput)tokenInput.value='';
   playState=null;
   lastBuildError='';
@@ -198,7 +207,8 @@ async function start(resume){
   activeBuildPromise=(async()=>{
     let succeeded=false;
     try{
-      const set=await engine().runPipeline({
+      const set=await (batch?window.UKMLA_QUESTION_BATCHES.runBrowser:engine().runPipeline)({
+        batch,
         apiKey:token,
         conditions,
         questionTypes,
@@ -216,6 +226,7 @@ async function start(resume){
       });
       drawProgress({lastMessage:'Saving complete set to IndexedDB…',percent:100,status:'active',pipelineMode:set.pipelineMode||pipelineMode});
       await engine().storeSet(set);
+      if(batch)window.UKMLA_QUESTION_BATCHES.clear();
       completedSet=set;
       latestProgress={lastMessage:'Question set ready and safely stored offline.',percent:100,status:'complete',pipelineMode:set.pipelineMode||pipelineMode};
       succeeded=true;
@@ -280,7 +291,14 @@ function drawResult(){
   state.container.querySelector('#ai-analytics').onclick=()=>core().go('analytics');
 }
 
-document.addEventListener('ukmlaV2AiProgress',event=>drawProgress(event.detail));
+document.addEventListener('ukmlaV2AiProgress',event=>{
+  const batch=window.UKMLA_QUESTION_BATCHES.load();
+  const job=event.detail;
+  if(isBuilding()&&batch?.backend==='browser'&&job?.id?.startsWith(batch.id)){
+    const index=batch.sets.length,total=batch.conditions.length/10;
+    drawProgress({...job,status:'active',percent:Math.min(100,(index*100+(Number(job.percent)||0))/total),lastMessage:`Batch ${index+1}/${total}: ${job.lastMessage||'Building questions'}`});
+  }else drawProgress(job);
+});
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&isBuilding()){
     drawProgress({...latestProgress,lastMessage:latestProgress?.lastMessage||'Generation continuing'});
