@@ -26,13 +26,16 @@ class MainActivity:Activity() {
   super.onCreate(state)
   val scroll=ScrollView(this);val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(24,24,24,24) };scroll.addView(box);setContentView(scroll)
   box.setOnApplyWindowInsetsListener { v,i -> v.setPadding(24,i.systemWindowInsetTop+20,24,i.systemWindowInsetBottom+20);i }
-  box.addView(TextView(this).apply { text="UKMLA GPU Tester · 0.1.0";textSize=24f })
+  box.addView(TextView(this).apply { text="UKMLA GPU Tester · 0.1.1";textSize=24f })
   box.addView(TextView(this).apply { text="Separate offline diagnostic app. Select your existing Qwen GGUF in Downloads. No model copying or downloading. Close the reader before testing to free its memory. Keep this screen open.\n\nEach test uses the same short prompt, 4 CPU threads, 2,048 context, batch 64 and up to 32 output tokens. GPU tests never silently substitute a CPU test." })
   model=TextView(this);box.addView(model);model.text=prefs.getString("name","No model selected")
   button(box,"Select existing GGUF") { if(!active) startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="*/*";addCategory(Intent.CATEGORY_OPENABLE);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) },10) }
-  box.addView(TextView(this).apply { text="GPU layers (start with 4; only increase after a successful test)" })
-  layers=Spinner(this).apply { adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("4","8","16","99 (all)")) };box.addView(layers)
-  for(b in listOf("cpu","opencl","vulkan")) button(box,"Run ${b.uppercase()} test") { runTest(b) }
+  box.addView(TextView(this).apply { text="GPU layers (start with 1; increase only after a clean test)" })
+  layers=Spinner(this).apply { adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("1","2","4","8","16","99 (all)")) };box.addView(layers)
+  button(box,"Run CPU test") { runTest("cpu") }
+  button(box,"Run OPENCL (Adreno) test") { runTest("opencl") }
+  button(box,"Run OPENCL (generic) test") { runTest("opencl_generic") }
+  button(box,"Run VULKAN test") { runTest("vulkan") }
   button(box,"Stop test") { stop("User requested stop") }
   button(box,"Copy diagnostic report") { (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("GPU test",report()));Toast.makeText(this,"Report copied — paste it into chat",Toast.LENGTH_LONG).show() }
   button(box,"Save full report") { startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply { type="text/plain";putExtra(Intent.EXTRA_TITLE,"UKMLA-GPU-test.txt") },11) }
@@ -54,7 +57,7 @@ class MainActivity:Activity() {
   started=System.currentTimeMillis();prefs.edit().putLong("start",started).apply();finished=false
   if(log.exists()) log.copyTo(File(filesDir,"previous-probe.log"),true)
   val memory=ActivityManager.MemoryInfo();(getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-  log.writeText("UKMLA GPU Tester 0.1.0\nStart: $started\nDevice: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} API ${Build.VERSION.SDK_INT}\nBuild: ${Build.DISPLAY}\nABI: ${Build.SUPPORTED_ABIS.joinToString()}\nAvailable memory: ${memory.availMem/1048576} MiB; total: ${memory.totalMem/1048576} MiB\nModel: ${prefs.getString("name","")}\nRequested backend: $backend\nllama.cpp: ec91ab5add06555970f98d9c5361d884f3f530f8\nSTAGE: binding worker\n")
+  log.writeText("UKMLA GPU Tester 0.1.1\nStart: $started\nDevice: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} API ${Build.VERSION.SDK_INT}\nBuild: ${Build.DISPLAY}\nABI: ${Build.SUPPORTED_ABIS.joinToString()}\nAvailable memory: ${memory.availMem/1048576} MiB; total: ${memory.totalMem/1048576} MiB\nModel: ${prefs.getString("name","")}\nRequested backend: $backend\nllama.cpp: ec91ab5add06555970f98d9c5361d884f3f530f8\nSTAGE: binding worker\n")
   val gpuLayers=layers.selectedItem.toString().substringBefore(" ").toInt()
   val conn=object:ServiceConnection {
    override fun onServiceConnected(name:ComponentName,binder:IBinder) {
