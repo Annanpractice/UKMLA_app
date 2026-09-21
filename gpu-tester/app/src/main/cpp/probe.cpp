@@ -72,10 +72,16 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_gputester_ProbeNative_r
   fprintf(stderr,"Prompt tokens: %d; prefill seconds: %.3f\n",n,seconds(prefill));
   stage("answer generation");sampler=llama_sampler_init_greedy();auto gen=Clock::now();int count=0;
   for(int i=0;i<32;i++) {
-   auto token=llama_sampler_sample(sampler,ctx,-1);if(llama_vocab_is_eog(vocab,token))break;
+   fprintf(stderr,"GEN step %d: sample begin\n",i+1);fflush(stderr);if(logfd>=0)fsync(logfd);
+   auto token=llama_sampler_sample(sampler,ctx,-1);
+   fprintf(stderr,"GEN step %d: sampled token=%d\n",i+1,(int)token);fflush(stderr);if(logfd>=0)fsync(logfd);
+   if(llama_vocab_is_eog(vocab,token)) { fprintf(stderr,"GEN step %d: EOG\n",i+1);break; }
    if(count==0)fprintf(stderr,"Backend initialisation to first output token: %.3f seconds\n",seconds(begin));
    char piece[512];int size=llama_token_to_piece(vocab,token,piece,sizeof(piece),0,true);if(size>0)result.append(piece,size);count++;
-   if(llama_decode(ctx,llama_batch_get_one(&token,1)))throw std::runtime_error("Generation decoding failed");
+   fprintf(stderr,"GEN step %d: decode begin; piece_bytes=%d\n",i+1,size);fflush(stderr);if(logfd>=0)fsync(logfd);
+   int decodeRc=llama_decode(ctx,llama_batch_get_one(&token,1));
+   fprintf(stderr,"GEN step %d: decode end rc=%d\n",i+1,decodeRc);fflush(stderr);if(logfd>=0)fsync(logfd);
+   if(decodeRc)throw std::runtime_error("Generation decoding failed");
   }
   fprintf(stderr,"Generated tokens: %d; generation seconds: %.3f; total seconds: %.3f\n",count,seconds(gen),seconds(begin));
   fprintf(stderr,"OUTPUT: %s\n",result.c_str());stage("inference completed; releasing model");
