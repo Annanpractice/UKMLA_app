@@ -81,7 +81,7 @@ class MainActivity : Activity() {
         }
         topBar.addView(brandMark,LinearLayout.LayoutParams(dp(44),dp(44)))
         val brandText=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(12),0,0,0) }
-        brandText.addView(label("UKMLA",19f).apply { typeface=Typeface.SERIF_BOLD;setPadding(0,0,0,0) })
+        brandText.addView(label("UKMLA",19f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD);setPadding(0,0,0,0) })
         brandText.addView(muted("Card atlas · offline reader",11f).apply { setPadding(0,0,0,0) })
         topBar.addView(brandText,LinearLayout.LayoutParams(0,-2,1f))
         topBar.addView(button("⌕") { if(!busy) home() },LinearLayout.LayoutParams(dp(46),dp(44)))
@@ -182,7 +182,7 @@ class MainActivity : Activity() {
             setPadding(dp(20),dp(18),dp(20),dp(18))
         }
         hero.addView(label("LOCAL-FIRST · CARD ATLAS",11f).apply { setTextColor(cyan);typeface=Typeface.DEFAULT_BOLD;letterSpacing=.13f;setPadding(0,0,0,dp(5)) })
-        hero.addView(label("Offline reader",34f).apply { typeface=Typeface.SERIF_BOLD;setPadding(0,0,0,dp(7)) })
+        hero.addView(label("Offline reader",34f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD);setPadding(0,0,0,dp(7)) })
         hero.addView(muted("Search the same UKMLA card atlas, open source material, then ask the local Qwen model to explain it.",15f))
         val stats=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL;setPadding(0,dp(10),0,0) }
         fun stat(big:String,small:String)=LinearLayout(this).apply {
@@ -198,7 +198,7 @@ class MainActivity : Activity() {
         hero.addView(stats)
         content.addView(hero)
 
-        content.addView(label("Cards & search",22f).apply { typeface=Typeface.SERIF_BOLD;setPadding(0,dp(18),0,dp(3)) })
+        content.addView(label("Cards & search",22f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD);setPadding(0,dp(18),0,dp(3)) })
         content.addView(muted("Search 1–3 words for definitions. Select a passage on any card to Explain or Summarise.",13f))
         val input=inputField("e.g. ataxia, heart failure, raised JVP",3)
         content.addView(input)
