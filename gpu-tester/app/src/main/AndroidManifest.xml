@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <application android:label="UKMLA GPU Tester" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
+  <uses-native-library android:name="libOpenCL.so" android:required="false"/>
+  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+  <service android:name=".ProbeService" android:process=":probe" android:exported="false"/>
+ </application>
+</manifest>
