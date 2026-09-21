@@ -14,6 +14,7 @@ android {
         externalNativeBuild { cmake {
             arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
             (project.findProperty("spirvHeadersDir") as String?)?.let { arguments += "-DSPIRV-Headers_DIR=$it" }
+            (project.findProperty("spirvIncludeDir") as String?)?.let { arguments += "-DSPIRV_INCLUDE_DIR=$it" }
             (project.findProperty("vulkanIncludeDir") as String?)?.let { arguments += "-DVulkan_INCLUDE_DIR=$it" }
             (project.findProperty("vulkanLibrary") as String?)?.let { arguments += "-DVulkan_LIBRARY=$it" }
             (project.findProperty("vulkanGlslcExecutable") as String?)?.let { arguments += "-DVulkan_GLSLC_EXECUTABLE=$it" }
