@@ -12,22 +12,38 @@ static std::string str(JNIEnv* env, jstring s) { const char* p = env->GetStringU
 static void error(JNIEnv* e, const char* msg) { e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),msg); }
 extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_cancel(JNIEnv*, jobject) { cancelled = true; }
 extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_load(JNIEnv* e, jobject, jstring path) {
-    if(ctx) { llama_free(ctx); ctx=nullptr; } if(model) { llama_model_free(model); model=nullptr; }
+    if(ctx) { llama_free(ctx); ctx=nullptr; }
+    if(model) { llama_model_free(model); model=nullptr; }
     llama_backend_init();
-    auto mp=llama_model_default_params();
-    mp.n_gpu_layers=99;
-    model=llama_model_load_from_file(str(e,path).c_str(),mp);
-    if(!model) {
-        mp.n_gpu_layers=0;
-        model=llama_model_load_from_file(str(e,path).c_str(),mp);
-    }
-    if(!model) { error(e,"Could not load this GGUF. Import the recommended Qwen3 4B Q4_K_M model."); return; }
+
+    const std::string modelPath=str(e,path);
     unsigned hc=std::thread::hardware_concurrency();
     int threads=std::max(4,std::min(8,(int)(hc ? hc : 6)));
-    auto cp=llama_context_default_params(); cp.n_ctx=4096; cp.n_batch=512; cp.n_threads=threads; cp.n_threads_batch=threads;
-    cp.abort_callback=[](void*) { return cancelled.load(); };
-    ctx=llama_init_from_model(model,cp);
-    if(!ctx) error(e,"Not enough memory to create the model context. Close other apps and retry.");
+
+    auto tryLoad=[&](int gpuLayers) {
+        auto mp=llama_model_default_params();
+        mp.n_gpu_layers=gpuLayers;
+        model=llama_model_load_from_file(modelPath.c_str(),mp);
+        if(!model) return false;
+
+        auto cp=llama_context_default_params();
+        cp.n_ctx=4096;
+        cp.n_batch=512;
+        cp.n_threads=threads;
+        cp.n_threads_batch=threads;
+        cp.abort_callback=[](void*) { return cancelled.load(); };
+        ctx=llama_init_from_model(model,cp);
+        if(ctx) return true;
+
+        llama_model_free(model);
+        model=nullptr;
+        return false;
+    };
+
+    if(!tryLoad(99) && !tryLoad(0)) {
+        error(e,"Could not initialise the Qwen model on GPU or CPU. Close other apps and retry.");
+        return;
+    }
 }
 extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_reader_Native_generate(JNIEnv* e, jobject, jstring input) {
     if(!ctx) { error(e,"Import a GGUF model first."); return nullptr; }
