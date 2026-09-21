@@ -4,6 +4,9 @@ on:
     branches: [codex/offline-ukmla-reader]
     paths: ['android-reader/**', '.github/workflows/android-offline-reader.yml']
     # Keep this workflow branch-local; workflow changes themselves trigger a build.
+  pull_request:
+    branches: [main]
+    paths: ['android-reader/**', '.github/workflows/android-offline-reader.yml']
   workflow_dispatch:
 permissions:
   contents: write
