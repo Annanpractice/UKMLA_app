@@ -40,10 +40,10 @@ function currentJobId(){return clean(localStorage.getItem(JOB_KEY));}
 function active(job=latest){return Boolean(job&&['queued','running'].includes(job.status));}
 function workspaceMounted(){return Boolean(root&&root.isConnected&&root.dataset.activeQuestionTab==='ai');}
 
-function selectConditions(mode,topicId){
+function selectConditions(mode,topicId,count=10){
   const app=core().App;
   const pool=mode==='topic'?(app.byTopic.get(topicId)||[]):app.conditions;
-  return core().selectCoverageCandidates(pool,10,{uniqueTopics:mode!=='topic'});
+  return core().selectCoverageCandidates(pool,count,{uniqueTopics:mode!=='topic'});
 }
 
 function saveSnapshot(job){
@@ -106,7 +106,9 @@ function renderBuilder(){
   if(!workspaceMounted())return;
   const app=core().App;
   const isActive=active();
-  root.innerHTML=`<section class="quiz-layout" data-ukmla-question-workspace="ai"><article class="quiz-card"><div class="eyebrow">Jarvis 2 durable build</div><h2>UKMLA questions</h2><p>Build ten difficult clinical questions from the curated card atlas. Generation and all editorial checks now continue on the server even when this page is closed.</p><div class="api-session-note"><strong>Jarvis 2 connected</strong><span>OpenAI is handled server-side. No OpenAI API key is required in Chrome.</span></div><div class="field" style="margin-top:12px"><label>Question scope</label><select class="select" id="ai-mode" ${isActive?'disabled':''}><option value="random">All UKMLA topics</option><option value="topic">Selected topic</option></select></div><div class="field" id="ai-topic-field" style="margin-top:12px" hidden><label>Topic</label><select class="select" id="ai-topic" ${isActive?'disabled':''}>${app.topics.map(topic=>`<option value="${topic.id}">${escapeHtml(topic.name)} (${topic.count})</option>`).join('')}</select></div><div class="field" style="margin-top:12px"><label>Quality pipeline</label><div class="input" style="height:auto;min-height:44px;display:flex;align-items:center">Editorial edit points · sparsity → options/category → distractors → SBA → assessment</div><small class="question-source-note">Failed questions alone receive the second editorial cycle and, if necessary, fresh regeneration.</small></div><button class="btn primary" id="ai-start" style="width:100%;margin-top:16px" ${isActive?'disabled':''}>${isActive?'Build running on Jarvis 2':'Build 10 UKMLA questions'}</button><button class="btn" id="ai-refresh-job" style="width:100%;margin-top:9px">Refresh server status</button><button class="btn" id="ai-disconnect" style="width:100%;margin-top:9px">Forget Jarvis 2 pairing</button><div class="background-build-note"><strong>Safe to leave.</strong> Once Jarvis 2 accepts the build, you can minimise Chrome, close this tab, lock the phone or turn the phone off. Reopening this page reconnects to the same server job.</div></article><aside class="quiz-card"><div class="topic-meta"><span>Server-side question build</span><strong id="ai-percent">${Number(latest?.percent)||0}%</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" id="ai-progress-fill" style="--value:${Number(latest?.percent)||0}%"></div></div><div class="checkpoint-list" id="ai-checkpoints"></div><p id="ai-status" style="color:var(--muted)">${escapeHtml(latest?.lastMessage||'Checking Jarvis 2…')}</p><small class="question-source-note" id="ai-server-note">Jarvis 2 · durable Cloudflare Workflow</small></aside></section><section id="ai-play" style="margin-top:18px"></section>`;
+  root.innerHTML=`<section class="quiz-layout" data-ukmla-question-workspace="ai"><article class="quiz-card"><div class="eyebrow">Jarvis 2 durable build</div><h2>UKMLA questions</h2><p>Build 10, 20 or 30 difficult clinical questions from the curated card atlas. Generation and all editorial checks now continue on the server even when this page is closed.</p><div class="api-session-note"><strong>Jarvis 2 connected</strong><span>OpenAI is handled server-side. No OpenAI API key is required in Chrome.</span></div><div class="field" style="margin-top:12px"><label>Question scope</label><select class="select" id="ai-mode" ${isActive?'disabled':''}><option value="random">All UKMLA topics</option><option value="topic">Selected topic</option></select></div><div class="field" id="ai-topic-field" style="margin-top:12px" hidden><label>Topic</label><select class="select" id="ai-topic" ${isActive?'disabled':''}>${app.topics.map(topic=>`<option value="${topic.id}">${escapeHtml(topic.name)} (${topic.count})</option>`).join('')}</select></div>${window.UKMLA_QUESTION_BATCHES.control(isActive)}<div class="field" style="margin-top:12px"><label>Quality pipeline</label><div class="input" style="height:auto;min-height:44px;display:flex;align-items:center">Editorial edit points · sparsity → options/category → distractors → SBA → assessment</div><small class="question-source-note">Failed questions alone receive the second editorial cycle and, if necessary, fresh regeneration.</small></div><button class="btn primary" id="ai-start" style="width:100%;margin-top:16px" ${isActive?'disabled':''}>${isActive?'Build running on Jarvis 2':'Build 10 UKMLA questions'}</button><button class="btn" id="ai-refresh-job" style="width:100%;margin-top:9px">Refresh server status</button><button class="btn" id="ai-disconnect" style="width:100%;margin-top:9px">Forget Jarvis 2 pairing</button><div class="background-build-note"><strong>Safe to leave.</strong> Once Jarvis 2 accepts the build, you can minimise Chrome, close this tab, lock the phone or turn the phone off. Reopening this page reconnects to the same server job.</div></article><aside class="quiz-card"><div class="topic-meta"><span>Server-side question build</span><strong id="ai-percent">${Number(latest?.percent)||0}%</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" id="ai-progress-fill" style="--value:${Number(latest?.percent)||0}%"></div></div><div class="checkpoint-list" id="ai-checkpoints"></div><p id="ai-status" style="color:var(--muted)">${escapeHtml(latest?.lastMessage||'Checking Jarvis 2…')}</p><small class="question-source-note" id="ai-server-note">Jarvis 2 · durable Cloudflare Workflow</small></aside></section><section id="ai-play" style="margin-top:18px"></section>`;
+  const countSelect=root.querySelector('#ai-count');
+  if(countSelect)countSelect.onchange=()=>drawProgress(latest);
   const mode=root.querySelector('#ai-mode');
   if(mode)mode.onchange=()=>{const field=root.querySelector('#ai-topic-field');if(field)field.hidden=mode.value!=='topic';};
   root.querySelector('#ai-start')?.addEventListener('click',()=>void startBuild());
@@ -146,17 +148,9 @@ function disconnect(){
   renderPairing();
 }
 
-async function startBuild(){
-  if(requestBusy||active())return;
-  if(!workspaceMounted())return;
-  const mode=root.querySelector('#ai-mode')?.value||'random';
-  const topicId=root.querySelector('#ai-topic')?.value||'';
-  const conditions=selectConditions(mode,topicId);
-  if(conditions.length!==10){core().toast('The selected scope does not contain ten usable cards.');return;}
-  const questionTypes=schema().TYPES.map(item=>item[0]);
-  const topic=mode==='topic'?core().topicById(topicId).name:'All UKMLA topics';
+function buildPayload(conditions,questionTypes,topic){
   const config={conditions,questionTypes,topic,knowledge:false};
-  const payload={
+  return {
     schemaVersion:1,
     topic,
     conditions,
@@ -171,11 +165,37 @@ async function startBuild(){
       sba_audit:schema().checkpointInstruction('sba_audit')
     }
   };
+}
+
+async function startBuild(){
+  if(requestBusy||active())return;
+  if(!workspaceMounted())return;
+  const mode=root.querySelector('#ai-mode')?.value||'random';
+  const topicId=root.querySelector('#ai-topic')?.value||'';
+  const batches=window.UKMLA_QUESTION_BATCHES;
+  const pending=batches.load();
+  const existing=pending?.backend==='server'?pending:null;
+  const count=existing?.conditions.length||batches.count(root.querySelector('#ai-count')?.value);
+  const conditions=existing?.conditions||selectConditions(mode,topicId,count);
+  if(conditions.length!==count){core().toast(`The selected scope does not contain ${count} usable cards.`);return;}
+  const questionTypes=schema().TYPES.map(item=>item[0]);
+  const topic=existing?.topic||(mode==='topic'?core().topicById(topicId).name:'All UKMLA topics');
+  const batch=existing||(count>10?batches.create(conditions,topic,'server'):null);
   requestBusy=true;
   const button=root.querySelector('#ai-start');
   if(button){button.disabled=true;button.textContent='Sending build to Jarvis 2…';}
   try{
-    const data=await api(API_PATH,{method:'POST',body:payload});
+    if(batch){
+      for(let i=0;i<count/10;i++){
+        if(batch.jobs[i]&&!batch.retryIndices?.includes(i))continue;
+        const response=await api(API_PATH,{method:'POST',body:buildPayload(conditions.slice(i*10,i*10+10),questionTypes,topic)});
+        if(!response?.job?.id)throw new Error('Jarvis 2 did not return a question-build job.');
+        batch.jobs[i]=response.job.id;batch.retryIndices=(batch.retryIndices||[]).filter(index=>index!==i);batches.save(batch);
+      }
+      saveSnapshot({id:batch.id,status:'queued',percent:2,lastMessage:`${count} questions queued on Jarvis 2`});
+      renderBuilder();schedulePoll(700);return;
+    }
+    const data=await api(API_PATH,{method:'POST',body:buildPayload(conditions,questionTypes,topic)});
     if(!data?.job?.id)throw new Error('Jarvis 2 did not return a question-build job.');
     localStorage.setItem(JOB_KEY,data.job.id);
     saveSnapshot(data.job);
@@ -192,6 +212,35 @@ async function refresh(showToast=false){
   if(requestBusy||!token())return;
   requestBusy=true;
   try{
+    const batches=window.UKMLA_QUESTION_BATCHES;
+    const batch=batches.load();
+    if(batch?.backend==='server'){
+      const jobs=[];
+      for(const id of batch.jobs){
+        const response=await api(`${API_PATH}/${encodeURIComponent(id)}`);
+        if(!response?.job)throw new Error('A saved batch could not be found on Jarvis 2.');
+        jobs.push(response.job);
+      }
+      const total=batch.conditions.length/10;
+      const missing=jobs.length<total;
+      const running=jobs.some(job=>active(job));
+      const failed=jobs.find(job=>['error','needs_review'].includes(job.status));
+      batch.retryIndices=jobs.flatMap((job,index)=>['error','needs_review'].includes(job.status)?[index]:[]);
+      batches.save(batch);
+      const done=!missing&&jobs.every(job=>job.status==='complete'&&job.result);
+      const status=done?'complete':missing?'submission_paused':running?'running':failed?.status||'error';
+      const summary={id:batch.id,status,percent:jobs.reduce((n,j)=>n+(Number(j.percent)||0),0)/total,
+        currentStage:jobs.find(job=>active(job))?.currentStage,
+        lastMessage:missing?'Submission interrupted. Press Build to submit remaining batches.':failed?`Batch needs review: ${failed.lastMessage}`:`${jobs.filter(j=>j.status==='complete').length}/${total} batches approved · ${batch.conditions.length} questions`};
+      drawProgress(summary);
+      if(done){
+        summary.result=batches.merge(batch,jobs.map(j=>j.result));
+        await importCompleted(summary);
+        batches.clear();localStorage.removeItem(JOB_KEY);stopPolling();drawProgress(summary);
+      }else if(running)schedulePoll();
+      if(showToast)core().toast(summary.lastMessage);
+      return;
+    }
     const id=currentJobId();
     const data=await api(id?`${API_PATH}/${encodeURIComponent(id)}`:`${API_PATH}/latest`);
     const job=data?.job||null;
@@ -224,10 +273,10 @@ async function refresh(showToast=false){
 async function importCompleted(job){
   if(!job?.id||!job.result)return;
   if(importedThisSession===job.id||localStorage.getItem(IMPORTED_KEY)===job.id)return;
-  importedThisSession=job.id;
   await legacy.storeSet(job.result);
+  importedThisSession=job.id;
   localStorage.setItem(IMPORTED_KEY,job.id);
-  core().toast('Jarvis 2 finished the question set · 10/10 approved and saved to Question Bank.');
+  core().toast(`Jarvis 2 finished the question set · ${job.result.questions.length}/${job.result.questions.length} approved and saved to Question Bank.`);
   document.dispatchEvent(new CustomEvent('ukmlaV2AiProgress',{detail:{...job,lastMessage:'Question set ready and safely stored offline.',percent:100,status:'complete'}}));
   if(workspaceMounted()){
     const play=root.querySelector('#ai-play');
@@ -257,7 +306,8 @@ function drawProgress(job){
     list.innerHTML=rows.join('');
   }
   const start=root.querySelector('#ai-start');
-  if(start){start.disabled=active(current);start.textContent=active(current)?'Build running on Jarvis 2':'Build 10 UKMLA questions';}
+  if(start){const batch=window.UKMLA_QUESTION_BATCHES.load();const pending=batch?.backend==='server';
+    start.disabled=active(current)||(pending&&batch.jobs.length===batch.conditions.length/10&&!batch.retryIndices?.length);start.textContent=active(current)?'Build running on Jarvis 2':pending?(batch.retryIndices?.length?'Retry failed batches':'Resume remaining batches'):`Build ${window.UKMLA_QUESTION_BATCHES.count(root.querySelector('#ai-count')?.value)} UKMLA questions`;}
   const note=root.querySelector('#ai-server-note');
   if(note){
     if(active(current))note.textContent='Jarvis 2 is running this independently · safe to close Chrome';
