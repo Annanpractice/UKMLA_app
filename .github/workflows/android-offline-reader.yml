@@ -41,6 +41,12 @@ jobs:
           test -n "$SPIRV_DIR"
           echo "SPIRV_HEADERS_DIR=$SPIRV_DIR" >> "$GITHUB_ENV"
 
+          mkdir -p android-reader/vendor/SPIRV-Headers
+          curl --fail --retry 3 -L https://github.com/KhronosGroup/SPIRV-Headers/archive/1c6bb2743599e6eb6f37b2969acc0aef812e32e3.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/SPIRV-Headers
+          SPIRV_INCLUDE_DIR="$GITHUB_WORKSPACE/android-reader/vendor/SPIRV-Headers/include"
+          test -f "$SPIRV_INCLUDE_DIR/spirv/unified1/spirv.hpp"
+          echo "SPIRV_INCLUDE_DIR=$SPIRV_INCLUDE_DIR" >> "$GITHUB_ENV"
+
           mkdir -p android-reader/vendor/Vulkan-Headers
           curl --fail --retry 3 -L https://github.com/KhronosGroup/Vulkan-Headers/archive/217e93c664ec6704ec2d8c36fa116c1a4a1e2d40.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/Vulkan-Headers
           VULKAN_INCLUDE_DIR="$GITHUB_WORKSPACE/android-reader/vendor/Vulkan-Headers/include"
@@ -65,7 +71,7 @@ jobs:
           python android-reader/tools/build_database.py
       - name: Test and assemble APK
         working-directory: android-reader
-        run: gradle --no-daemon -PspirvHeadersDir="$SPIRV_HEADERS_DIR" -PvulkanIncludeDir="$VULKAN_INCLUDE_DIR" -PvulkanLibrary="$VULKAN_LIBRARY" -PvulkanGlslcExecutable="$VULKAN_GLSLC_EXECUTABLE" :app:testReleaseUnitTest :app:assembleRelease
+        run: gradle --no-daemon -PspirvHeadersDir="$SPIRV_HEADERS_DIR" -PspirvIncludeDir="$SPIRV_INCLUDE_DIR" -PvulkanIncludeDir="$VULKAN_INCLUDE_DIR" -PvulkanLibrary="$VULKAN_LIBRARY" -PvulkanGlslcExecutable="$VULKAN_GLSLC_EXECUTABLE" :app:testReleaseUnitTest :app:assembleRelease
       - name: Verify offline APK
         run: |
           APK=android-reader/app/build/outputs/apk/release/app-release.apk
