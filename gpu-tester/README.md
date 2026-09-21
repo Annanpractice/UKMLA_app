@@ -11,7 +11,7 @@ This build follows the Samsung SM-S928B results from 0.1.0: CPU completed normal
 5. Still at **1 GPU layer**, run **OPENCL (generic)**. Copy the report.
 6. Only if one of those completes cleanly should 2 layers be tried. Do not jump to 8/16/all while the 1-layer result is unresolved.
 
-The optimized OpenCL backend explicitly enables `GGML_OPENCL_USE_ADRENO_KERNELS`. The generic OpenCL backend explicitly disables both `GGML_OPENCL_USE_ADRENO_KERNELS` and `GGML_OPENCL_USE_ADRENO_BIN_KERNELS`. This makes the comparison meaningful while leaving the model, prompt, context, batch size and sampling identical.
+The optimized OpenCL backend explicitly enables `GGML_OPENCL_USE_ADRENO_KERNELS`. The generic OpenCL backend explicitly disables both `GGML_OPENCL_USE_ADRENO_KERNELS`. This makes the comparison meaningful while leaving the model, prompt, context, batch size and sampling identical.
 
 Generation diagnostics are persisted before and after every token sample and every `llama_decode()` call. If the worker is killed inside a driver/runtime call, the last durable `GEN step ...` line should identify the boundary where execution stopped.
 
