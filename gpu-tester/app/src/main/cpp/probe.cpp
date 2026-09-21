@@ -55,7 +55,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_gputester_ProbeNative_r
   }
   if(!selected) throw std::runtime_error("Requested backend has no usable device. No CPU fallback was attempted.");
   ggml_backend_dev_t devices[]={selected,nullptr};
-  auto mp=llama_model_default_params();mp.devices=devices;mp.n_gpu_layers=gpu?layers:0;mp.use_mmap=true;
+  auto mp=llama_model_default_params();mp.devices=devices;mp.n_gpu_layers=gpu?layers:0;mp.load_mode=LLAMA_LOAD_MODE_MMAP;
   stage("model loading");const auto loadStart=Clock::now();
   std::string path="/proc/self/fd/"+std::to_string(fd);model=llama_model_load_from_file(path.c_str(),mp);
   if(!model)throw std::runtime_error("Model loading failed; see preceding native log");
