@@ -24,7 +24,7 @@ class MainActivity:Activity() {
  private fun button(box:LinearLayout,text:String,action:()->Unit) { box.addView(Button(this).apply { this.text=text;isAllCaps=false;setOnClickListener { action() } }) }
  override fun onCreate(state:Bundle?) {
   super.onCreate(state)
-  val scroll=ScrollView(this);val box=LinearLayout(this).apply { orientation=1;setPadding(24,24,24,24) };scroll.addView(box);setContentView(scroll)
+  val scroll=ScrollView(this);val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(24,24,24,24) };scroll.addView(box);setContentView(scroll)
   box.setOnApplyWindowInsetsListener { v,i -> v.setPadding(24,i.systemWindowInsetTop+20,24,i.systemWindowInsetBottom+20);i }
   box.addView(TextView(this).apply { text="UKMLA GPU Tester · 0.1.0";textSize=24f })
   box.addView(TextView(this).apply { text="Separate offline diagnostic app. Select your existing Qwen GGUF in Downloads. No model copying or downloading. Close the reader before testing to free its memory. Keep this screen open.\n\nEach test uses the same short prompt, 4 CPU threads, 2,048 context, batch 64 and up to 32 output tokens. GPU tests never silently substitute a CPU test." })
@@ -49,8 +49,8 @@ class MainActivity:Activity() {
   return text+"\n\n"+exits+"\nReason codes: 2=signal, 3=low memory, 4=Java crash, 5=native crash, 6=ANR. A tester stop/normal worker shutdown can also report a signal. These are app diagnostics, not unrestricted system logcat."
  }
  private fun runTest(backend:String) {
-  if(active) { Toast.makeText(this,"Wait or stop the current test",0).show();return }
-  val uri=prefs.getString("uri",null) ?: run { Toast.makeText(this,"Select your GGUF first",0).show();return }
+  if(active) { Toast.makeText(this,"Wait or stop the current test",Toast.LENGTH_SHORT).show();return }
+  val uri=prefs.getString("uri",null) ?: run { Toast.makeText(this,"Select your GGUF first",Toast.LENGTH_SHORT).show();return }
   started=System.currentTimeMillis();prefs.edit().putLong("start",started).apply();finished=false
   if(log.exists()) log.copyTo(File(filesDir,"previous-probe.log"),true)
   val memory=ActivityManager.MemoryInfo();(getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
