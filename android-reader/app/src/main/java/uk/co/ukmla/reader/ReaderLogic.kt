@@ -1,7 +1,7 @@
 package uk.co.ukmla.reader
 
 object ReaderLogic {
-    private val stop = setOf("the", "a", "an", "of", "and", "in", "to", "is", "it", "for", "with", "what", "does", "this", "that", "explain", "summarise", "why", "how", "can", "be", "are", "on", "as", "from")
+    private val stop = setOf("the", "a", "an", "of", "and", "or", "not", "in", "to", "is", "it", "for", "with", "what", "does", "this", "that", "explain", "summarise", "why", "how", "can", "be", "are", "on", "as", "from")
     fun words(text: String) = Regex("[\\p{L}\\p{N}]+").findAll(text.lowercase()).map { it.value }.toList()
     fun terms(text: String) = words(text).filter { it.length > 1 && it !in stop }.distinct().take(16)
     fun shortQuery(text: String) = words(text).size <= 3

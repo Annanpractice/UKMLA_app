@@ -17,6 +17,7 @@ extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_load(JNIEnv* e,
     model=llama_model_load_from_file(str(e,path).c_str(),mp);
     if(!model) { error(e,"Could not load this GGUF. Import the recommended Qwen3 4B Q4_K_M model."); return; }
     auto cp=llama_context_default_params(); cp.n_ctx=4096; cp.n_batch=256; cp.n_threads=4; cp.n_threads_batch=4;
+    cp.abort_callback=[](void*) { return cancelled.load(); };
     ctx=llama_init_from_model(model,cp);
     if(!ctx) error(e,"Not enough memory to create the model context. Close other apps and retry.");
 }
