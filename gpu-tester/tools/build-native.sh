@@ -21,7 +21,7 @@ cmake --build vendor/loader-build -j2
 OPENCL_LIB=$(find "$ROOT/vendor/loader-build" -name libOpenCL.so -print -quit)
 test -n "$OPENCL_LIB"
 SPIRV_CONFIG=$(dirname "$(find /usr -name SPIRV-HeadersConfig.cmake -print -quit)")
-for backend in cpu opencl vulkan; do
+for backend in cpu opencl opencl_generic vulkan; do
  cmake -S app/src/main/cpp -B "vendor/build-$backend" "${COMMON[@]}" \
   -DPROBE_BACKEND="$backend" -DLLAMA_SOURCE="$ROOT/vendor/llama" \
   -DOpenCL_INCLUDE_DIR="$ROOT/vendor/opencl" -DOpenCL_LIBRARY="$OPENCL_LIB" \
@@ -32,7 +32,9 @@ for backend in cpu opencl vulkan; do
  cmake --build "vendor/build-$backend" --target "probe_$backend" -j2
  cp "vendor/build-$backend/libprobe_$backend.so" app/src/main/jniLibs/arm64-v8a/
 done
-"$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -d app/src/main/jniLibs/arm64-v8a/libprobe_opencl.so | grep -F 'Shared library: [libOpenCL.so]'
+for lib in libprobe_opencl.so libprobe_opencl_generic.so; do
+ "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -d "app/src/main/jniLibs/arm64-v8a/$lib" | grep -F 'Shared library: [libOpenCL.so]'
+done
 # Do not package the link-time ICD loader: Android supplies the optional vendor libOpenCL.so.
 mkdir -p app/src/main/assets/licenses
 cp vendor/llama/LICENSE app/src/main/assets/licenses/llama-MIT.txt
