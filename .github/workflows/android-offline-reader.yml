@@ -36,8 +36,6 @@ jobs:
           mkdir -p android-reader/vendor/llama.cpp
           curl --fail --retry 3 -L https://github.com/ggml-org/llama.cpp/archive/ec91ab5add06555970f98d9c5361d884f3f530f8.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/llama.cpp
           base64 -d android-reader/preview.keystore.b64 > android-reader/preview.keystore
-      - name: Build generic OpenCL backend
-        run: bash android-reader/tools/build-opencl.sh
       - name: Build local card database
         run: |
           python scripts/build_v2_data.py
@@ -53,12 +51,9 @@ jobs:
           if grep -q android.permission.INTERNET /tmp/permissions.txt; then exit 1; fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep 'lib/arm64-v8a/libreader.so'
-          unzip -l "$APK" | grep 'lib/arm64-v8a/libreader_opencl.so'
-          if unzip -l "$APK" | grep -q 'lib/arm64-v8a/libOpenCL.so'; then exit 1; fi
-          "$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -d android-reader/app/src/main/jniLibs/arm64-v8a/libreader_opencl.so | grep -F 'Shared library: [libOpenCL.so]'
           unzip -l "$APK" | grep 'assets/reader.db'
-          cp "$APK" UKMLA-Offline-Reader-v0.1.4-arm64.apk
-          sha256sum UKMLA-Offline-Reader-v0.1.4-arm64.apk > SHA256SUMS.txt
+          cp "$APK" UKMLA-Offline-Reader-v0.1.5-arm64.apk
+          sha256sum UKMLA-Offline-Reader-v0.1.5-arm64.apk > SHA256SUMS.txt
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -75,8 +70,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=offline-reader-v0.1.4
+          TAG=offline-reader-v0.1.5
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.4 (Android preview)' --notes-file android-reader/RELEASE.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.5 (Android preview)' --notes-file android-reader/RELEASE.md
           fi
-          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.4-arm64.apk SHA256SUMS.txt --clobber
+          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.5-arm64.apk SHA256SUMS.txt --clobber
