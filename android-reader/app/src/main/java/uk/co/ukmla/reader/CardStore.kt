@@ -22,7 +22,7 @@ class CardStore(context: Context) {
         val terms=ReaderLogic.terms(text)
         if(terms.isEmpty()) return emptyList()
         val match=terms.joinToString(" OR ") { "\"$it\"" }
-        val candidates=query("SELECT entries.* FROM entries JOIN lookup ON entries.id=lookup.docid WHERE lookup MATCH ? LIMIT 500",arrayOf(match))
+        val candidates=query("SELECT entries.* FROM entries JOIN lookup ON entries.id=lookup.docid WHERE lookup MATCH ?",arrayOf(match))
         val phrase=ReaderLogic.words(text).joinToString(" ")
         return candidates.map { source ->
             val title=ReaderLogic.words(source.title).joinToString(" ")

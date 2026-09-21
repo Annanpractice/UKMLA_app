@@ -18,7 +18,7 @@ class MainActivity : Activity() {
     companion object {
         private val worker=Executors.newSingleThreadExecutor()
         private var loaded=false
-        private const val MODEL_URL="https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf?download=true"
+        private const val MODEL_URL="https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf?download=true"
     }
     private lateinit var store: CardStore
     private lateinit var root: LinearLayout
@@ -29,7 +29,7 @@ class MainActivity : Activity() {
     private var sources=listOf<Source>()
     private var summary=false
     private val history=mutableListOf<Pair<String,String>>()
-    private var cancelled=false
+    @Volatile private var cancelled=false
     private val modelFile get()=File(filesDir,"reader-model.gguf")
     private fun dp(x:Int)=(x*resources.displayMetrics.density).toInt()
     override fun onCreate(savedInstanceState: Bundle?) {
