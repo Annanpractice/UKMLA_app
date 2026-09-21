@@ -3,7 +3,6 @@ on:
   push:
     branches: [codex/offline-ukmla-reader]
     paths: ['android-reader/**', '.github/workflows/android-offline-reader.yml']
-    # Keep this workflow branch-local; workflow changes themselves trigger a build.
   pull_request:
     branches: [main]
     paths: ['android-reader/**', '.github/workflows/android-offline-reader.yml']
@@ -53,8 +52,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep 'lib/arm64-v8a/libreader.so'
           unzip -l "$APK" | grep 'assets/reader.db'
-          cp "$APK" UKMLA-Offline-Reader-v0.1.2-arm64.apk
-          sha256sum UKMLA-Offline-Reader-v0.1.2-arm64.apk > SHA256SUMS.txt
+          cp "$APK" UKMLA-Offline-Reader-v0.1.3-arm64.apk
+          sha256sum UKMLA-Offline-Reader-v0.1.3-arm64.apk > SHA256SUMS.txt
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -71,8 +70,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=offline-reader-v0.1.2
+          TAG=offline-reader-v0.1.3
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.2 (Android preview)' --notes-file android-reader/RELEASE.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'UKMLA Offline Reader 0.1.3 (Android preview)' --notes-file android-reader/RELEASE.md
           fi
-          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.2-arm64.apk SHA256SUMS.txt --clobber
+          gh release upload "$TAG" UKMLA-Offline-Reader-v0.1.3-arm64.apk SHA256SUMS.txt --clobber
