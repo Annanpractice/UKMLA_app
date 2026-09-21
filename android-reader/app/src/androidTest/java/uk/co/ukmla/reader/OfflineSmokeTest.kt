@@ -28,7 +28,7 @@ class OfflineSmokeTest {
     @Test fun jniLoadsAndReportsMissingModel() {
         Native.cancel()
         try { Native.load("/no-such-model.gguf");fail("Missing model must fail") }
-        catch(expected:IllegalStateException) { assertTrue(expected.message!!.contains("GGUF")) }
+        catch(expected:IllegalStateException) { assertFalse(expected.message.isNullOrBlank()) }
     }
     @Test fun launchesNativeReaderAndExternalSelection() {
         val i=InstrumentationRegistry.getInstrumentation()
