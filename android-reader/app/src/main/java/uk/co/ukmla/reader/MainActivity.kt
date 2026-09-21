@@ -25,7 +25,6 @@ class MainActivity : Activity() {
         private const val MODEL_URL="https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf?download=true"
     }
     private lateinit var store: CardStore
-    private lateinit var openCl: OpenClClient
     private var tts: TextToSpeech?=null
     private var ttsReady=false
     // Mirrors the default UKMLA web palette (v2/app.css), rather than the old gold reader skin.
@@ -42,7 +41,7 @@ class MainActivity : Activity() {
     private val accent=Color.rgb(46,183,255)
     private val cyan=Color.rgb(139,234,255)
     private val border=Color.argb(56,117,196,255)
-    private var backendLabel="OpenCL 2-layer preferred • CPU fallback"
+    private var backendLabel="CPU inference"
     private lateinit var root: LinearLayout
     private lateinit var status: TextView
     private lateinit var content: LinearLayout
@@ -60,7 +59,6 @@ class MainActivity : Activity() {
         window.navigationBarColor=bgTop
         initTts()
         store=CardStore(this)
-        openCl=OpenClClient(this)
         root=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
             setPadding(dp(14),dp(8),dp(14),dp(7))
@@ -111,7 +109,6 @@ class MainActivity : Activity() {
     }
     override fun onDestroy() {
         cancelled=true
-        if(::openCl.isInitialized) { openCl.cancel();openCl.close() }
         Native.cancel()
         tts?.stop()
         tts?.shutdown()
@@ -261,58 +258,37 @@ class MainActivity : Activity() {
             setPadding(dp(15),dp(14),dp(15),dp(14))
         }
         content.addView(answer)
-        val stop=button("Stop") { cancelled=true;openCl.cancel();Native.cancel();updateStatus("Stopping…") };content.addView(stop)
+        val stop=button("Stop") { cancelled=true;Native.cancel();updateStatus("Stopping…") };content.addView(stop)
         val prompt=ReaderLogic.prompt(selection,sources.map { it.context() },history,question,summary)
-
-        fun finish(bytes:ByteArray,mode:String) {
-            val result=if(cancelled) "" else ReaderLogic.visibleAnswer(bytes.toString(Charsets.UTF_8))
-            runOnUiThread {
-                if(isDestroyed)return@runOnUiThread
-                backendLabel=mode
-                busy=false
-                content.removeView(stop)
-                answer.text=(if(question.isNotBlank()) "You: $question\n\n" else "")+
-                    (if(cancelled) "Stopped." else if(result.isBlank()) "No usable answer. Try a shorter selection or check the model."
-                    else (if(sources.isEmpty()) "Possible meaning · unverified\n\n" else "AI explanation · verify against sources\n\n")+result)
-                answer.setTextIsSelectable(true)
-                if(result.isNotBlank() && !cancelled) {
-                    history.add((question.ifBlank { "Explain: $selection" }) to result)
-                    content.addView(audioControls(result))
+        updateStatus("CPU inference")
+        worker.execute {
+            try {
+                if(!loaded) { Native.load(modelFile.path);loaded=true }
+                val result=if(cancelled) "" else ReaderLogic.visibleAnswer(Native.generate(prompt).toString(Charsets.UTF_8))
+                runOnUiThread {
+                    if(isDestroyed)return@runOnUiThread
+                    backendLabel="CPU inference"
+                    busy=false;content.removeView(stop)
+                    answer.text=(if(question.isNotBlank()) "You: $question\n\n" else "")+
+                        (if(cancelled) "Stopped." else if(result.isBlank()) "No usable answer. Try a shorter selection or check the model."
+                        else (if(sources.isEmpty()) "Possible meaning · unverified\n\n" else "AI explanation · verify against sources\n\n")+result)
+                    answer.setTextIsSelectable(true)
+                    if(result.isNotBlank() && !cancelled) {
+                        history.add((question.ifBlank { "Explain: $selection" }) to result)
+                        content.addView(audioControls(result))
+                    }
+                    updateStatus();followup()
                 }
-                updateStatus();followup()
-            }
-        }
-
-        fun fail(message:String) {
-            runOnUiThread {
-                if(isDestroyed)return@runOnUiThread
-                busy=false;content.removeView(stop)
-                answer.text="$message\nTry a shorter selection or reimport the recommended model."
-                updateStatus();followup()
-            }
-        }
-
-        fun cpuFallback(reason:String) {
-            if(cancelled) { finish(ByteArray(0),"Stopped");return }
-            updateStatus("OpenCL unavailable • switching to CPU…")
-            worker.execute {
-                try {
-                    if(!loaded) { Native.load(modelFile.path);loaded=true }
-                    val bytes=if(cancelled) ByteArray(0) else Native.generate(prompt)
-                    finish(bytes,"CPU fallback")
-                } catch(e:Exception) {
-                    fail(e.message ?: "Unable to run model")
+            } catch(e:Exception) {
+                runOnUiThread {
+                    if(!isDestroyed) {
+                        busy=false;content.removeView(stop)
+                        answer.text="${e.message ?: "Unable to run model"}\nTry a shorter selection or reimport the recommended model."
+                        updateStatus();followup()
+                    }
                 }
             }
         }
-
-        updateStatus("Generic OpenCL • 2 GPU layers")
-        openCl.generate(
-            modelFile.path,
-            prompt,
-            result={ bytes -> finish(bytes,"Generic OpenCL • 2 GPU layers") },
-            fallback={ reason -> cpuFallback(reason) }
-        )
     }
 
     private fun followup() {
@@ -332,7 +308,7 @@ class MainActivity : Activity() {
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="*/*";addCategory(Intent.CATEGORY_OPENABLE) },42)
             }
         })
-        box.addView(label("Preview 0.1.4 · ARM64 / Android 9+ · generic OpenCL (2 layers) with CPU fallback · local TTS\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT), generic OpenCL acceleration with the Adreno-specific kernel path disabled; CPU fallback remains available. Speech: Android system TextToSpeech.\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
+        box.addView(label("Preview 0.1.5 · ARM64 / Android 9+ · CPU inference · local TTS\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT), CPU inference only. Speech: Android system TextToSpeech.\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
         val scroll=ScrollView(this);scroll.addView(box)
         AlertDialog.Builder(this).setTitle("Offline model & attribution").setView(scroll).setPositiveButton("Close",null).show()
     }
@@ -353,7 +329,7 @@ class MainActivity : Activity() {
                     }
                 }
                 require(temp.renameTo(modelFile)) { "Could not finish import" };loaded=false
-                runOnUiThread { if(!isDestroyed) { openCl.close();openCl=OpenClClient(this);busy=false;updateStatus("Model imported. Return to a card and choose Explain.") } }
+                runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Model imported. Return to a card and choose Explain.") } }
             } catch(e:Exception) { temp.delete();runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Import failed: ${e.message}") } } }
         }
     }
