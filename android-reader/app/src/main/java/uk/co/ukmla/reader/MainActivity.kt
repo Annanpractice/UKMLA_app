@@ -104,17 +104,23 @@ class MainActivity : Activity() {
             if(code==TextToSpeech.SUCCESS) {
                 tts?.let { engine ->
                     val local=Locale.getDefault()
-                    val chosen=if(engine.isLanguageAvailable(local)>=TextToSpeech.LANG_AVAILABLE) local else Locale.UK
-                    if(engine.isLanguageAvailable(chosen)>=TextToSpeech.LANG_AVAILABLE) engine.language=chosen
-                    engine.setSpeechRate(.95f)
-                    ttsReady=true
+                    val offline=engine.voices.orEmpty().filter { !it.isNetworkConnectionRequired }
+                    val voice=offline.firstOrNull { it.locale==local }
+                        ?: offline.firstOrNull { it.locale.language==local.language }
+                        ?: offline.firstOrNull { it.locale==Locale.UK }
+                        ?: offline.firstOrNull { it.locale.language=="en" }
+                    if(voice!=null) {
+                        engine.voice=voice
+                        engine.setSpeechRate(.95f)
+                        ttsReady=true
+                    }
                 }
             }
         }
     }
     private fun speak(text:String) {
         if(!ttsReady) {
-            Toast.makeText(this,"Phone text-to-speech is not ready or no local voice is installed.",Toast.LENGTH_LONG).show()
+            Toast.makeText(this,"No offline text-to-speech voice is installed or ready on this phone.",Toast.LENGTH_LONG).show()
             return
         }
         val spoken=text.replace(Regex("\\s*\\[\\d+\\]"),"").replace("**","")
@@ -219,7 +225,7 @@ class MainActivity : Activity() {
     private fun settings() {
         val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(8),dp(20),dp(8)) }
         box.addView(label("One-time setup: download Qwen3 4B Q4_K_M (~2.5 GB), then import the .gguf file. Allow roughly 5 GB free during import. Downloads open in your browser. This app has no internet permission.",15f))
-        box.addView(muted("Read answer uses Android’s installed text-to-speech engine and voice. LLM output is not sent to a cloud speech service by this app.",13f))
+        box.addView(muted("Read answer uses an installed Android text-to-speech voice that is marked as not requiring a network connection. If no offline voice is installed, speech stays unavailable.",13f))
         box.addView(button("Download recommended GGUF") { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(MODEL_URL))) })
         box.addView(button("Import GGUF from device") {
             if(busy) { Toast.makeText(this,"Stop the current task first",Toast.LENGTH_SHORT).show() } else {
