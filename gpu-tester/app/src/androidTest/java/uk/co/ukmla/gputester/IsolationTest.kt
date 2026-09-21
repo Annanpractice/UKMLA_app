@@ -29,7 +29,7 @@ class IsolationTest {
   val c=InstrumentationRegistry.getInstrumentation().targetContext
   val info=c.packageManager.getPackageInfo(c.packageName,android.content.pm.PackageManager.GET_PERMISSIONS or android.content.pm.PackageManager.GET_SERVICES)
   assertFalse(info.requestedPermissions?.contains("android.permission.INTERNET") ?: false)
-  val worker=info.services.first { it.name.endsWith("ProbeService") }
+  val worker=info.services.orEmpty().first { it.name.endsWith("ProbeService") }
   assertFalse(worker.exported);assertTrue(worker.processName.endsWith(":probe"))
  }
 }
