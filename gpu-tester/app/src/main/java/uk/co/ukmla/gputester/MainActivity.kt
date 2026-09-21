@@ -44,7 +44,7 @@ class MainActivity:Activity() {
  private fun report():String {
   val text=if(log.exists()) log.readText() else "No tests run yet."
   val exits=if(Build.VERSION.SDK_INT>=30) {
-   try { (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getHistoricalProcessExitReasons(null,0,8).filter { it.processName.endsWith(":probe") && it.timestamp>=prefs.getLong("start",0L) }.joinToString("\n") { "Android exit: time=${it.timestamp}, reason=${it.reason}, status=${it.status}, description=${it.description}, PSS=${it.pss} KB, RSS=${it.rss} KB" } catch(e:Exception) { "Exit information unavailable: ${e.message}" }
+   try { (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getHistoricalProcessExitReasons(null,0,8).filter { it.processName.endsWith(":probe") && it.timestamp>=prefs.getLong("start",0L) }.joinToString("\n") { "Android exit: time=${it.timestamp}, reason=${it.reason}, status=${it.status}, description=${it.description}, PSS=${it.pss} KB, RSS=${it.rss} KB" } } catch(e:Exception) { "Exit information unavailable: ${e.message}" }
   } else "Android exit history requires Android 11+."
   return text+"\n\n"+exits+"\nReason codes: 2=signal, 3=low memory, 4=Java crash, 5=native crash, 6=ANR. A tester stop/normal worker shutdown can also report a signal. These are app diagnostics, not unrestricted system logcat."
  }
