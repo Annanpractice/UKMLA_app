@@ -7,7 +7,7 @@ Standalone native Kotlin reading companion for the existing UKMLA card app. It d
 - Explain/Summarise in selectable card text and Android PROCESS_TEXT integration.
 - Optional unverified model suggestion when retrieval finds nothing. No displayed private chain of thought.
 - Bounded follow-up conversation in memory, discarded when starting another reading session.
-- Pinned llama.cpp CPU JNI runtime; Qwen3 4B Q4_K_M recommended. Qwen ChatML/non-thinking prompt: arbitrary GGUF architectures/templates are not supported.
+- Pinned llama.cpp runtime; Qwen3 4B Q4_K_M recommended. On supported ARM64 devices the reader first tries generic OpenCL with 2 GPU layers and the Adreno-specific kernel path disabled; CPU remains the automatic fallback. Qwen ChatML/non-thinking prompt: arbitrary GGUF architectures/templates are not supported.
 - Model imported through the Android document picker; no network permission or online inference fallback. The browser handles the initial download separately. Model is excluded from APK, Git and Actions storage.
 
 ## Build
@@ -23,6 +23,7 @@ python android-reader/tools/build_database.py
 mkdir -p android-reader/vendor/llama.cpp
 curl --fail -L https://github.com/ggml-org/llama.cpp/archive/ec91ab5add06555970f98d9c5361d884f3f530f8.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/llama.cpp
 base64 -d android-reader/preview.keystore.b64 > android-reader/preview.keystore
+bash android-reader/tools/build-opencl.sh
 cd android-reader
 gradle :app:testReleaseUnitTest :app:assembleRelease
 ```
@@ -44,4 +45,4 @@ Qwen3 model (separate download) Apache 2.0: https://huggingface.co/Qwen/Qwen3-4B
 4. Ask follow-ups, stop an answer, rotate, background/reopen, and repeat. Check memory/temperature and that the UI remains responsive.
 5. Clinician-review representative explanations and ambiguous abbreviations. Reject hallucinated source citations, unsafe dosage claims, or confidently wrong meanings.
 
-Device benchmarks and clinical validation are not established by the CI build. CPU inference is intentionally the initial reliable backend; Vulkan acceleration is not enabled. Context is limited to four retrieved snippets with a short conversation and 320 generated tokens. AI output never writes into the source cards or question bank.
+Device benchmarks and clinical validation are not established by the CI build. The ARM64 preview prefers generic OpenCL with 2 GPU layers, uses a separate inference process so a GPU-worker failure does not take down the UI, and falls back to the existing CPU path. The Qualcomm/Adreno-specific OpenCL kernel path and Vulkan remain disabled. Context is limited to four retrieved snippets with a short conversation and 128 generated tokens. AI output never writes into the source cards or question bank.
