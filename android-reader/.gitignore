@@ -1,0 +1,7 @@
+.gradle/
+**/build/
+**/.cxx/
+vendor/
+local.properties
+preview.keystore
+app/src/main/assets/reader.db
