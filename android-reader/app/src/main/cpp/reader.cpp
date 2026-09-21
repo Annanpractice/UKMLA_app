@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <thread>
 static llama_model* model = nullptr;
 static llama_context* ctx = nullptr;
 static std::atomic<bool> cancelled{false};
@@ -13,10 +14,17 @@ extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_cancel(JNIEnv*,
 extern "C" JNIEXPORT void JNICALL Java_uk_co_ukmla_reader_Native_load(JNIEnv* e, jobject, jstring path) {
     if(ctx) { llama_free(ctx); ctx=nullptr; } if(model) { llama_model_free(model); model=nullptr; }
     llama_backend_init();
-    auto mp=llama_model_default_params(); mp.n_gpu_layers=0;
+    auto mp=llama_model_default_params();
+    mp.n_gpu_layers=99;
     model=llama_model_load_from_file(str(e,path).c_str(),mp);
+    if(!model) {
+        mp.n_gpu_layers=0;
+        model=llama_model_load_from_file(str(e,path).c_str(),mp);
+    }
     if(!model) { error(e,"Could not load this GGUF. Import the recommended Qwen3 4B Q4_K_M model."); return; }
-    auto cp=llama_context_default_params(); cp.n_ctx=4096; cp.n_batch=256; cp.n_threads=4; cp.n_threads_batch=4;
+    unsigned hc=std::thread::hardware_concurrency();
+    int threads=std::max(4,std::min(8,(int)(hc ? hc : 6)));
+    auto cp=llama_context_default_params(); cp.n_ctx=4096; cp.n_batch=512; cp.n_threads=threads; cp.n_threads_batch=threads;
     cp.abort_callback=[](void*) { return cancelled.load(); };
     ctx=llama_init_from_model(model,cp);
     if(!ctx) error(e,"Not enough memory to create the model context. Close other apps and retry.");
@@ -31,17 +39,17 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_reader_Native_generate(
     std::vector<llama_token> tokens(n);
     llama_tokenize(vocab,prompt.c_str(),prompt.size(),tokens.data(),n,true,true);
     llama_memory_clear(llama_get_memory(ctx),true);
-    for(int i=0;i<n;i+=256) {
+    for(int i=0;i<n;i+=512) {
         if(cancelled) return e->NewByteArray(0);
-        if(llama_decode(ctx,llama_batch_get_one(tokens.data()+i,std::min(256,n-i)))) { error(e,"Model could not process this selection."); return nullptr; }
+        if(llama_decode(ctx,llama_batch_get_one(tokens.data()+i,std::min(512,n-i)))) { error(e,"Model could not process this selection."); return nullptr; }
     }
     auto sampler=llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(sampler,llama_sampler_init_top_k(40));
     llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.9f,1));
-    llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.6f));
+    llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.5f));
     llama_sampler_chain_add(sampler,llama_sampler_init_dist(42));
     std::string out;
-    for(int i=0;i<320 && !cancelled;i++) {
+    for(int i=0;i<128 && !cancelled;i++) {
         llama_token token=llama_sampler_sample(sampler,ctx,-1);
         if(llama_vocab_is_eog(vocab,token)) break;
         char piece[512]; int count=llama_token_to_piece(vocab,token,piece,sizeof(piece),0,true);
