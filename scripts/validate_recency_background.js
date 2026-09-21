@@ -113,7 +113,7 @@ for(const required of ['nav-unseen-badge','updateQuestionsBadge','9+']){
 
 const html=fs.readFileSync('v2/app.html','utf8');
 assert(html.includes('question-analytics.js?v=2'),'Recency analytics asset version is missing.');
-assert(html.includes('ai-ui.js?v=5'),'Shared-status AI UI asset version is missing.');
+assert(html.includes('ai-ui.js?v=6'),'Shared-status AI UI asset version is missing.');
 assert(html.includes('ai-save-recovery.js?v=2'),'Durable completed-set recovery asset is missing.');
 for(const required of ['intro.css?v=5','intro.js?v=6','assets/ukmla-intro.mp4?v=6','assets/ukmla-intro-first-frame.jpg?v=4','app-intro-launch','Tap to enter','playsinline']){
   assert(html.includes(required),`Tap-to-enter opening film shell omitted: ${required}`);
