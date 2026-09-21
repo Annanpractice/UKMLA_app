@@ -14,6 +14,7 @@ android {
         externalNativeBuild { cmake {
             arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
             (project.findProperty("spirvHeadersDir") as String?)?.let { arguments += "-DSPIRV-Headers_DIR=$it" }
+            (project.findProperty("vulkanHeadersDir") as String?)?.let { arguments += "-DVULKAN_HEADERS_DIR=$it" }
         } }
     }
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
