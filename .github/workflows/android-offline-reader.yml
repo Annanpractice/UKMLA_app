@@ -35,15 +35,26 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
           sudo apt-get update
-          sudo apt-get install -y glslc spirv-headers libvulkan-dev
+          sudo apt-get install -y glslc spirv-headers
+
           SPIRV_DIR=$(dirname "$(find /usr -name 'SPIRV-HeadersConfig.cmake' -print -quit)")
           test -n "$SPIRV_DIR"
           echo "SPIRV_HEADERS_DIR=$SPIRV_DIR" >> "$GITHUB_ENV"
-          test -f /usr/include/vulkan/vulkan.hpp
-          echo "VULKAN_INCLUDE_DIR=/usr/include" >> "$GITHUB_ENV"
-          echo "VULKAN_GLSLC_EXECUTABLE=$(command -v glslc)" >> "$GITHUB_ENV"
-          echo "VULKAN_LIBRARY=$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/28/libvulkan.so" >> "$GITHUB_ENV"
-          test -f "$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/28/libvulkan.so"
+
+          mkdir -p android-reader/vendor/Vulkan-Headers
+          curl --fail --retry 3 -L https://github.com/KhronosGroup/Vulkan-Headers/archive/217e93c664ec6704ec2d8c36fa116c1a4a1e2d40.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/Vulkan-Headers
+          VULKAN_INCLUDE_DIR="$GITHUB_WORKSPACE/android-reader/vendor/Vulkan-Headers/include"
+          test -f "$VULKAN_INCLUDE_DIR/vulkan/vulkan.hpp"
+          echo "VULKAN_INCLUDE_DIR=$VULKAN_INCLUDE_DIR" >> "$GITHUB_ENV"
+
+          VULKAN_GLSLC_EXECUTABLE=$(command -v glslc)
+          test -x "$VULKAN_GLSLC_EXECUTABLE"
+          echo "VULKAN_GLSLC_EXECUTABLE=$VULKAN_GLSLC_EXECUTABLE" >> "$GITHUB_ENV"
+
+          VULKAN_LIBRARY="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/28/libvulkan.so"
+          test -f "$VULKAN_LIBRARY"
+          echo "VULKAN_LIBRARY=$VULKAN_LIBRARY" >> "$GITHUB_ENV"
+
           mkdir -p android-reader/vendor/llama.cpp
           curl --fail --retry 3 -L https://github.com/ggml-org/llama.cpp/archive/ec91ab5add06555970f98d9c5361d884f3f530f8.tar.gz | tar xz --strip-components=1 -C android-reader/vendor/llama.cpp
           base64 -d android-reader/preview.keystore.b64 > android-reader/preview.keystore
