@@ -11,7 +11,10 @@ android {
         versionName = "0.1.1"
         ndk { abiFilters += (project.findProperty("readerAbi") as String? ?: "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        externalNativeBuild { cmake { arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON") } }
+        externalNativeBuild { cmake {
+            arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            (project.findProperty("spirvHeadersDir") as String?)?.let { arguments += "-DSPIRV-Headers_DIR=$it" }
+        } }
     }
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
     signingConfigs { getByName("debug") { storeFile = rootProject.file("preview.keystore") } }
