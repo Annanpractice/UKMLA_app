@@ -31,6 +31,11 @@ jobs:
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
           sudo apt-get update -qq
           sudo apt-get install -y glslc spirv-headers ninja-build
+      - name: Check Kotlin and Android lint before native compilation
+        working-directory: gpu-tester
+        run: |
+          base64 -d preview.keystore.b64 > preview.keystore
+          gradle --no-daemon :app:compileReleaseKotlin :app:lintRelease
       - name: Build three isolated native backends
         run: bash gpu-tester/tools/build-native.sh
       - name: Assemble tester

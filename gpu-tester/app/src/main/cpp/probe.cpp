@@ -22,7 +22,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_gputester_ProbeNative_r
  const char* p=e->GetStringUTFChars(logfile,nullptr);logfd=open(p,O_WRONLY|O_APPEND|O_CREAT,0600);e->ReleaseStringUTFChars(logfile,p);
  if(logfd<0) { e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),"Cannot open native log");return nullptr; }
  dup2(logfd,STDERR_FILENO);dup2(logfd,STDOUT_FILENO);setvbuf(stderr,nullptr,_IONBF,0);setvbuf(stdout,nullptr,_IONBF,0);
- llama_model* model=nullptr;llama_context* ctx=nullptr;llama_sampler* sampler=nullptr;
+ llama_model* model=nullptr;llama_context* ctx=nullptr;llama_sampler* sampler=nullptr;FILE* modelFile=nullptr;
  std::string result;
  try {
   stage("validate seekable GGUF descriptor");
@@ -57,7 +57,9 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_gputester_ProbeNative_r
   ggml_backend_dev_t devices[]={selected,nullptr};
   auto mp=llama_model_default_params();mp.devices=devices;mp.n_gpu_layers=gpu?layers:0;mp.load_mode=LLAMA_LOAD_MODE_MMAP;
   stage("model loading");const auto loadStart=Clock::now();
-  std::string path="/proc/self/fd/"+std::to_string(fd);model=llama_model_load_from_file(path.c_str(),mp);
+  int copy=dup(fd);if(copy<0)throw std::runtime_error("Cannot duplicate model descriptor");
+  modelFile=fdopen(copy,"rb");if(!modelFile) { close(copy);throw std::runtime_error("Cannot open model stream"); }
+  model=llama_model_load_from_file_ptr(modelFile,mp);
   if(!model)throw std::runtime_error("Model loading failed; see preceding native log");
   fprintf(stderr,"Model loading seconds: %.3f\n",seconds(loadStart));
   auto cp=llama_context_default_params();cp.n_ctx=2048;cp.n_batch=64;cp.n_ubatch=64;cp.n_threads=4;cp.n_threads_batch=4;cp.flash_attn_type=LLAMA_FLASH_ATTN_TYPE_DISABLED;
@@ -71,13 +73,13 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_uk_co_ukmla_gputester_ProbeNative_r
   stage("answer generation");sampler=llama_sampler_init_greedy();auto gen=Clock::now();int count=0;
   for(int i=0;i<32;i++) {
    auto token=llama_sampler_sample(sampler,ctx,-1);if(llama_vocab_is_eog(vocab,token))break;
-   if(count==0)fprintf(stderr,"Time to first output token from test start: %.3f seconds\n",seconds(begin));
+   if(count==0)fprintf(stderr,"Backend initialisation to first output token: %.3f seconds\n",seconds(begin));
    char piece[512];int size=llama_token_to_piece(vocab,token,piece,sizeof(piece),0,true);if(size>0)result.append(piece,size);count++;
    if(llama_decode(ctx,llama_batch_get_one(&token,1)))throw std::runtime_error("Generation decoding failed");
   }
   fprintf(stderr,"Generated tokens: %d; generation seconds: %.3f; total seconds: %.3f\n",count,seconds(gen),seconds(begin));
   fprintf(stderr,"OUTPUT: %s\n",result.c_str());stage("inference completed; releasing model");
  } catch(const std::exception& ex) { result="TEST ERROR: "+std::string(ex.what());fprintf(stderr,"%s\n",result.c_str()); }
- if(sampler)llama_sampler_free(sampler);if(ctx)llama_free(ctx);if(model)llama_model_free(model);
+ if(sampler)llama_sampler_free(sampler);if(ctx)llama_free(ctx);if(model)llama_model_free(model);if(modelFile)fclose(modelFile);
  stage("native test complete");auto a=e->NewByteArray(result.size());e->SetByteArrayRegion(a,0,result.size(),reinterpret_cast<const jbyte*>(result.data()));return a;
 }

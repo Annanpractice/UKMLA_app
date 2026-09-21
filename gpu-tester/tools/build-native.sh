@@ -38,3 +38,5 @@ mkdir -p app/src/main/assets/licenses
 cp vendor/llama/LICENSE app/src/main/assets/licenses/llama-MIT.txt
 cp vendor/vulkan/LICENSE.md app/src/main/assets/licenses/Vulkan-Headers.txt
 cp vendor/opencl/LICENSE app/src/main/assets/licenses/OpenCL-Headers.txt
+
+cp vendor/spirv/LICENSE app/src/main/assets/licenses/SPIRV-Headers.txt
