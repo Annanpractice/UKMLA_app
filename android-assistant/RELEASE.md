@@ -1,6 +1,8 @@
-**Local Qwen Assistant 0.1.0**
+**Local Qwen Assistant 0.1.1**
 
 A new standalone Android app for the same Qwen3 4B Q4_K_M model used in the offline-reader work. It is separate from UKMLA and contains no UKMLA content or retrieval logic.
+
+**v0.1.1 formatting:** assistant text wrapped in double asterisks now renders as real bold text in chat. The raw Markdown remains in stored/model history so Qwen can keep using normal Markdown, while Read aloud removes the ** markers before sending text to Android TTS.
 
 Core behaviour:
 
