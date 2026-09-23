@@ -143,8 +143,7 @@ class BackgroundInferenceService : Service() {
         saveState(state, result, error, question, display, sourceBacked)
         broadcast(state, result, error, question, sourceBacked)
 
-        if(Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE)
-        else @Suppress("DEPRECATION") stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
 
         when(state) {
             STATE_DONE -> getSystemService(NotificationManager::class.java)
