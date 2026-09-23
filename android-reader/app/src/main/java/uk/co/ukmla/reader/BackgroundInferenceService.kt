@@ -31,6 +31,7 @@ class BackgroundInferenceService : Service() {
         const val KEY_QUESTION = "question"
         const val KEY_DISPLAY = "display"
         const val KEY_SOURCE_BACKED = "source_backed"
+        const val KEY_STARTED_AT = "started_at"
 
         const val STATE_IDLE = "idle"
         const val STATE_RUNNING = "running"
@@ -45,8 +46,20 @@ class BackgroundInferenceService : Service() {
 
         @Volatile private var loadedModelPath: String? = null
 
-        fun isRunning(context: Context): Boolean =
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_STATE, STATE_IDLE) == STATE_RUNNING
+        fun isRunning(context: Context): Boolean {
+            val prefs=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+            if(prefs.getString(KEY_STATE,STATE_IDLE)!=STATE_RUNNING)return false
+            val started=prefs.getLong(KEY_STARTED_AT,0L)
+            val stale=started<=0L || System.currentTimeMillis()-started>30L*60L*1000L
+            if(stale) {
+                prefs.edit()
+                    .putString(KEY_STATE,STATE_ERROR)
+                    .putString(KEY_ERROR,"The previous background generation was interrupted.")
+                    .apply()
+                return false
+            }
+            return true
+        }
 
         fun invalidateModel() {
             loadedModelPath = null
@@ -86,7 +99,7 @@ class BackgroundInferenceService : Service() {
 
         running = true
         cancelRequested = false
-        saveState(STATE_RUNNING, "", "", question, display, sourceBacked)
+        saveState(STATE_RUNNING, "", "", question, display, sourceBacked, System.currentTimeMillis())
         startForegroundCompat(workNotification(display))
         broadcast(STATE_RUNNING, "", "", question, sourceBacked)
 
@@ -137,10 +150,11 @@ class BackgroundInferenceService : Service() {
         error: String,
         question: String,
         display: String,
-        sourceBacked: Boolean
+        sourceBacked: Boolean,
+        startedAt: Long
     ) {
         running = false
-        saveState(state, result, error, question, display, sourceBacked)
+        saveState(state, result, error, question, display, sourceBacked, 0L)
         broadcast(state, result, error, question, sourceBacked)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -170,6 +184,7 @@ class BackgroundInferenceService : Service() {
             .putString(KEY_QUESTION, question)
             .putString(KEY_DISPLAY, display)
             .putBoolean(KEY_SOURCE_BACKED, sourceBacked)
+            .putLong(KEY_STARTED_AT, startedAt)
             .apply()
     }
 
@@ -224,7 +239,7 @@ class BackgroundInferenceService : Service() {
         notificationBuilder(WORK_CHANNEL)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle("UKMLA is generating locally")
-            .setContentText(if(display.isBlank()) "CPU inference is running. You can use other apps." else display.take(90))
+            .setContentText("CPU inference is running. You can use other apps.")
             .setContentIntent(openAppPendingIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
