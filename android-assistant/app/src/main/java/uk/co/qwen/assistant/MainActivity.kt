@@ -29,7 +29,7 @@ class MainActivity : Activity() {
     private val bg=Color.rgb(4,10,20)
     private val panel=Color.rgb(10,25,44)
     private val panel2=Color.rgb(13,34,58)
-    private val text=Color.rgb(244,248,253)
+    private val textColor=Color.rgb(244,248,253)
     private val muted=Color.rgb(163,183,204)
     private val cyan=Color.rgb(112,220,255)
     private val border=Color.argb(70,110,190,245)
@@ -146,12 +146,12 @@ class MainActivity : Activity() {
         }
         thinkSwitch=Switch(this).apply {
             text="Think"
-            setTextColor(text)
+            setTextColor(textColor)
             textSize=13f
         }
         medicalSwitch=Switch(this).apply {
             text="Medical"
-            setTextColor(text)
+            setTextColor(textColor)
             textSize=13f
         }
         modes.addView(thinkSwitch,LinearLayout.LayoutParams(0,-2,1f))
@@ -169,7 +169,7 @@ class MainActivity : Activity() {
         input=EditText(this).apply {
             hint="Message Qwen…"
             setHintTextColor(muted)
-            setTextColor(text)
+            setTextColor(textColor)
             textSize=16f
             minLines=2
             maxLines=6
@@ -190,7 +190,7 @@ class MainActivity : Activity() {
         updateStatus()
     }
 
-    private fun label(value:String,size:Float=15f,color:Int=text)=TextView(this).apply {
+    private fun label(value:String,size:Float=15f,color:Int=textColor)=TextView(this).apply {
         text=value
         textSize=size
         setTextColor(color)
@@ -206,7 +206,7 @@ class MainActivity : Activity() {
     private fun button(value:String,action:()->Unit)=Button(this).apply {
         text=value
         isAllCaps=false
-        setTextColor(text)
+        setTextColor(textColor)
         textSize=14f
         typeface=Typeface.DEFAULT_BOLD
         background=shape(Color.rgb(10,54,91),14)
@@ -217,7 +217,7 @@ class MainActivity : Activity() {
     private fun smallButton(value:String,action:()->Unit)=Button(this).apply {
         text=value
         isAllCaps=false
-        setTextColor(text)
+        setTextColor(textColor)
         textSize=12f
         background=shape(panel2,12)
         minHeight=dp(42)
