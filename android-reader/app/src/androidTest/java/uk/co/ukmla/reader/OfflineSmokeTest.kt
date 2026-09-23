@@ -1,5 +1,6 @@
 package uk.co.ukmla.reader
 
+import android.content.ComponentName
 import android.content.Intent
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -29,6 +30,15 @@ class OfflineSmokeTest {
         Native.cancel()
         try { Native.load("/no-such-model.gguf");fail("Missing model must fail") }
         catch(expected:IllegalStateException) { assertFalse(expected.message.isNullOrBlank()) }
+    }
+    @Test fun backgroundInferenceServiceIsDeclared() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val info=context.packageManager.getServiceInfo(ComponentName(context,BackgroundInferenceService::class.java),0)
+        assertFalse(info.exported)
+        val permissions=context.packageManager.getPackageInfo(context.packageName,4096).requestedPermissions?.toList() ?: emptyList()
+        assertTrue(permissions.contains("android.permission.FOREGROUND_SERVICE"))
+        assertTrue(permissions.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
+        assertFalse(permissions.contains("android.permission.INTERNET"))
     }
     @Test fun launchesNativeReaderAndExternalSelection() {
         val i=InstrumentationRegistry.getInstrumentation()
