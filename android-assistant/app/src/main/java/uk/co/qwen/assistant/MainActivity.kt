@@ -12,6 +12,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.View
 import android.widget.*
@@ -257,12 +260,38 @@ class MainActivity : Activity() {
         chat.addView(wrap)
     }
 
+    private fun markdownBold(value:String):CharSequence {
+        val plain=StringBuilder()
+        val ranges=mutableListOf<Pair<Int,Int>>()
+        var i=0
+        while(i<value.length) {
+            if(i+1<value.length && value[i]=='*' && value[i+1]=='*') {
+                val close=value.indexOf("**",i+2)
+                if(close>=i+2) {
+                    val start=plain.length
+                    plain.append(value.substring(i+2,close))
+                    if(plain.length>start) ranges.add(start to plain.length)
+                    i=close+2
+                    continue
+                }
+            }
+            plain.append(value[i])
+            i++
+        }
+        return SpannableString(plain.toString()).apply {
+            ranges.forEach { (start,end) ->
+                setSpan(StyleSpan(Typeface.BOLD),start,end,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+    }
+
     private fun addAssistantBubble(value:String,readable:Boolean) {
         val wrap=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
             setPadding(0,dp(5),dp(28),dp(5))
         }
-        val bubble=label(value,15f).apply {
+        val bubble=label("",15f).apply {
+            text=markdownBold(value)
             background=shape(panel,17)
             setPadding(dp(13),dp(10),dp(13),dp(10))
             setTextIsSelectable(true)
@@ -462,7 +491,10 @@ class MainActivity : Activity() {
             Toast.makeText(this,"No offline TTS voice is ready.",Toast.LENGTH_SHORT).show()
             return
         }
-        tts?.speak(value.replace(Regex("\\s*\\[\\d+\\]"),"").replace("**",""),TextToSpeech.QUEUE_FLUSH,null,"qwen-answer")
+        val spoken=value
+            .replace(Regex("\\s*\\[\\d+\\]"),"")
+            .replace(Regex("\\*\\*(.*?)\\*\\*"),"$1")
+        tts?.speak(spoken,TextToSpeech.QUEUE_FLUSH,null,"qwen-answer")
     }
 
     private fun requestNotificationPermission() {
@@ -496,7 +528,7 @@ class MainActivity : Activity() {
         })
         box.addView(label("Modes",17f).apply { typeface=Typeface.DEFAULT_BOLD })
         box.addView(label("Fast: /no_think, 160-token cap, Qwen-recommended non-thinking sampling.\nThink: /think, 384-token cap, Qwen-recommended thinking sampling.\nMedical: adds one short clinical system instruction. General: no system prompt.",13f,muted))
-        box.addView(label("Local Qwen Assistant 0.1.0 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
+        box.addView(label("Local Qwen Assistant 0.1.1 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
         val scroll=ScrollView(this).apply { addView(box) }
         AlertDialog.Builder(this).setTitle("Model & runtime").setView(scroll).setPositiveButton("Close",null).show()
     }
