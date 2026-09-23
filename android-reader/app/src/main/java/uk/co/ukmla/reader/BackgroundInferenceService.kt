@@ -46,7 +46,7 @@ class BackgroundInferenceService : Service() {
         @Volatile private var loadedModelPath: String? = null
 
         fun isRunning(context: Context): Boolean =
-            context.getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_STATE, STATE_IDLE) == STATE_RUNNING
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_STATE, STATE_IDLE) == STATE_RUNNING
 
         fun invalidateModel() {
             loadedModelPath = null
