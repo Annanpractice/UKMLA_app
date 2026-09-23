@@ -49,6 +49,8 @@ jobs:
           APK=android-reader/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" | tee /tmp/permissions.txt
           if grep -q android.permission.INTERNET /tmp/permissions.txt; then exit 1; fi
+          grep -q android.permission.FOREGROUND_SERVICE /tmp/permissions.txt
+          grep -q android.permission.FOREGROUND_SERVICE_SPECIAL_USE /tmp/permissions.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep 'lib/arm64-v8a/libreader.so'
           unzip -l "$APK" | grep 'assets/reader.db'
