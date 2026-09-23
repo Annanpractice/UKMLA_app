@@ -1,18 +1,25 @@
 package uk.co.ukmla.reader
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.speech.tts.TextToSpeech
+import android.os.Build
 import android.os.Bundle
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import java.io.File
 import java.util.concurrent.Executors
@@ -21,7 +28,6 @@ import java.util.Locale
 class MainActivity : Activity() {
     companion object {
         private val worker=Executors.newSingleThreadExecutor()
-        private var loaded=false
         private const val MODEL_URL="https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf?download=true"
     }
     private lateinit var store: CardStore
@@ -51,6 +57,23 @@ class MainActivity : Activity() {
     private var summary=false
     private val history=mutableListOf<Pair<String,String>>()
     @Volatile private var cancelled=false
+    private var pendingAnswer: TextView?=null
+    private var pendingStop: View?=null
+    private var pendingQuestion=""
+    private var pendingSourceBacked=false
+
+    private val inferenceReceiver=object: BroadcastReceiver() {
+        override fun onReceive(context:Context,intent:Intent) {
+            if(intent.action!=BackgroundInferenceService.ACTION_STATE)return
+            handleInferenceState(
+                intent.getStringExtra(BackgroundInferenceService.EXTRA_STATE).orEmpty(),
+                intent.getStringExtra(BackgroundInferenceService.EXTRA_RESULT).orEmpty(),
+                intent.getStringExtra(BackgroundInferenceService.EXTRA_ERROR).orEmpty(),
+                intent.getStringExtra(BackgroundInferenceService.EXTRA_QUESTION).orEmpty(),
+                intent.getBooleanExtra(BackgroundInferenceService.EXTRA_SOURCE_BACKED,false)
+            )
+        }
+    }
     private val modelFile get()=File(filesDir,"reader-model.gguf")
     private fun dp(x:Int)=(x*resources.displayMetrics.density).toInt()
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +82,10 @@ class MainActivity : Activity() {
         window.navigationBarColor=bgTop
         initTts()
         store=CardStore(this)
+        busy=BackgroundInferenceService.isRunning(this)
+        val inferenceFilter=IntentFilter(BackgroundInferenceService.ACTION_STATE)
+        if(Build.VERSION.SDK_INT>=33) registerReceiver(inferenceReceiver,inferenceFilter,Context.RECEIVER_NOT_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(inferenceReceiver,inferenceFilter)
         root=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
             setPadding(dp(14),dp(8),dp(14),dp(7))
@@ -106,10 +133,16 @@ class MainActivity : Activity() {
         root.addView(nav)
         val external=intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
         if(!external.isNullOrBlank()) explain(external,false,null) else home()
+        handleLaunchIntent(intent)
+    }
+    override fun onNewIntent(intent:Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleLaunchIntent(intent)
     }
     override fun onDestroy() {
+        runCatching { unregisterReceiver(inferenceReceiver) }
         cancelled=true
-        Native.cancel()
         tts?.stop()
         tts?.shutdown()
         store.close()
@@ -168,7 +201,13 @@ class MainActivity : Activity() {
         addView(speak,LinearLayout.LayoutParams(0,-2,1f).apply { marginEnd=dp(5) })
         addView(stop,LinearLayout.LayoutParams(0,-2,1f).apply { marginStart=dp(5) })
     }
-    private fun updateStatus(message:String?=null) { status.text=message ?: if(modelFile.exists()) "Local-first • $backendLabel • Answers may be inaccurate" else "Local-first • Cards & glossary ready • Import a model for AI" }
+    private fun updateStatus(message:String?=null) {
+        status.text=message ?: when {
+            BackgroundInferenceService.isRunning(this) -> "CPU inference • running in background • you can switch apps"
+            modelFile.exists() -> "Local-first • $backendLabel • Answers may be inaccurate"
+            else -> "Local-first • Cards & glossary ready • Import a model for AI"
+        }
+    }
     private fun home() {
         content.removeAllViews(); history.clear()
         val hero=LinearLayout(this).apply {
@@ -250,45 +289,175 @@ class MainActivity : Activity() {
         if(sources.isEmpty()) content.addView(button("Offer a possible meaning") { generate("") }) else generate("")
     }
     private fun generate(question:String) {
-        if(busy)return
+        if(busy || BackgroundInferenceService.isRunning(this))return
         if(!modelFile.exists()) { updateStatus("Import the recommended model in Model & info to enable AI.");return }
         busy=true;cancelled=false
-        val answer=label(if(question.isBlank()) "Loading local model / reading context…" else "You: $question\n\nReading context…").apply {
+        pendingQuestion=question
+        pendingSourceBacked=sources.isNotEmpty()
+
+        val answer=label(if(question.isBlank()) "Starting local model…" else "You: $question\n\nStarting local model…").apply {
             background=shape(Color.argb(230,5,29,57),20)
             setPadding(dp(15),dp(14),dp(15),dp(14))
         }
         content.addView(answer)
-        val stop=button("Stop") { cancelled=true;Native.cancel();updateStatus("Stopping…") };content.addView(stop)
+        pendingAnswer=answer
+        val stop=button("Stop") {
+            cancelled=true
+            cancelBackgroundInference()
+            updateStatus("Stopping…")
+        }
+        content.addView(stop)
+        pendingStop=stop
+
         val prompt=ReaderLogic.prompt(selection,sources.map { it.context() },history,question,summary)
-        updateStatus("CPU inference")
-        worker.execute {
-            try {
-                if(!loaded) { Native.load(modelFile.path);loaded=true }
-                val result=if(cancelled) "" else ReaderLogic.visibleAnswer(Native.generate(prompt).toString(Charsets.UTF_8))
-                runOnUiThread {
-                    if(isDestroyed)return@runOnUiThread
-                    backendLabel="CPU inference"
-                    busy=false;content.removeView(stop)
-                    answer.text=(if(question.isNotBlank()) "You: $question\n\n" else "")+
-                        (if(cancelled) "Stopped." else if(result.isBlank()) "No usable answer. Try a shorter selection or check the model."
-                        else (if(sources.isEmpty()) "Possible meaning · unverified\n\n" else "AI explanation · verify against sources\n\n")+result)
+        requestNotificationPermissionIfNeeded()
+
+        val serviceIntent=Intent(this,BackgroundInferenceService::class.java).apply {
+            action=BackgroundInferenceService.ACTION_START
+            putExtra(BackgroundInferenceService.EXTRA_PROMPT,prompt)
+            putExtra(BackgroundInferenceService.EXTRA_MODEL_PATH,modelFile.path)
+            putExtra(BackgroundInferenceService.EXTRA_QUESTION,question)
+            putExtra(BackgroundInferenceService.EXTRA_DISPLAY,question.ifBlank { selection.take(140) })
+            putExtra(BackgroundInferenceService.EXTRA_SOURCE_BACKED,pendingSourceBacked)
+        }
+        try {
+            if(Build.VERSION.SDK_INT>=26) startForegroundService(serviceIntent) else startService(serviceIntent)
+            updateStatus("CPU inference • running in background • you can switch apps")
+            answer.text=(if(question.isNotBlank()) "You: $question\n\n" else "")+
+                "Generating locally on CPU. You can switch to another app; UKMLA will notify you when the answer is ready."
+        } catch(e:Exception) {
+            busy=false
+            removePendingStop()
+            answer.text="${e.message ?: "Unable to start background generation"}"
+            updateStatus()
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if(Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS),73)
+        }
+    }
+
+    private fun cancelBackgroundInference() {
+        runCatching {
+            startService(Intent(this,BackgroundInferenceService::class.java).setAction(BackgroundInferenceService.ACTION_CANCEL))
+        }
+    }
+
+    private fun handleInferenceState(state:String,result:String,error:String,question:String,sourceBacked:Boolean) {
+        when(state) {
+            BackgroundInferenceService.STATE_RUNNING -> {
+                busy=true
+                updateStatus("CPU inference • running in background • you can switch apps")
+            }
+            BackgroundInferenceService.STATE_DONE -> {
+                busy=false
+                backendLabel="CPU inference"
+                val q=question.ifBlank { pendingQuestion }
+                val backed=sourceBacked || pendingSourceBacked
+                val answer=pendingAnswer
+                if(answer!=null) {
+                    answer.text=(if(q.isNotBlank()) "You: $q\n\n" else "")+
+                        (if(backed) "AI explanation · verify against sources\n\n" else "Possible meaning · unverified\n\n")+result
                     answer.setTextIsSelectable(true)
-                    if(result.isNotBlank() && !cancelled) {
-                        history.add((question.ifBlank { "Explain: $selection" }) to result)
+                    removePendingStop()
+                    if(result.isNotBlank()) {
+                        history.add((q.ifBlank { "Explain: $selection" }) to result)
                         content.addView(audioControls(result))
-                    }
-                    updateStatus();followup()
-                }
-            } catch(e:Exception) {
-                runOnUiThread {
-                    if(!isDestroyed) {
-                        busy=false;content.removeView(stop)
-                        answer.text="${e.message ?: "Unable to run model"}\nTry a shorter selection or reimport the recommended model."
-                        updateStatus();followup()
+                        followup()
                     }
                 }
+                clearPending()
+                updateStatus("Answer ready • CPU inference")
+            }
+            BackgroundInferenceService.STATE_ERROR -> {
+                busy=false
+                pendingAnswer?.text=(if(error.isBlank()) "Unable to run model." else error)+"\nTry a shorter selection or reimport the recommended model."
+                removePendingStop()
+                clearPending()
+                updateStatus("Generation failed")
+            }
+            BackgroundInferenceService.STATE_CANCELLED -> {
+                busy=false
+                pendingAnswer?.text="Stopped."
+                removePendingStop()
+                clearPending()
+                updateStatus()
             }
         }
+    }
+
+    private fun removePendingStop() {
+        val view=pendingStop
+        (view?.parent as? ViewGroup)?.removeView(view)
+        pendingStop=null
+    }
+
+    private fun clearPending() {
+        pendingAnswer=null
+        pendingStop=null
+        pendingQuestion=""
+        pendingSourceBacked=false
+    }
+
+    private fun handleLaunchIntent(i:Intent?) {
+        if(i?.getBooleanExtra(BackgroundInferenceService.EXTRA_SHOW_INFERENCE,false)!=true)return
+        val prefs=getSharedPreferences(BackgroundInferenceService.PREFS,MODE_PRIVATE)
+        when(prefs.getString(BackgroundInferenceService.KEY_STATE,BackgroundInferenceService.STATE_IDLE)) {
+            BackgroundInferenceService.STATE_RUNNING -> showBackgroundProgress()
+            BackgroundInferenceService.STATE_DONE -> showStoredResult()
+            BackgroundInferenceService.STATE_ERROR -> showStoredError()
+        }
+    }
+
+    private fun showBackgroundProgress() {
+        if(pendingAnswer!=null)return
+        busy=true
+        val prefs=getSharedPreferences(BackgroundInferenceService.PREFS,MODE_PRIVATE)
+        content.removeAllViews()
+        content.addView(label("Generating in background",24f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD) })
+        content.addView(muted(prefs.getString(BackgroundInferenceService.KEY_DISPLAY,"Local Qwen inference") ?: "Local Qwen inference",14f))
+        val answer=label("The 4B model is still running on the CPU. You can leave UKMLA again; generation will continue.",16f).apply {
+            background=shape(Color.argb(230,5,29,57),20);setPadding(dp(15),dp(14),dp(15),dp(14))
+        }
+        content.addView(answer);pendingAnswer=answer
+        val stop=button("Stop generation") { cancelled=true;cancelBackgroundInference();updateStatus("Stopping…") }
+        content.addView(stop);pendingStop=stop
+        updateStatus("CPU inference • running in background • you can switch apps")
+    }
+
+    private fun showStoredResult() {
+        if(pendingAnswer!=null)return
+        val prefs=getSharedPreferences(BackgroundInferenceService.PREFS,MODE_PRIVATE)
+        val result=prefs.getString(BackgroundInferenceService.KEY_RESULT,"").orEmpty()
+        if(result.isBlank())return
+        val question=prefs.getString(BackgroundInferenceService.KEY_QUESTION,"").orEmpty()
+        val sourceBacked=prefs.getBoolean(BackgroundInferenceService.KEY_SOURCE_BACKED,false)
+        content.removeAllViews()
+        content.addView(label("Completed local answer",24f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD) })
+        val answer=label(
+            (if(question.isNotBlank()) "You: $question\n\n" else "")+
+            (if(sourceBacked) "AI explanation · verify against sources\n\n" else "Possible meaning · unverified\n\n")+result
+        ).apply {
+            background=shape(Color.argb(230,5,29,57),20);setPadding(dp(15),dp(14),dp(15),dp(14));setTextIsSelectable(true)
+        }
+        content.addView(answer)
+        content.addView(audioControls(result))
+        content.addView(button("Back to cards") { home() })
+        busy=false
+        updateStatus("Answer ready • CPU inference")
+    }
+
+    private fun showStoredError() {
+        val prefs=getSharedPreferences(BackgroundInferenceService.PREFS,MODE_PRIVATE)
+        val error=prefs.getString(BackgroundInferenceService.KEY_ERROR,"Unable to run model.").orEmpty()
+        content.removeAllViews()
+        content.addView(label("Generation failed",24f).apply { typeface=Typeface.create(Typeface.SERIF,Typeface.BOLD) })
+        content.addView(label(error,16f).apply { background=shape(Color.argb(230,5,29,57),20);setPadding(dp(15),dp(14),dp(15),dp(14)) })
+        content.addView(button("Back to cards") { home() })
+        busy=false
+        updateStatus("Generation failed")
     }
 
     private fun followup() {
@@ -304,11 +473,11 @@ class MainActivity : Activity() {
         box.addView(muted("Read answer uses an installed Android text-to-speech voice that is marked as not requiring a network connection. If no offline voice is installed, speech stays unavailable.",13f))
         box.addView(button("Download recommended GGUF") { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(MODEL_URL))) })
         box.addView(button("Import GGUF from device") {
-            if(busy) { Toast.makeText(this,"Stop the current task first",Toast.LENGTH_SHORT).show() } else {
+            if(busy || BackgroundInferenceService.isRunning(this)) { Toast.makeText(this,"Stop the current generation first",Toast.LENGTH_SHORT).show() } else {
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type="*/*";addCategory(Intent.CATEGORY_OPENABLE) },42)
             }
         })
-        box.addView(label("Preview 0.1.5 · ARM64 / Android 9+ · CPU inference · local TTS\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT), CPU inference only. Speech: Android system TextToSpeech.\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
+        box.addView(label("Preview 0.1.6 · ARM64 / Android 9+ · background CPU inference · local TTS\n983 UKMLA cards. Glossary: selected public-domain text from the National Cancer Institute Dictionary of Cancer Terms (US wording; not a comprehensive UK dictionary). Each definition includes its source URL.\n\nSource policy: cancer.gov/policies/copyright-reuse\nModel: Qwen3 (Apache 2.0), imported separately. Runtime: llama.cpp (MIT), CPU inference only. User-started generation continues through an Android foreground service when you switch apps. Speech: Android system TextToSpeech.\n\nLuna and question validation are unchanged in the existing UKMLA app. Follow-ups stay in this reading session and are not saved or sent anywhere.\n\nThis preview needs on-device performance and clinical accuracy testing before routine reliance.",13f))
         val scroll=ScrollView(this);scroll.addView(box)
         AlertDialog.Builder(this).setTitle("Offline model & attribution").setView(scroll).setPositiveButton("Close",null).show()
     }
@@ -328,7 +497,8 @@ class MainActivity : Activity() {
                         while(true) { val count=input.read(buffer);if(count<0)break;total+=count;require(total<5L*1024*1024*1024) { "Model exceeds 5 GB; use Q4_K_M" };require(filesDir.usableSpace>count+64L*1024*1024) { "Insufficient storage" };output.write(buffer,0,count) }
                     }
                 }
-                require(temp.renameTo(modelFile)) { "Could not finish import" };loaded=false
+                require(temp.renameTo(modelFile)) { "Could not finish import" }
+                BackgroundInferenceService.invalidateModel()
                 runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Model imported. Return to a card and choose Explain.") } }
             } catch(e:Exception) { temp.delete();runOnUiThread { if(!isDestroyed) { busy=false;updateStatus("Import failed: ${e.message}") } } }
         }
