@@ -150,8 +150,7 @@ class BackgroundInferenceService : Service() {
         error: String,
         question: String,
         display: String,
-        sourceBacked: Boolean,
-        startedAt: Long
+        sourceBacked: Boolean
     ) {
         running = false
         saveState(state, result, error, question, display, sourceBacked, 0L)
@@ -175,7 +174,8 @@ class BackgroundInferenceService : Service() {
         error: String,
         question: String,
         display: String,
-        sourceBacked: Boolean
+        sourceBacked: Boolean,
+        startedAt: Long
     ) {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putString(KEY_STATE, state)
