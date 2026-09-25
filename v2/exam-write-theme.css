@@ -13,6 +13,23 @@ html.exam-write-mode{
   --ew-text:#222;
   --ew-muted:#626262;
   --ew-highlight:#fff200;
+
+  /* Replace the app-wide theme tokens while this route is in Exam-Write mode.
+     Many nested modules consume these variables directly. */
+  --ink:#222;
+  --muted:#666;
+  --navy-0:#fff;
+  --navy-1:#f5f5f5;
+  --navy-2:#e9eef3;
+  --navy-3:#06366f;
+  --blue:#06366f;
+  --cyan:#06366f;
+  --line:#d0d0d0;
+  --panel:#fff;
+  --panel-strong:#f3f3f3;
+  --shadow:none;
+  --serif:Arial,Helvetica,sans-serif;
+  --sans:Arial,Helvetica,sans-serif;
 }
 html.exam-write-mode,
 html.exam-write-mode body{
@@ -251,4 +268,181 @@ html.exam-write-mode .exam-write-toggle-wrap{
 @media(max-width:760px){
   .exam-write-toggle-wrap{margin-left:0}
   html.exam-write-mode .page-head{gap:10px}
+}
+
+
+/* Full Questions-surface cleanup: nested modules have their own explicit dark layers. */
+html.exam-write-mode .bank-hero p,
+html.exam-write-mode .bank-card p,
+html.exam-write-mode .bank-card small,
+html.exam-write-mode .bank-meta,
+html.exam-write-mode .bank-player-top,
+html.exam-write-mode .question-source-note,
+html.exam-write-mode .bank-totals span,
+html.exam-write-mode .bank-search-count{
+  color:#666!important;
+}
+html.exam-write-mode .bank-source{
+  color:#444!important;
+}
+html.exam-write-mode .bank-totals{
+  width:auto!important;
+  border:1px solid #bbb!important;
+  border-radius:2px!important;
+  background:#f1f1f1!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .bank-totals strong{
+  color:var(--ew-navy)!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+html.exam-write-mode .bank-offline{
+  border:1px solid #9aaa9f!important;
+  border-radius:2px!important;
+  background:#eef4ef!important;
+  color:#315a3c!important;
+}
+html.exam-write-mode .bank-filter-tabs sup{
+  border-radius:2px!important;
+  background:#e6e6e6!important;
+  color:#444!important;
+}
+html.exam-write-mode .bank-meta{
+  border-top-color:#ddd!important;
+  border-bottom-color:#ddd!important;
+}
+html.exam-write-mode .run-chart-svg{
+  border-color:#ccc!important;
+  border-radius:0!important;
+  background:#fff!important;
+}
+html.exam-write-mode .run-chart-label{fill:#555!important}
+html.exam-write-mode .run-chart-line,
+html.exam-write-mode .run-chart-point{stroke:var(--ew-navy)!important}
+html.exam-write-mode .run-chart-point{fill:#fff!important}
+html.exam-write-mode .run-chart-row{border-bottom-color:#ddd!important}
+html.exam-write-mode .run-chart-row span:nth-child(2){color:#666!important}
+html.exam-write-mode .run-chart-row strong{color:var(--ew-navy)!important}
+
+/* Mobile app chrome should not remain in the original dark visual language. */
+@media(max-width:900px){
+  html.exam-write-mode main{
+    padding-top:78px!important;
+    padding-bottom:94px!important;
+  }
+  html.exam-write-mode .bottom-nav{
+    background:#f2f2f2!important;
+    border-top:1px solid #bbb!important;
+    backdrop-filter:none!important;
+    box-shadow:none!important;
+  }
+  html.exam-write-mode .bottom-nav .nav-link{
+    border-radius:0!important;
+    color:#555!important;
+    background:transparent!important;
+    border:1px solid transparent!important;
+  }
+  html.exam-write-mode .bottom-nav .nav-link.active{
+    background:#fff!important;
+    border-color:#aaa!important;
+    border-top:3px solid var(--ew-navy)!important;
+    color:#111!important;
+  }
+  html.exam-write-mode .bottom-nav .nav-icon{color:inherit!important}
+  html.exam-write-mode .nav-unseen-badge{
+    border-color:#f2f2f2!important;
+    box-shadow:none!important;
+  }
+}
+
+/* IAIS remains usable, but adopts neutral exam chrome instead of the glass/dark theme. */
+html.exam-write-mode .handsfree-toggle{
+  border:1px solid #aaa!important;
+  border-radius:2px!important;
+  background:#f2f2f2!important;
+  color:#222!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+}
+html.exam-write-mode .handsfree-toggle:hover{border-color:#777!important}
+html.exam-write-mode .handsfree-mic{
+  border-radius:2px!important;
+  background:#e1e7ee!important;
+  color:var(--ew-navy)!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .handsfree-status{
+  border-color:#aaa!important;
+  border-radius:2px!important;
+  background:#fff!important;
+  color:#333!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .handsfree-setup{
+  border-color:#aaa!important;
+  border-radius:2px!important;
+  background:#fff!important;
+  color:#222!important;
+  box-shadow:0 4px 18px rgba(0,0,0,.16)!important;
+}
+html.exam-write-mode .handsfree-setup-head{
+  background:#fff!important;
+  border-bottom:1px solid #ddd!important;
+}
+html.exam-write-mode .handsfree-setup-head button{
+  border-radius:1px!important;
+  background:#eee!important;
+  color:#222!important;
+}
+html.exam-write-mode .handsfree-setup input{
+  border-radius:1px!important;
+  background:#fff!important;
+  color:#222!important;
+}
+html.exam-write-mode .handsfree-session-note{
+  border-color:#ccc!important;
+  border-radius:1px!important;
+  background:#f5f5f5!important;
+  color:#555!important;
+}
+html.exam-write-mode .handsfree-session-note strong{color:#333!important}
+
+/* Make the theme control itself match the target rather than the normal app. */
+html.exam-write-mode .exam-write-toggle-wrap{
+  padding:5px 7px!important;
+  border-radius:2px!important;
+  background:#f5f5f5!important;
+  color:#333!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+html.exam-write-mode .exam-write-toggle{
+  width:38px!important;
+  height:20px!important;
+  border-radius:2px!important;
+}
+html.exam-write-mode .exam-write-toggle::after{
+  width:12px!important;
+  height:12px!important;
+  border-radius:1px!important;
+}
+html.exam-write-mode .exam-write-toggle[aria-checked="true"]::after{
+  transform:translateX(18px)!important;
+}
+
+/* Generic secondary surfaces used by generators and specialty question modules. */
+html.exam-write-mode .api-session-note,
+html.exam-write-mode .checkpoint-list,
+html.exam-write-mode .empty{
+  color:#555!important;
+}
+html.exam-write-mode .api-session-note{
+  border-color:#ccc!important;
+  border-radius:1px!important;
+  background:#f5f5f5!important;
+}
+html.exam-write-mode .api-session-note strong{color:#333!important}
+html.exam-write-mode .empty{
+  border-color:#bbb!important;
+  border-radius:2px!important;
+  background:#fff!important;
 }
