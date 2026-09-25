@@ -15,8 +15,8 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 843
-EXPECTED_TOPICS = 25
+EXPECTED_TOTAL = 863
+EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
     "Surgical neck humerus",
@@ -55,6 +55,8 @@ CURATED_CLINICAL_SENTINELS = {
     "Labyrinthitis / vestibular neuritis",
     "Diabetic foot ulcer / infection",
     "Acute Charcot arthropathy",
+    "Deteriorating ward patient: first response",
+    "Needlestick and sharps exposure",
 }
 
 
