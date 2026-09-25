@@ -189,13 +189,13 @@ jobs:
           print(f"Extracted topics: {data['topicCount']}")
           print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] == 841
+          assert data['conditionCount'] == 843
           assert data['topicCount'] == 25
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
           assert profiles == {
               'anatomy': 139,
-              'clinical': 418,
+              'clinical': 420,
               'law': 69,
               'physiology': 215,
           }
@@ -270,7 +270,7 @@ jobs:
               assert path.exists() and path.stat().st_size > 0, name
 
           data = json.loads(Path('_site/data/conditions.json').read_text(encoding='utf-8'))
-          assert data['conditionCount'] == 841
+          assert data['conditionCount'] == 843
           assert data['topicCount'] == 25
           names = {item['name'] for item in data['conditions']}
           assert 'Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)' in names

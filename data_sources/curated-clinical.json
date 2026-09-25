@@ -1,6 +1,6 @@
 {
   "schemaVersion": "ukmla-curated-clinical-1",
-  "reviewed": "2026-09-11",
+  "reviewed": "2026-09-25",
   "purpose": "Evidence-reviewed clinical additions and replacements for the generated UKMLA card dataset.",
   "conditions": [
     {
@@ -113,6 +113,41 @@
         "NHS: Labyrinthitis and vestibular neuritis",
         "NHS Tayside Area Formulary: vestibular disorders/vertigo",
         "UK prochlorperazine SmPC"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Endocrine Problems",
+      "name": "Diabetic foot ulcer / infection",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "In any unwell or septic person with diabetes, remove shoes and socks and inspect both feet as a possible infection source. Assess ulcer depth/extent, erythema, discharge, pulses/perfusion and neuropathy; check observations, glucose/ketones, FBC/CRP and U&E. Take appropriate cultures if infected and blood cultures if septic; foot X-ray if deep infection/osteomyelitis is suspected, with MRI if uncertainty remains.",
+        "treatment": "For limb- or life-threatening diabetic foot disease, give acute sepsis care and antibiotics according to local diabetic-foot guidance; off-load, debride when appropriate, treat ischaemia and optimise glycaemia. Do not give antibiotics for an uninfected diabetic foot ulcer.",
+        "escalation": "Immediate acute-services assessment and inform the multidisciplinary foot care team for ulceration with fever/sepsis, limb ischaemia, gangrene or suspected deep soft-tissue/bone infection. Other active diabetic foot problems should be referred within 1 working day for specialist triage within a further working day; involve vascular surgery, orthopaedics and microbiology/ID as indicated.",
+        "mimics": "Acute Charcot arthropathy, cellulitis without ulceration, pressure injury, arterial or venous ulcer, gout, fracture/trauma and vasculitis.",
+        "redFlags": "Sepsis or systemic deterioration, rapidly spreading infection, critical limb ischaemia/rest pain, gangrene or necrosis, deep infection/abscess, exposed bone or rapidly progressive tissue loss."
+      },
+      "sourceReview": [
+        "NICE NG19: Diabetic foot problems — active problems, urgent referral and infection management",
+        "NICE NG19: Diabetic foot infection antimicrobial principles",
+        "NHS Tayside diabetic foot pathway teaching, 25 Sep 2026"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Endocrine Problems",
+      "name": "Acute Charcot arthropathy",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Suspect acute Charcot in diabetes with a unilateral red, hot, swollen foot with or without deformity, especially with peripheral neuropathy or renal failure; pain may be absent. Arrange a weight-bearing X-ray of the affected foot and ankle; consider MRI if the X-ray is normal but suspicion remains.",
+        "treatment": "Keep the affected foot non-weight-bearing/off-loaded until definitive specialist treatment. The multidisciplinary foot care service usually uses a non-removable off-loading device when suitable; optimise diabetes and ongoing foot protection.",
+        "escalation": "Refer within 1 working day to the multidisciplinary foot care service for triage within 1 further working day. Use immediate acute pathways instead if there is sepsis, ulceration with limb ischaemia, gangrene or another limb- or life-threatening diabetic foot problem.",
+        "mimics": "Cellulitis, osteomyelitis, gout, DVT, septic arthritis, fracture/trauma and other causes of a hot swollen foot.",
+        "redFlags": "A hot swollen neuropathic foot is concerning even without pain or obvious deformity. Ulceration/infection, fever or sepsis, ischaemia/gangrene, fracture or rapidly developing deformity require urgent escalation."
+      },
+      "sourceReview": [
+        "NICE NG19: Charcot arthropathy — recognition, imaging, referral and off-loading",
+        "NHS Tayside diabetic foot pathway teaching, 25 Sep 2026"
       ]
     }
   ]
