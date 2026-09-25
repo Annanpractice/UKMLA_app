@@ -1,0 +1,254 @@
+/*
+  Exam-Write-inspired practice theme.
+  This is an approximation based on public candidate guidance, not official MSC CSS.
+  It is scoped to the Questions route and can be disabled instantly.
+*/
+html.exam-write-mode{
+  color-scheme:light!important;
+  --ew-navy:#06366f;
+  --ew-navy-dark:#022957;
+  --ew-blue:#d9edf5;
+  --ew-panel:#f4f4f4;
+  --ew-border:#cfcfcf;
+  --ew-text:#222;
+  --ew-muted:#626262;
+  --ew-highlight:#fff200;
+}
+html.exam-write-mode,
+html.exam-write-mode body{
+  background:#fff!important;
+  color:var(--ew-text)!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+html.exam-write-mode body{background-image:none!important}
+html.exam-write-mode .side-nav{
+  background:#f2f2f2!important;
+  border-right:1px solid var(--ew-border)!important;
+  box-shadow:none!important;
+  color:var(--ew-text)!important;
+}
+html.exam-write-mode .brand strong,
+html.exam-write-mode .brand small,
+html.exam-write-mode .sync-indicator,
+html.exam-write-mode .nav-link{color:#333!important}
+html.exam-write-mode .brand-mark{
+  border-radius:2px!important;
+  background:var(--ew-navy)!important;
+  box-shadow:none!important;
+  color:#fff!important;
+}
+html.exam-write-mode .nav-link{
+  border-radius:2px!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .nav-link:hover,
+html.exam-write-mode .nav-link.active{
+  background:#e2e2e2!important;
+  border-color:#c9c9c9!important;
+  color:#111!important;
+}
+html.exam-write-mode .top-bar{
+  background:#fff!important;
+  border-bottom:1px solid var(--ew-border)!important;
+  backdrop-filter:none!important;
+  color:var(--ew-text)!important;
+}
+html.exam-write-mode .top-title span{color:var(--ew-muted)!important}
+html.exam-write-mode .top-title strong{color:#111!important}
+html.exam-write-mode .icon-button{
+  border-radius:2px!important;
+  border:1px solid #bbb!important;
+  background:#f5f5f5!important;
+  color:#222!important;
+}
+html.exam-write-mode main{background:#fff!important;color:var(--ew-text)!important}
+html.exam-write-mode .page-head{
+  margin-bottom:14px!important;
+  padding-bottom:10px!important;
+  border-bottom:1px solid var(--ew-border)!important;
+  align-items:flex-start!important;
+}
+html.exam-write-mode .page-head h1{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:1.35rem!important;
+  line-height:1.2!important;
+  color:#111!important;
+}
+html.exam-write-mode .page-head p,
+html.exam-write-mode .question-brand-disclaimer{color:var(--ew-muted)!important}
+html.exam-write-mode .eyebrow{
+  color:#555!important;
+  font-size:.68rem!important;
+  letter-spacing:.08em!important;
+}
+html.exam-write-mode .tabs{
+  gap:2px!important;
+  margin-bottom:10px!important;
+  border-bottom:1px solid var(--ew-border)!important;
+}
+html.exam-write-mode .tab{
+  border:1px solid var(--ew-border)!important;
+  border-bottom:0!important;
+  border-radius:2px 2px 0 0!important;
+  background:#eee!important;
+  color:#333!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .tab.active{
+  background:#fff!important;
+  color:#111!important;
+  border-top:3px solid var(--ew-navy)!important;
+}
+html.exam-write-mode .quiz-layout{gap:10px!important}
+html.exam-write-mode .quiz-card,
+html.exam-write-mode .panel,
+html.exam-write-mode .bank-card,
+html.exam-write-mode .bank-hero,
+html.exam-write-mode .workspace-panel,
+html.exam-write-mode .psa-panel,
+html.exam-write-mode .biomedical-panel{
+  background:#fff!important;
+  color:var(--ew-text)!important;
+  border:1px solid var(--ew-border)!important;
+  border-radius:2px!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .quiz-card{padding:16px!important}
+html.exam-write-mode .quiz-stem{
+  color:#111!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:1.05rem!important;
+  line-height:1.5!important;
+  margin:18px 0 12px!important;
+}
+html.exam-write-mode .topic-meta,
+html.exam-write-mode .result-line,
+html.exam-write-mode .field label{color:var(--ew-muted)!important}
+html.exam-write-mode .progress-track{
+  height:5px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#e6e6e6!important;
+}
+html.exam-write-mode .progress-fill{
+  background:var(--ew-navy)!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+html.exam-write-mode .options{gap:4px!important}
+html.exam-write-mode .option{
+  min-height:42px!important;
+  grid-template-columns:34px 1fr!important;
+  padding:8px 10px!important;
+  border:1px solid #d1d1d1!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#222!important;
+  box-shadow:none!important;
+  text-align:left!important;
+}
+html.exam-write-mode button.option:not(:disabled):hover{
+  background:#f2f6f9!important;
+  border-color:#9caebe!important;
+}
+html.exam-write-mode .letter{
+  width:28px!important;
+  height:28px!important;
+  border-radius:0!important;
+  background:#efefef!important;
+  color:#222!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+html.exam-write-mode .option.correct{
+  border-color:#3f835c!important;
+  background:#eaf4ed!important;
+  color:#173a25!important;
+}
+html.exam-write-mode .option.wrong{
+  border-color:#a94a4a!important;
+  background:#f8eaea!important;
+  color:#542020!important;
+}
+html.exam-write-mode .feedback{
+  margin-top:12px!important;
+  border:1px solid var(--ew-border)!important;
+  border-radius:0!important;
+  background:#f5f5f5!important;
+  color:#222!important;
+}
+html.exam-write-mode .btn{
+  min-height:36px!important;
+  padding:7px 12px!important;
+  border:1px solid #aaa!important;
+  border-radius:2px!important;
+  background:#eee!important;
+  box-shadow:none!important;
+  color:#222!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-weight:600!important;
+}
+html.exam-write-mode .btn.primary{
+  background:var(--ew-navy)!important;
+  border-color:var(--ew-navy-dark)!important;
+  color:#fff!important;
+}
+html.exam-write-mode .input,
+html.exam-write-mode .select,
+html.exam-write-mode .textarea{
+  border:1px solid #aaa!important;
+  border-radius:1px!important;
+  background:#fff!important;
+  color:#222!important;
+  box-shadow:none!important;
+}
+html.exam-write-mode .exam-write-toggle-wrap{
+  background:#f3f3f3!important;
+  border-color:#bdbdbd!important;
+}
+.exam-write-toggle-wrap{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-left:auto;
+  padding:7px 9px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(0,12,28,.35);
+  font-family:var(--sans);
+  font-size:.76rem;
+  color:var(--muted);
+}
+.exam-write-toggle{
+  position:relative;
+  width:42px;
+  height:22px;
+  padding:0;
+  border:1px solid currentColor;
+  border-radius:999px;
+  background:transparent;
+  color:var(--muted);
+}
+.exam-write-toggle::after{
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:currentColor;
+  transition:transform .16s ease;
+}
+.exam-write-toggle[aria-checked="true"]{
+  background:#06366f;
+  border-color:#06366f;
+  color:#fff;
+}
+.exam-write-toggle[aria-checked="true"]::after{transform:translateX(20px)}
+.exam-write-toggle-label{white-space:nowrap}
+@media(max-width:760px){
+  .exam-write-toggle-wrap{margin-left:0}
+  html.exam-write-mode .page-head{gap:10px}
+}
