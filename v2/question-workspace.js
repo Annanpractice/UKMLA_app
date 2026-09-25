@@ -12,6 +12,7 @@
   let observer=null;
   let scheduled=false;
   let mounting=false;
+  const EXAM_WRITE_KEY='ukmlaExamWriteThemeV1';
 
   function core(){return window.UKMLA_V2;}
   function onQuestionsRoute(){return location.hash.startsWith('#/quiz');}
@@ -19,6 +20,41 @@
   function tabs(){return document.querySelector('#app .tabs');}
   function setText(node,value){if(node&&node.textContent!==value)node.textContent=value;}
   function setAttribute(node,name,value){if(node&&node.getAttribute(name)!==value)node.setAttribute(name,value);}
+
+  function examWriteEnabled(){
+    try{return localStorage.getItem(EXAM_WRITE_KEY)==='1';}catch(_){return false;}
+  }
+
+  function applyExamWriteTheme(){
+    const enabled=onQuestionsRoute()&&examWriteEnabled();
+    document.documentElement.classList.toggle('exam-write-mode',enabled);
+    const toggle=document.querySelector('[data-exam-write-toggle]');
+    if(toggle)setAttribute(toggle,'aria-checked',enabled?'true':'false');
+  }
+
+  function ensureExamWriteToggle(){
+    if(!onQuestionsRoute())return;
+    const head=document.querySelector('#app .page-head');
+    if(!head||head.querySelector('[data-exam-write-control]'))return;
+    let actions=head.querySelector('.page-actions');
+    if(!actions){
+      actions=document.createElement('div');
+      actions.className='page-actions';
+      head.appendChild(actions);
+    }
+    const wrap=document.createElement('div');
+    wrap.className='exam-write-toggle-wrap';
+    wrap.dataset.examWriteControl='1';
+    wrap.innerHTML='<span class="exam-write-toggle-label">Exam-Write</span><button class="exam-write-toggle" type="button" role="switch" data-exam-write-toggle aria-label="Use Exam-Write practice theme" aria-checked="false"></button>';
+    actions.appendChild(wrap);
+    const toggle=wrap.querySelector('[data-exam-write-toggle]');
+    toggle.addEventListener('click',()=>{
+      const next=!examWriteEnabled();
+      try{localStorage.setItem(EXAM_WRITE_KEY,next?'1':'0');}catch(_){}
+      applyExamWriteTheme();
+    });
+    applyExamWriteTheme();
+  }
 
   function persistTab(tab){
     const api=core();
@@ -150,6 +186,8 @@
         head.querySelector('div')?.appendChild(note);
       }
     }
+    ensureExamWriteToggle();
+    applyExamWriteTheme();
 
     const container=workspace();
     if(!container)return;
@@ -207,6 +245,7 @@
     ensureTabButtons();
     brandQuestionPage();
     replaceVisibleTerms(document.getElementById('app')||document);
+    applyExamWriteTheme();
   }
 
   function apply(){
@@ -226,7 +265,7 @@
     if(!app)return;
     observer=new MutationObserver(schedule);
     observer.observe(app,{childList:true,subtree:true});
-    window.addEventListener('hashchange',()=>setTimeout(schedule,0));
+    window.addEventListener('hashchange',()=>{document.documentElement.classList.remove('exam-write-mode');setTimeout(schedule,0);});
     document.addEventListener('ukmlaQuestionBankChanged',updateQuestionsBadge);
     document.addEventListener('ukmlaQuestionBankBadgeChanged',updateQuestionsBadge);
     document.addEventListener('ukmlaAiCompletedSetStored',updateQuestionsBadge);
