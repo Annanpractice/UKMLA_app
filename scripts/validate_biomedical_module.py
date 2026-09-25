@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 841
+EXPECTED_TOTAL = 843
 EXPECTED_TOPICS = 25
 
 ANATOMY_SENTINELS = {
@@ -53,6 +53,8 @@ CURATED_CLINICAL_SENTINELS = {
     "Coxsackie / enterovirus infection",
     "Costochondritis",
     "Labyrinthitis / vestibular neuritis",
+    "Diabetic foot ulcer / infection",
+    "Acute Charcot arthropathy",
 }
 
 
