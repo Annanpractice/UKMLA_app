@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 867
+EXPECTED_TOTAL = 871
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -60,6 +60,10 @@ CURATED_CLINICAL_SENTINELS = {
     "MRI safety screening before scanning",
     "Schedule 2 and 3 controlled-drug prescription requirements",
     "Patient dies on the ward: confirmation, certification and referral",
+    "Oxygen prescribing in the acutely ill adult",
+    "Parkinson’s disease in hospital and nil by mouth",
+    "Rapid tranquillisation is not delirium treatment",
+    "Recognising high-dose antipsychotic therapy",
 }
 
 
