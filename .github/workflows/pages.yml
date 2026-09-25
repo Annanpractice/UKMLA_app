@@ -189,18 +189,19 @@ jobs:
           print(f"Extracted topics: {data['topicCount']}")
           print(f"Profiles: {profiles}")
 
-          assert data['conditionCount'] == 843
-          assert data['topicCount'] == 25
+          assert data['conditionCount'] == 863
+          assert data['topicCount'] == 26
           assert len(conditions) == data['conditionCount']
           assert len(ids) == len(set(ids))
           assert profiles == {
               'anatomy': 139,
-              'clinical': 420,
+              'clinical': 440,
               'law': 69,
               'physiology': 215,
           }
           assert topics['Clinical Anatomy'] == 139
           assert topics['Clinical Physiology'] == 215
+          assert topics['Foundation doctor basics'] == 20
           assert all(item.get('id') and item.get('topicId') and item.get('name') for item in conditions)
           assert all(len(item.get('fields', {})) >= 3 for item in conditions)
           assert all(len(item['fields']) == 5 for item in conditions if item['profile'] in {'anatomy', 'physiology'})
@@ -270,8 +271,8 @@ jobs:
               assert path.exists() and path.stat().st_size > 0, name
 
           data = json.loads(Path('_site/data/conditions.json').read_text(encoding='utf-8'))
-          assert data['conditionCount'] == 843
-          assert data['topicCount'] == 25
+          assert data['conditionCount'] == 863
+          assert data['topicCount'] == 26
           names = {item['name'] for item in data['conditions']}
           assert 'Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)' in names
           assert 'Severe androgen excess / postmenopausal hyperandrogenism' in names
