@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 863
+EXPECTED_TOTAL = 867
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -57,6 +57,9 @@ CURATED_CLINICAL_SENTINELS = {
     "Acute Charcot arthropathy",
     "Deteriorating ward patient: first response",
     "Needlestick and sharps exposure",
+    "MRI safety screening before scanning",
+    "Schedule 2 and 3 controlled-drug prescription requirements",
+    "Patient dies on the ward: confirmation, certification and referral",
 }
 
 
