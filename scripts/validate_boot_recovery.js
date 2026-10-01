@@ -18,8 +18,12 @@ const networkStart=boot.indexOf('void fetchWithTimeout(input',resilientStart);
 assert(resilientStart>=0&&cacheRead>resilientStart&&networkStart>cacheRead,'Card data is not checked in Cache Storage before the network request.');
 
 const html=fs.readFileSync('v2/app.html','utf8');
-assert(html.includes('boot-recovery.js?v=1'),'Boot recovery runtime is not loaded.');
-assert(html.indexOf('boot-recovery.js?v=1')<html.indexOf('core.js?v=2'),'Boot recovery does not load before core startup.');
+const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)].map(match=>match[1].split('?')[0]);
+const bootIndex=scripts.findIndex(src=>src.endsWith('/v2/boot-recovery.js'));
+const coreIndex=scripts.findIndex(src=>src.endsWith('/v2/core.js'));
+assert(bootIndex>=0,'Boot recovery runtime is not loaded.');
+assert(coreIndex>=0,'Core runtime is not loaded.');
+assert(bootIndex<coreIndex,'Boot recovery does not load before core startup.');
 
 const worker=fs.readFileSync('service-worker.js','utf8');
 for(const required of [
