@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test adaptive card selection
+        run: node scripts/test-adaptive-selection.mjs
+
       - name: Validate JavaScript and Python syntax
         id: syntax
         shell: bash

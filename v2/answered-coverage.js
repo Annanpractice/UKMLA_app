@@ -357,6 +357,16 @@
         if(!config?.knowledge&&set?.schedulerSnapshot){
           set.schedulerSnapshot.coverageBasis='answered_with_restored_legacy_baseline';
           set.schedulerSnapshot.priorityOrder=[...PRIORITY_ORDER];
+          // Only label builds whose targets were selected by this session's policy.
+          // Existing/resumed builds keep their original selection semantics.
+          const selection=api.adaptiveSelectionSnapshot;
+          const ids=new Set((config.conditions||[]).map(item=>item.id||item.conditionId));
+          if(selection&&ids.size&&(selection.targets||[]).filter(row=>ids.has(row.conditionId)).length===ids.size){
+            set.schedulerSnapshot.selectionPolicy=selection.policy;
+            set.schedulerSnapshot.priorityOrder=[...selection.priorityOrder];
+            set.schedulerSnapshot.selectionTargets=selection.targets.filter(row=>ids.has(row.conditionId));
+            set.schedulerSnapshot.selectedAt=selection.selectedAt;
+          }
         }
         return set;
       };

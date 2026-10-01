@@ -3,7 +3,7 @@
 const KEY='ukmlaQuestionBatchV1';
 const core=()=>window.UKMLA_V2;
 function count(value){return [10,20,30].includes(Number(value))?Number(value):10;}
-function control(disabled=false){return `<div class="field" style="margin-top:12px"><label for="ai-count">Number of questions</label><select class="select" id="ai-count" ${disabled?'disabled':''}><option value="10">10 questions</option><option value="20">20 questions</option><option value="30">30 questions</option></select><small class="question-source-note">Uncovered content is prioritised. Each batch of ten passes the same quality checks.</small></div>`;}
+function control(disabled=false){return `<div class="field" style="margin-top:12px"><label for="ai-count">Number of questions</label><select class="select" id="ai-count" ${disabled?'disabled':''}><option value="10">10 questions</option><option value="20">20 questions</option><option value="30">30 questions</option></select><small class="question-source-note">Targets your mistakes, protects untested cards and spaces correct-answer reviews. Typical mix: 6 weak, 3 untested, 1 due review per ten, adjusted to your history. Each batch passes the same quality checks.</small></div>`;}
 function load(){return core().loadJson(KEY,null);}
 function save(batch){if(core().saveJson(KEY,batch)===false)throw new Error('Unable to save batch progress. Free browser storage before continuing.');}
 function clear(){localStorage.removeItem(KEY);}
