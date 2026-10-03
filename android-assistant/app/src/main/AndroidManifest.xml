@@ -6,12 +6,12 @@
         <intent><action android:name="android.intent.action.TTS_SERVICE"/></intent>
     </queries>
     <application
-        android:label="Local Qwen Assistant"
+        android:label="Local Qwen 3.5 Test"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:allowBackup="false"
         android:supportsRtl="true">
         <activity
-            android:name=".MainActivity"
+            android:name=".Qwen35Activity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize">
