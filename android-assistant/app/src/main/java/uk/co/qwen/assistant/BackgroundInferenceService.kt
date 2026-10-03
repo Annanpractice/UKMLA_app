@@ -51,10 +51,10 @@ class BackgroundInferenceService : Service() {
         const val STATE_ERROR="error"
         const val STATE_CANCELLED="cancelled"
 
-        private const val WORK_CHANNEL="qwen_inference"
-        private const val RESULT_CHANNEL="qwen_results"
-        private const val WORK_NOTIFICATION=3101
-        private const val RESULT_NOTIFICATION=3102
+        private const val WORK_CHANNEL="qwen35_inference"
+        private const val RESULT_CHANNEL="qwen35_results"
+        private const val WORK_NOTIFICATION=3501
+        private const val RESULT_NOTIFICATION=3502
 
         @Volatile private var loadedModelPath:String?=null
 
@@ -92,14 +92,10 @@ class BackgroundInferenceService : Service() {
         }
 
         fun clearStoredState(context:Context) {
-            if(!isRunning(context)) {
-                context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().clear().apply()
-            }
+            if(!isRunning(context)) context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().clear().apply()
         }
 
-        fun invalidateModel() {
-            loadedModelPath=null
-        }
+        fun invalidateModel() { loadedModelPath=null }
     }
 
     private val worker=Executors.newSingleThreadExecutor()
@@ -107,8 +103,7 @@ class BackgroundInferenceService : Service() {
     @Volatile private var cancelRequested=false
 
     override fun onCreate() {
-        super.onCreate()
-        createChannels()
+        super.onCreate();createChannels()
     }
 
     override fun onBind(intent:Intent?):IBinder?=null
@@ -127,15 +122,13 @@ class BackgroundInferenceService : Service() {
         val user=intent.getStringExtra(EXTRA_USER).orEmpty()
         val thinking=intent.getBooleanExtra(EXTRA_THINKING,false)
         val medical=intent.getBooleanExtra(EXTRA_MEDICAL,false)
-        val maxTokens=intent.getIntExtra(EXTRA_MAX_TOKENS,if(thinking)384 else 160)
+        val maxTokens=intent.getIntExtra(EXTRA_MAX_TOKENS,if(thinking)1024 else 512)
 
         if(prompt.isBlank() || modelPath.isBlank()) {
-            finish(STATE_ERROR,user,"","Missing prompt or model path.",thinking,medical)
-            return
+            finish(STATE_ERROR,user,"","Missing prompt or model path.",thinking,medical);return
         }
 
-        running=true
-        cancelRequested=false
+        running=true;cancelRequested=false
         save(STATE_RUNNING,user,"","",thinking,medical,false,System.currentTimeMillis())
         startForegroundCompat(workNotification(thinking))
         broadcast(STATE_RUNNING,user,"","",thinking,medical)
@@ -143,8 +136,7 @@ class BackgroundInferenceService : Service() {
         worker.execute {
             try {
                 if(loadedModelPath!=modelPath) {
-                    Native.load(modelPath)
-                    loadedModelPath=modelPath
+                    Native.load(modelPath);loadedModelPath=modelPath
                 }
                 val raw=if(cancelRequested) ByteArray(0) else Native.generate(prompt,maxTokens,thinking)
                 if(cancelRequested) {
@@ -154,37 +146,23 @@ class BackgroundInferenceService : Service() {
                     if(visible.isBlank()) {
                         val message=if(thinking)
                             "Think mode used its reasoning budget before reaching a final answer. Retry with a narrower question or use Fast mode."
-                        else "Qwen returned no usable answer."
+                        else "Qwen3.5 returned no usable answer."
                         finish(STATE_ERROR,user,"",message,thinking,medical)
-                    } else {
-                        finish(STATE_DONE,user,visible,"",thinking,medical)
-                    }
+                    } else finish(STATE_DONE,user,visible,"",thinking,medical)
                 }
             } catch(t:Throwable) {
-                finish(STATE_ERROR,user,"",t.message ?: "Local Qwen generation failed.",thinking,medical)
+                finish(STATE_ERROR,user,"",t.message ?: "Local Qwen3.5 generation failed.",thinking,medical)
             }
         }
     }
 
     private fun cancelGeneration() {
-        if(!running) {
-            stopSelf()
-            return
-        }
-        cancelRequested=true
-        Native.cancel()
-        getSystemService(NotificationManager::class.java)
-            .notify(WORK_NOTIFICATION,workNotification(false,"Stopping local generation…"))
+        if(!running) { stopSelf();return }
+        cancelRequested=true;Native.cancel()
+        getSystemService(NotificationManager::class.java).notify(WORK_NOTIFICATION,workNotification(false,"Stopping local generation…"))
     }
 
-    private fun finish(
-        state:String,
-        user:String,
-        result:String,
-        error:String,
-        thinking:Boolean,
-        medical:Boolean
-    ) {
+    private fun finish(state:String,user:String,result:String,error:String,thinking:Boolean,medical:Boolean) {
         running=false
         save(state,user,result,error,thinking,medical,false,0L)
         broadcast(state,user,result,error,thinking,medical)
@@ -192,127 +170,69 @@ class BackgroundInferenceService : Service() {
 
         val manager=getSystemService(NotificationManager::class.java)
         when(state) {
-            STATE_DONE -> manager.notify(
-                RESULT_NOTIFICATION,
-                resultNotification("Answer ready",if(thinking) "Qwen finished thinking. Tap to read." else "Qwen finished. Tap to read.")
-            )
-            STATE_ERROR -> manager.notify(
-                RESULT_NOTIFICATION,
-                resultNotification("Generation stopped",error.take(120))
-            )
+            STATE_DONE -> manager.notify(RESULT_NOTIFICATION,resultNotification("Qwen3.5 answer ready",if(thinking) "Qwen3.5 finished thinking. Tap to read." else "Qwen3.5 finished. Tap to read."))
+            STATE_ERROR -> manager.notify(RESULT_NOTIFICATION,resultNotification("Generation stopped",error.take(120)))
             STATE_CANCELLED -> manager.cancel(RESULT_NOTIFICATION)
         }
         stopSelf()
     }
 
-    private fun save(
-        state:String,
-        user:String,
-        result:String,
-        error:String,
-        thinking:Boolean,
-        medical:Boolean,
-        consumed:Boolean,
-        startedAt:Long
-    ) {
+    private fun save(state:String,user:String,result:String,error:String,thinking:Boolean,medical:Boolean,consumed:Boolean,startedAt:Long) {
         getSharedPreferences(PREFS,MODE_PRIVATE).edit()
-            .putString(KEY_STATE,state)
-            .putString(KEY_USER,user)
-            .putString(KEY_RESULT,result)
-            .putString(KEY_ERROR,error)
-            .putBoolean(KEY_THINKING,thinking)
-            .putBoolean(KEY_MEDICAL,medical)
-            .putBoolean(KEY_CONSUMED,consumed)
-            .putLong(KEY_STARTED_AT,startedAt)
-            .apply()
+            .putString(KEY_STATE,state).putString(KEY_USER,user).putString(KEY_RESULT,result).putString(KEY_ERROR,error)
+            .putBoolean(KEY_THINKING,thinking).putBoolean(KEY_MEDICAL,medical).putBoolean(KEY_CONSUMED,consumed)
+            .putLong(KEY_STARTED_AT,startedAt).apply()
     }
 
-    private fun broadcast(
-        state:String,
-        user:String,
-        result:String,
-        error:String,
-        thinking:Boolean,
-        medical:Boolean
-    ) {
+    private fun broadcast(state:String,user:String,result:String,error:String,thinking:Boolean,medical:Boolean) {
         sendBroadcast(Intent(ACTION_STATE).setPackage(packageName).apply {
-            putExtra(EXTRA_STATE,state)
-            putExtra(EXTRA_USER,user)
-            putExtra(EXTRA_RESULT,result)
-            putExtra(EXTRA_ERROR,error)
-            putExtra(EXTRA_THINKING,thinking)
-            putExtra(EXTRA_MEDICAL,medical)
+            putExtra(EXTRA_STATE,state);putExtra(EXTRA_USER,user);putExtra(EXTRA_RESULT,result);putExtra(EXTRA_ERROR,error)
+            putExtra(EXTRA_THINKING,thinking);putExtra(EXTRA_MEDICAL,medical)
         })
     }
 
     private fun createChannels() {
         if(Build.VERSION.SDK_INT<26)return
         val manager=getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(WORK_CHANNEL,"Local Qwen generation",NotificationManager.IMPORTANCE_LOW).apply {
-                description="Shows while the on-device Qwen model is generating."
-                setSound(null,null)
-            }
-        )
-        manager.createNotificationChannel(
-            NotificationChannel(RESULT_CHANNEL,"Local Qwen results",NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description="Alerts when an on-device answer is ready."
-            }
-        )
+        manager.createNotificationChannel(NotificationChannel(WORK_CHANNEL,"Qwen3.5 local generation",NotificationManager.IMPORTANCE_LOW).apply {
+            description="Shows while Qwen3.5-9B is generating on-device.";setSound(null,null)
+        })
+        manager.createNotificationChannel(NotificationChannel(RESULT_CHANNEL,"Qwen3.5 results",NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description="Alerts when an on-device Qwen3.5 answer is ready."
+        })
     }
 
     private fun openAppPendingIntent():PendingIntent {
-        val open=Intent(this,MainActivity::class.java)
+        val open=Intent(this,Qwen35Activity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(EXTRA_SHOW_RESULT,true)
-        return PendingIntent.getActivity(
-            this,3101,open,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        return PendingIntent.getActivity(this,3501,open,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    private fun stopPendingIntent():PendingIntent =
-        PendingIntent.getService(
-            this,3102,
-            Intent(this,BackgroundInferenceService::class.java).setAction(ACTION_CANCEL),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+    private fun stopPendingIntent():PendingIntent = PendingIntent.getService(
+        this,3502,Intent(this,BackgroundInferenceService::class.java).setAction(ACTION_CANCEL),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
     private fun builder(channel:String):Notification.Builder =
         if(Build.VERSION.SDK_INT>=26) Notification.Builder(this,channel) else Notification.Builder(this)
 
-    private fun workNotification(thinking:Boolean,text:String?=null):Notification =
-        builder(WORK_CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle(if(thinking) "Qwen is thinking locally" else "Qwen is answering locally")
-            .setContentText(text ?: "CPU inference is running. You can use other apps.")
-            .setContentIntent(openAppPendingIntent())
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_PROGRESS)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel,"Stop",stopPendingIntent())
-            .build()
+    private fun workNotification(thinking:Boolean,text:String?=null):Notification = builder(WORK_CHANNEL)
+        .setSmallIcon(android.R.drawable.stat_notify_sync)
+        .setContentTitle(if(thinking) "Qwen3.5 is thinking locally" else "Qwen3.5 is answering locally")
+        .setContentText(text ?: "CPU inference is running. You can use other apps.")
+        .setContentIntent(openAppPendingIntent()).setOngoing(true).setOnlyAlertOnce(true)
+        .setCategory(Notification.CATEGORY_PROGRESS)
+        .addAction(android.R.drawable.ic_menu_close_clear_cancel,"Stop",stopPendingIntent()).build()
 
-    private fun resultNotification(title:String,message:String):Notification =
-        builder(RESULT_CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setContentIntent(openAppPendingIntent())
-            .setAutoCancel(true)
-            .setCategory(Notification.CATEGORY_STATUS)
-            .build()
+    private fun resultNotification(title:String,message:String):Notification = builder(RESULT_CHANNEL)
+        .setSmallIcon(android.R.drawable.stat_notify_sync).setContentTitle(title).setContentText(message)
+        .setContentIntent(openAppPendingIntent()).setAutoCancel(true).setCategory(Notification.CATEGORY_STATUS).build()
 
     private fun startForegroundCompat(notification:Notification) {
-        if(Build.VERSION.SDK_INT>=34) {
-            startForeground(WORK_NOTIFICATION,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(WORK_NOTIFICATION,notification)
-        }
+        if(Build.VERSION.SDK_INT>=34) startForeground(WORK_NOTIFICATION,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        else startForeground(WORK_NOTIFICATION,notification)
     }
 
-    override fun onDestroy() {
-        worker.shutdown()
-        super.onDestroy()
-    }
+    override fun onDestroy() { worker.shutdown();super.onDestroy() }
 }
