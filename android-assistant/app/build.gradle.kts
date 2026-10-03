@@ -4,11 +4,11 @@ android {
     compileSdk = 35
     ndkVersion = "27.2.12479018"
     defaultConfig {
-        applicationId = "uk.co.qwen.assistant"
+        applicationId = "uk.co.qwen.assistant35"
         minSdk = 28
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 1
+        versionName = "0.1.0"
         ndk { abiFilters += (project.findProperty("assistantAbi") as String? ?: "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild { cmake { arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON") } }
