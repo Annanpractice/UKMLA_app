@@ -21,16 +21,17 @@ class AssistantSmokeTest {
         assertTrue(permissions.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
         assertFalse(permissions.contains("android.permission.INTERNET"))
 
+        assertEquals("uk.co.qwen.assistant35",context.packageName)
         val launch=pm.getLaunchIntentForPackage(context.packageName)
         assertNotNull(launch)
     }
 
-    @Test fun activityCanLaunchWithoutModel() {
+    @Test fun qwen35ActivityCanLaunchWithoutModel() {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val context=instrumentation.targetContext
-        val intent=Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent=Intent(context,Qwen35Activity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val activity=instrumentation.startActivitySync(intent)
-        assertEquals(MainActivity::class.java.name,activity.javaClass.name)
+        assertEquals(Qwen35Activity::class.java.name,activity.javaClass.name)
         activity.finish()
     }
 }
