@@ -1,36 +1,43 @@
-**Local Qwen Assistant 0.1.2**
+**Local Qwen 3.5 9B Test 0.1.0**
 
-A standalone Android app for the same Qwen3 4B Q4_K_M model used in the offline-reader work. It is separate from UKMLA and contains no UKMLA content or retrieval logic.
+A side-by-side Android test build for **Qwen3.5-9B Q4_K_M**. It uses a different application ID from the working Local Qwen Assistant, so installing this APK does not overwrite the existing Qwen3 app or its model/chat data.
 
-**v0.1.2 longer answers:** the previous 160-token Fast cap was too aggressive and could stop otherwise good answers mid-sentence. Fast mode can now generate up to **512 tokens** and Think mode up to **768 tokens**. The native runtime also limits generation against the remaining 4,096-token context, so longer chat history cannot push generation beyond the context window. The model can still stop naturally earlier when it emits its end token.
+Model target:
 
-**v0.1.1 formatting:** assistant text wrapped in double asterisks renders as real bold text in chat. The raw Markdown remains in stored/model history so Qwen can keep using normal Markdown, while Read aloud removes the ** markers before sending text to Android TTS.
+- Qwen/Qwen3.5-9B, Apache-2.0.
+- Text-only LM Studio Community Q4_K_M GGUF, approximately 5.63 GB.
+- Model download: lmstudio-community/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q4_K_M.gguf.
+- The model is copied into this test app's private storage on import; keep roughly 7 GB free while importing.
 
-Core behaviour:
+Runtime:
 
-- General-purpose local chat interface.
-- CPU-only llama.cpp inference.
-- Fast mode uses Qwen's native /no_think switch.
-- Think mode uses Qwen's native /think switch and shows only the final answer.
-- Optional Medical mode adds a single short clinical instruction; General mode adds no system prompt.
-- Only three previous completed exchanges are carried into the next prompt.
-- Completed conversation turns are stored locally on the device.
-- Background foreground-service inference: switch apps while Qwen works, then return from the Answer ready notification.
-- Stop action in the app and notification.
-- Offline Android TTS for completed answers.
-- No INTERNET permission and no online inference fallback.
-
-Phone-oriented limits:
-
+- Current pinned llama.cpp commit with Qwen3.5 support and later ARM fixes: `836d57176dc699a726c55418e4f96b8ca628e1bf`.
+- CPU only, adaptive 4-8 threads.
 - 4,096 context.
-- Fast: up to 512 generated tokens, temperature 0.7 / top-p 0.8 / top-k 20.
-- Think: up to 768 generated tokens, temperature 0.6 / top-p 0.95 / top-k 20.
-- Output budget automatically shrinks when required to stay inside the context window.
-- Adaptive 4-8 CPU threads.
-- Model stays loaded in-process between requests where Android keeps the service process alive.
+- 256 batch / 256 ubatch.
+- Memory-mapped model loading.
+- Flash attention explicitly disabled for this Android test.
+- Background foreground-service generation, Stop action and Answer ready notification.
+- No INTERNET permission and no cloud fallback.
 
-Model setup:
+Prompting:
 
-This is a separate Android application ID and sandbox, so import the Qwen3 4B Q4_K_M GGUF once inside this app. If the original downloaded GGUF is still on the phone, select that file. Android will copy it into the assistant's private storage.
+Qwen3.5 does **not** officially support Qwen3's `/think` and `/no_think` soft switches. This build instead follows the Qwen3.5 chat template's hard thinking switch:
 
-Medical mode is intended as a concise study/support profile, not a substitute for current clinical guidance or professional judgement.
+- Fast: generation begins after an empty `<think>...</think>` block, disabling thinking.
+- Think: generation begins inside `<think>` and only the final answer after `</think>` is shown/stored.
+- Only the last three completed exchanges are carried forward, and prior thinking text is never placed into history.
+- General mode has no system prompt.
+- Medical mode adds one short clinical-study instruction.
+
+Phone-oriented output budgets:
+
+- Fast: up to 512 generated tokens.
+- Think: up to 1,024 generated tokens.
+- The budget shrinks automatically when required to remain inside the 4,096-token context window.
+
+Sampling uses the Qwen3.5 team's recommended top-k/top-p/temperature values for general tasks: Fast 20/0.8/0.7; Think 20/0.95/1.0. Presence penalty is not forced in this minimal JNI test build.
+
+The app keeps the Markdown bold renderer and local Android TTS from the existing assistant; `**` markers are displayed as bold and removed before speech.
+
+This is an experiment. The build can verify compilation and Android packaging, but whether a 5.63 GB Qwen3.5-9B quant loads, remains stable and is acceptably fast on the Galaxy S24 Ultra must be established on the device.
