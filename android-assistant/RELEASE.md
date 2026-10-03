@@ -1,8 +1,10 @@
-**Local Qwen Assistant 0.1.1**
+**Local Qwen Assistant 0.1.2**
 
-A new standalone Android app for the same Qwen3 4B Q4_K_M model used in the offline-reader work. It is separate from UKMLA and contains no UKMLA content or retrieval logic.
+A standalone Android app for the same Qwen3 4B Q4_K_M model used in the offline-reader work. It is separate from UKMLA and contains no UKMLA content or retrieval logic.
 
-**v0.1.1 formatting:** assistant text wrapped in double asterisks now renders as real bold text in chat. The raw Markdown remains in stored/model history so Qwen can keep using normal Markdown, while Read aloud removes the ** markers before sending text to Android TTS.
+**v0.1.2 longer answers:** the previous 160-token Fast cap was too aggressive and could stop otherwise good answers mid-sentence. Fast mode can now generate up to **512 tokens** and Think mode up to **768 tokens**. The native runtime also limits generation against the remaining 4,096-token context, so longer chat history cannot push generation beyond the context window. The model can still stop naturally earlier when it emits its end token.
+
+**v0.1.1 formatting:** assistant text wrapped in double asterisks renders as real bold text in chat. The raw Markdown remains in stored/model history so Qwen can keep using normal Markdown, while Read aloud removes the ** markers before sending text to Android TTS.
 
 Core behaviour:
 
@@ -21,8 +23,9 @@ Core behaviour:
 Phone-oriented limits:
 
 - 4,096 context.
-- Fast: 160 generated tokens, temperature 0.7 / top-p 0.8 / top-k 20.
-- Think: 384 generated tokens, temperature 0.6 / top-p 0.95 / top-k 20.
+- Fast: up to 512 generated tokens, temperature 0.7 / top-p 0.8 / top-k 20.
+- Think: up to 768 generated tokens, temperature 0.6 / top-p 0.95 / top-k 20.
+- Output budget automatically shrinks when required to stay inside the context window.
 - Adaptive 4-8 CPU threads.
 - Model stays loaded in-process between requests where Android keeps the service process alive.
 
