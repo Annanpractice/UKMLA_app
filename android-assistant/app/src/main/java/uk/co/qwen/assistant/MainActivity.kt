@@ -338,7 +338,7 @@ class MainActivity : Activity() {
             putExtra(BackgroundInferenceService.EXTRA_USER,user)
             putExtra(BackgroundInferenceService.EXTRA_THINKING,thinking)
             putExtra(BackgroundInferenceService.EXTRA_MEDICAL,medical)
-            putExtra(BackgroundInferenceService.EXTRA_MAX_TOKENS,if(thinking)384 else 160)
+            putExtra(BackgroundInferenceService.EXTRA_MAX_TOKENS,if(thinking)768 else 512)
         }
         try {
             if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
@@ -527,8 +527,8 @@ class MainActivity : Activity() {
             }
         })
         box.addView(label("Modes",17f).apply { typeface=Typeface.DEFAULT_BOLD })
-        box.addView(label("Fast: /no_think, 160-token cap, Qwen-recommended non-thinking sampling.\nThink: /think, 384-token cap, Qwen-recommended thinking sampling.\nMedical: adds one short clinical system instruction. General: no system prompt.",13f,muted))
-        box.addView(label("Local Qwen Assistant 0.1.1 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
+        box.addView(label("Fast: /no_think, up to 512 generated tokens.\nThink: /think, up to 768 generated tokens.\nActual output is automatically limited by the remaining 4096-token context.\nMedical: adds one short clinical system instruction. General: no system prompt.",13f,muted))
+        box.addView(label("Local Qwen Assistant 0.1.2 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
         val scroll=ScrollView(this).apply { addView(box) }
         AlertDialog.Builder(this).setTitle("Model & runtime").setView(scroll).setPositiveButton("Close",null).show()
     }
