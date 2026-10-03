@@ -7,8 +7,8 @@ class PromptBuilderTest {
     @Test fun generalFastModeHasNoSystemOrSoftSwitch() {
         val p=PromptBuilder.build(emptyList(),"hello",false,false)
         assertFalse(p.contains("<|im_start|>system"))
-        assertFalse(p.contains("/no_think"))
-        assertFalse(p.contains("/think"))
+        assertFalse(p.contains(" /no_think"))
+        assertFalse(p.contains(" /think"))
         assertTrue(p.endsWith("<think>\n\n</think>\n\n"))
     }
 
