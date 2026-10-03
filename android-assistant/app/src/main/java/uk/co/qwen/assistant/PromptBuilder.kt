@@ -21,9 +21,10 @@ object PromptBuilder {
             }
             append("<|im_start|>user\n")
             append(safe(user.take(2200)))
-            append(if(thinking) " /think" else " /no_think")
             append("<|im_end|>\n<|im_start|>assistant\n")
-            if(thinking) append("<think>\n") else append("<think>\n\n</think>\n")
+            // Qwen3.5 does not support Qwen3's /think or /no_think soft switch.
+            // Its official chat template hard-switches thinking with this generation suffix.
+            if(thinking) append("<think>\n") else append("<think>\n\n</think>\n\n")
         }
 
     fun visibleAnswer(raw:String,thinking:Boolean):String {
