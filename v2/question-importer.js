@@ -136,15 +136,22 @@ function tokens(text){
   return clean(text).toLowerCase().normalize('NFKD').replace(/[^a-z0-9+]+/g,' ').split(/\s+/).filter(token=>token&&(token.length>2||/^(?:iv|im|bp|hr|ecg|ct|mr|us|gi|dm|pe|hf)$/.test(token))&&!STOP.has(token));
 }
 
+function flattenValue(value){
+  if(value==null)return'';
+  if(Array.isArray(value))return value.map(flattenValue).filter(Boolean).join(' ');
+  if(typeof value==='object')return Object.entries(value).map(([key,nested])=>`${clean(key)} ${flattenValue(nested)}`.trim()).filter(Boolean).join(' ');
+  return clean(value);
+}
+
 function flattenFields(fields){
-  if(!fields||typeof fields!=='object')return'';
-  return Object.entries(fields).map(([key,value])=>`${key} ${Array.isArray(value)?value.join(' '):String(value??'')}`).join(' ');
+  return flattenValue(fields);
 }
 
 function buildCorpus(){
-  const conditions=core()?.App?.conditions||[];
-  const docs=conditions.map(condition=>{
-    const text=[condition.name,condition.topic,condition.profile,flattenFields(condition.fields),(condition.labels||[]).join(' ')].join(' ');
+  const rawConditions=core()?.App?.conditions;
+  const conditions=Array.isArray(rawConditions)?rawConditions:[];
+  const docs=conditions.filter(condition=>condition&&typeof condition==='object').map(condition=>{
+    const text=[condition.name,condition.topic,condition.profile,flattenFields(condition.fields),flattenValue(condition.labels)].map(flattenValue).filter(Boolean).join(' ');
     const set=new Set(tokens(text));
     return{condition,set,text:clean(text).toLowerCase()};
   });
@@ -189,7 +196,7 @@ function candidatePayload(item){
     name:condition.name,
     topicId:condition.topicId,
     topicName:condition.topic,
-    fields:condition.fields||{},
+    fields:condition.fields&&typeof condition.fields==='object'?condition.fields:{},
     localScore:Number(item.score.toFixed(3))
   };
 }
