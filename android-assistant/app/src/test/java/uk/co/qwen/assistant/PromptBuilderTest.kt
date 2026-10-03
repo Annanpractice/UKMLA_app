@@ -4,18 +4,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PromptBuilderTest {
-    @Test fun generalModeHasNoSystemPrompt() {
+    @Test fun generalFastModeHasNoSystemOrSoftSwitch() {
         val p=PromptBuilder.build(emptyList(),"hello",false,false)
         assertFalse(p.contains("<|im_start|>system"))
-        assertTrue(p.contains("/no_think"))
-        assertTrue(p.endsWith("<think>\n\n</think>\n"))
+        assertFalse(p.contains("/no_think"))
+        assertFalse(p.contains("/think"))
+        assertTrue(p.endsWith("<think>\n\n</think>\n\n"))
     }
 
     @Test fun medicalModeAddsOnlyShortSystemPrompt() {
         val p=PromptBuilder.build(emptyList(),"chest pain management",false,true)
         assertTrue(p.contains("<|im_start|>system"))
         assertTrue(p.contains("medical study assistant"))
-        assertTrue(p.contains("/no_think"))
     }
 
     @Test fun historyIsBoundedToThreeFinalTurns() {
@@ -25,7 +25,7 @@ class PromptBuilderTest {
         assertFalse(p.contains("answer-1"))
         assertTrue(p.contains("user-2"))
         assertTrue(p.contains("answer-4"))
-        assertTrue(p.contains("/think"))
+        assertTrue(p.endsWith("<think>\n"))
     }
 
     @Test fun thinkingScratchpadIsNotReturnedAsAnswer() {
