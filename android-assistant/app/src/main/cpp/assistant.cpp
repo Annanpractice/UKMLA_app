@@ -40,23 +40,26 @@ Java_uk_co_qwen_assistant_Native_load(JNIEnv* e, jobject, jstring path) {
 
     auto mp=llama_model_default_params();
     mp.n_gpu_layers=0;
+    mp.load_mode=LLAMA_LOAD_MODE_MMAP;
     model=llama_model_load_from_file(modelPath.c_str(),mp);
     if(!model) {
-        error(e,"Could not load the Qwen GGUF on CPU. Reimport the recommended model and retry.");
+        error(e,"Could not load Qwen3.5-9B on CPU. Close other heavy apps, check the GGUF, and retry.");
         return;
     }
 
     auto cp=llama_context_default_params();
     cp.n_ctx=4096;
-    cp.n_batch=512;
+    cp.n_batch=256;
+    cp.n_ubatch=256;
     cp.n_threads=threads;
     cp.n_threads_batch=threads;
+    cp.flash_attn_type=LLAMA_FLASH_ATTN_TYPE_DISABLED;
     cp.abort_callback=[](void*) { return cancelled.load(); };
     ctx=llama_init_from_model(model,cp);
     if(!ctx) {
         llama_model_free(model);
         model=nullptr;
-        error(e,"Could not initialise Qwen on CPU. Close other heavy apps and retry.");
+        error(e,"Could not initialise Qwen3.5-9B. The phone may not have enough free memory.");
         return;
     }
 }
@@ -65,23 +68,23 @@ extern "C" JNIEXPORT jbyteArray JNICALL
 Java_uk_co_qwen_assistant_Native_generate(
     JNIEnv* e, jobject, jstring input, jint requestedMaxTokens, jboolean thinkingMode
 ) {
-    if(!ctx) { error(e,"Import a GGUF model first."); return nullptr; }
+    if(!ctx) { error(e,"Import the Qwen3.5-9B GGUF first."); return nullptr; }
     cancelled=false;
 
     std::string prompt=str(e,input);
     auto vocab=llama_model_get_vocab(model);
     int n=-llama_tokenize(vocab,prompt.c_str(),prompt.size(),nullptr,0,true,true);
     if(n<=0) { error(e,"Prompt could not be tokenised."); return nullptr; }
-    if(n>3600) { error(e,"Conversation is too long. Start a new chat or shorten the message."); return nullptr; }
+    if(n>3500) { error(e,"Conversation is too long. Start a new chat or shorten the message."); return nullptr; }
 
     std::vector<llama_token> tokens(n);
     llama_tokenize(vocab,prompt.c_str(),prompt.size(),tokens.data(),n,true,true);
     llama_memory_clear(llama_get_memory(ctx),true);
 
-    for(int i=0;i<n;i+=512) {
+    for(int i=0;i<n;i+=256) {
         if(cancelled) return e->NewByteArray(0);
-        if(llama_decode(ctx,llama_batch_get_one(tokens.data()+i,std::min(512,n-i)))) {
-            error(e,"Qwen could not process this prompt.");
+        if(llama_decode(ctx,llama_batch_get_one(tokens.data()+i,std::min(256,n-i)))) {
+            error(e,"Qwen3.5 could not process this prompt.");
             return nullptr;
         }
     }
@@ -89,16 +92,18 @@ Java_uk_co_qwen_assistant_Native_generate(
     auto sampler=llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(sampler,llama_sampler_init_top_k(20));
     if(thinkingMode) {
+        // Qwen3.5 official general-task thinking defaults: temp 1.0, top-p 0.95, top-k 20.
         llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.95f,1));
-        llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.6f));
+        llama_sampler_chain_add(sampler,llama_sampler_init_temp(1.0f));
     } else {
+        // Qwen3.5 official instruct defaults: temp 0.7, top-p 0.8, top-k 20.
         llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.8f,1));
         llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.7f));
     }
     const auto now=std::chrono::high_resolution_clock::now().time_since_epoch().count();
     llama_sampler_chain_add(sampler,llama_sampler_init_dist((uint32_t)now));
 
-    const int requested=std::max(32,std::min(1024,(int)requestedMaxTokens));
+    const int requested=std::max(32,std::min(1536,(int)requestedMaxTokens));
     const int contextRemaining=std::max(0,4096-n-8);
     const int maxTokens=std::min(requested,contextRemaining);
     if(maxTokens<=0) {
