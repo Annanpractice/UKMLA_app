@@ -1,0 +1,35 @@
+name: Textbook question importer regression
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "v2/question-importer.js"
+      - "v2/question-importer-progress.js"
+      - "v2/ai-jarvis-legacy-capture.js"
+      - "scripts/test-question-importer-progress.mjs"
+      - ".github/workflows/textbook-question-importer.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "v2/question-importer.js"
+      - "v2/question-importer-progress.js"
+      - "v2/ai-jarvis-legacy-capture.js"
+      - "scripts/test-question-importer-progress.mjs"
+      - ".github/workflows/textbook-question-importer.yml"
+
+jobs:
+  importer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check importer modules
+        run: |
+          node --check v2/question-importer.js
+          node --check v2/question-importer-progress.js
+          node --check v2/ai-jarvis-legacy-capture.js
+      - name: Validate mapped-only card progress
+        run: node scripts/test-question-importer-progress.mjs
