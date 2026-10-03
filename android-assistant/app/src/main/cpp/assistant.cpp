@@ -98,7 +98,15 @@ Java_uk_co_qwen_assistant_Native_generate(
     const auto now=std::chrono::high_resolution_clock::now().time_since_epoch().count();
     llama_sampler_chain_add(sampler,llama_sampler_init_dist((uint32_t)now));
 
-    const int maxTokens=std::max(32,std::min(512,(int)requestedMaxTokens));
+    const int requested=std::max(32,std::min(1024,(int)requestedMaxTokens));
+    const int contextRemaining=std::max(0,4096-n-8);
+    const int maxTokens=std::min(requested,contextRemaining);
+    if(maxTokens<=0) {
+        llama_sampler_free(sampler);
+        error(e,"Conversation leaves no room for an answer. Start a new chat or shorten the message.");
+        return nullptr;
+    }
+
     std::string out;
     for(int i=0;i<maxTokens && !cancelled;i++) {
         llama_token token=llama_sampler_sample(sampler,ctx,-1);
