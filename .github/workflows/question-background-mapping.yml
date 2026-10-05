@@ -19,6 +19,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check v2/question-mapping-background.js
+          node --check v2/question-learning-export.js
           node --check v2/question-importer-v2.js
           node --check v2/question-importer-progress.js
 
@@ -38,15 +39,27 @@ jobs:
         run: |
           grep -q "ukmlaQuestionMappingQueueV1" v2/question-mapping-background.js
           grep -q "ukmlaQuestionMappingRecommendationsV1" v2/question-mapping-background.js
-          grep -q "Export recommended cards" v2/question-mapping-background.js
           grep -q "Apply recommendations" v2/question-mapping-background.js
           grep -q "REQUEST_TIMEOUT_MS=25000" v2/question-mapping-background.js
+
+      - name: Validate compact learning export
+        shell: bash
+        run: |
+          grep -q "Export learning recommendations" v2/question-learning-export.js
+          grep -q "recommendations:buildSummary" v2/question-learning-export.js
+          grep -q "topic,learningPoints" <(tr -d '[:space:]' < v2/question-learning-export.js)
+          if grep -q "recommendedCards:cards" v2/question-learning-export.js; then
+            echo "Full card objects leaked into learning export" >&2
+            exit 1
+          fi
 
       - name: Validate deployed asset wiring
         shell: bash
         run: |
           grep -q "question-mapping-background.js?v=1" v2/app.html
+          grep -q "question-learning-export.js?v=1" v2/app.html
           grep -q "question-importer-v2.js?v=1" v2/app.html
-          grep -q "ukmla-cards-v62-background-question-mapping" service-worker.js
+          grep -q "ukmla-cards-v63-learning-recommendation-export" service-worker.js
           grep -q "./v2/question-mapping-background.js" service-worker.js
+          grep -q "./v2/question-learning-export.js" service-worker.js
           grep -q "./v2/question-importer-v2.js" service-worker.js
