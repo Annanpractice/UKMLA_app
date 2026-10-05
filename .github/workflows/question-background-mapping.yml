@@ -1,0 +1,52 @@
+name: Validate background question mapping
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check v2/question-mapping-background.js
+          node --check v2/question-importer-v2.js
+          node --check v2/question-importer-progress.js
+
+      - name: Validate save-first importer contract
+        shell: bash
+        run: |
+          grep -q "Saving is immediate; Luna card mapping happens afterwards" v2/question-importer-v2.js
+          grep -q "importedMappingStatus:status" v2/question-importer-v2.js
+          grep -q "enqueueSet" v2/question-importer-v2.js
+          if grep -q "Run Luna mapping or mark each unresolved question" v2/question-importer-v2.js; then
+            echo "Blocking Luna dependency returned" >&2
+            exit 1
+          fi
+
+      - name: Validate resumable recommendation module
+        shell: bash
+        run: |
+          grep -q "ukmlaQuestionMappingQueueV1" v2/question-mapping-background.js
+          grep -q "ukmlaQuestionMappingRecommendationsV1" v2/question-mapping-background.js
+          grep -q "Export recommended cards" v2/question-mapping-background.js
+          grep -q "Apply recommendations" v2/question-mapping-background.js
+          grep -q "REQUEST_TIMEOUT_MS=25000" v2/question-mapping-background.js
+
+      - name: Validate deployed asset wiring
+        shell: bash
+        run: |
+          grep -q "question-mapping-background.js?v=1" v2/app.html
+          grep -q "question-importer-v2.js?v=1" v2/app.html
+          grep -q "ukmla-cards-v62-background-question-mapping" service-worker.js
+          grep -q "./v2/question-mapping-background.js" service-worker.js
+          grep -q "./v2/question-importer-v2.js" service-worker.js
