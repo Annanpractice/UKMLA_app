@@ -1,0 +1,42 @@
+name: Validate interactive card mapping
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check v2/question-card-mapper.js
+          node --check v2/ai-jarvis-legacy-capture.js
+
+      - name: Validate mapping interaction contract
+        shell: bash
+        run: |
+          grep -q "Search all cards" v2/question-card-mapper.js
+          grep -q "No suitable card" v2/question-card-mapper.js
+          grep -q "ukmlaQuestionMappingUpdated" v2/question-card-mapper.js
+          grep -q "stopImmediatePropagation" v2/question-card-mapper.js
+          grep -q "details.open=true" v2/question-card-mapper.js
+          grep -q "source:'imported'" v2/question-card-mapper.js
+          grep -q 'answer:${a.attemptId}:${q.id}' v2/question-card-mapper.js
+
+      - name: Validate single importer path
+        shell: bash
+        run: |
+          grep -q "question-card-mapper.js" v2/ai-jarvis-legacy-capture.js
+          if grep -q "question-importer.js" v2/ai-jarvis-legacy-capture.js; then
+            echo "Legacy importer is still dynamically loaded" >&2
+            exit 1
+          fi
