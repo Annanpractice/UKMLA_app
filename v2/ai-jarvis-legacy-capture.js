@@ -9,6 +9,5 @@ function load(src,marker){
   script.setAttribute(marker,'1');
   document.head.appendChild(script);
 }
-load('./v2/question-importer.js','data-ukmla-question-importer');
-load('./v2/question-importer-progress.js','data-ukmla-question-import-progress');
+load('./v2/question-card-mapper.js','data-ukmla-question-card-mapper');
 })();
