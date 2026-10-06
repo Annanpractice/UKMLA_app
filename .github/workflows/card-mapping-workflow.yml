@@ -28,7 +28,7 @@ jobs:
           grep -q "No suitable card" v2/question-card-mapper.js
           grep -q "ukmlaQuestionMappingUpdated" v2/question-card-mapper.js
           grep -q "stopImmediatePropagation" v2/question-card-mapper.js
-          grep -q "details.open=true" v2/question-card-mapper.js
+          grep -q "d.open=true" v2/question-card-mapper.js
           grep -q "source:'imported'" v2/question-card-mapper.js
           grep -q 'answer:${a.attemptId}:${q.id}' v2/question-card-mapper.js
 
