@@ -1,4 +1,4 @@
-name: Validate background question mapping
+name: Validate Luna retrospective question mapping
 
 on:
   push:
@@ -15,51 +15,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Validate JavaScript syntax
+      - name: Validate mapping, importer and player syntax
         run: |
           node --check v2/question-mapping-background.js
-          node --check v2/question-learning-export.js
           node --check v2/question-importer-v2.js
           node --check v2/question-importer-progress.js
+          node --check v2/question-bank.js
+          node --check v2/question-card-peek.js
 
-      - name: Validate save-first importer contract
-        shell: bash
+      - name: Exercise Luna mapping checkpoint and decision contract
+        run: node --test scripts/test-luna-retrospective-mapping.mjs
+
+      - name: Verify AI-only mapping controls and offline assets
         run: |
-          grep -q "Saving is immediate; Luna card mapping happens afterwards" v2/question-importer-v2.js
-          grep -q "importedMappingStatus:status" v2/question-importer-v2.js
-          grep -q "enqueueSet" v2/question-importer-v2.js
-          if grep -q "Run Luna mapping or mark each unresolved question" v2/question-importer-v2.js; then
-            echo "Blocking Luna dependency returned" >&2
+          grep -q "Map Questions" v2/question-bank.js
+          grep -q "importedMappingStatus:'pending'" v2/question-importer-v2.js
+          grep -q "question-mapping-background.js?v=2" v2/app.html
+          grep -q "question-importer-v2.js?v=2" v2/app.html
+          grep -q "ukmla-cards-v64-luna-import-retrospective-mapping" service-worker.js
+          grep -q "question-card-peek.js" service-worker.js
+          if grep -q 'question-learning-export.js' v2/app.html; then
+            echo "Legacy recommendation approval controls are still loaded" >&2
             exit 1
           fi
-
-      - name: Validate resumable recommendation module
-        shell: bash
-        run: |
-          grep -q "ukmlaQuestionMappingQueueV1" v2/question-mapping-background.js
-          grep -q "ukmlaQuestionMappingRecommendationsV1" v2/question-mapping-background.js
-          grep -q "Apply recommendations" v2/question-mapping-background.js
-          grep -q "REQUEST_TIMEOUT_MS=25000" v2/question-mapping-background.js
-
-      - name: Validate compact learning export
-        shell: bash
-        run: |
-          grep -q "Export learning recommendations" v2/question-learning-export.js
-          grep -q "recommendations:buildSummary" v2/question-learning-export.js
-          grep -q "topic,learningPoints" <(tr -d '[:space:]' < v2/question-learning-export.js)
-          if grep -q "recommendedCards:cards" v2/question-learning-export.js; then
-            echo "Full card objects leaked into learning export" >&2
-            exit 1
-          fi
-
-      - name: Validate deployed asset wiring
-        shell: bash
-        run: |
-          grep -q "question-mapping-background.js?v=1" v2/app.html
-          grep -q "question-learning-export.js?v=1" v2/app.html
-          grep -q "question-importer-v2.js?v=1" v2/app.html
-          grep -q "ukmla-cards-v63-learning-recommendation-export" service-worker.js
-          grep -q "./v2/question-mapping-background.js" service-worker.js
-          grep -q "./v2/question-learning-export.js" service-worker.js
-          grep -q "./v2/question-importer-v2.js" service-worker.js
