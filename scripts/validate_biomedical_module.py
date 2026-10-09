@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 871
+EXPECTED_TOTAL = 872
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -55,6 +55,7 @@ CURATED_CLINICAL_SENTINELS = {
     "Labyrinthitis / vestibular neuritis",
     "Diabetic foot ulcer / infection",
     "Acute Charcot arthropathy",
+    "Infant supraventricular tachycardia (SVT)",
     "Deteriorating ward patient: first response",
     "Needlestick and sharps exposure",
     "MRI safety screening before scanning",
