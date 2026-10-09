@@ -92,7 +92,7 @@
       String(set.schemaVersion||'').includes('ai')?'ai':'basic'
     );
   }
-  function sourceLabel(value){return({basic:'Basic HTML',ai:'UKMLA Questions',biomedical:'Anatomy & Physiology',knowledge:'Uploaded study material'})[value]||'UKMLA Questions';}
+  function sourceLabel(value){return({basic:'Basic HTML',ai:'UKMLA Questions',biomedical:'Anatomy & Physiology',knowledge:'Uploaded study material',imported:'Imported textbook questions'})[value]||'UKMLA Questions';}
   function verificationLabel(set,type,meta={}){
     if(meta.verificationLabel)return meta.verificationLabel;
     if(type==='ai')return'All clinical checkpoints passed';
@@ -530,7 +530,7 @@
     const progress=Math.round((index+1)/set.questions.length*100);
     const mapping=window.UKMLA_QUESTION_MAPPING?.activeJob?.(set.setId||set.quizId);
     const mappedPercent=mapping?Math.round(Number(mapping.progressDone||0)/Math.max(1,Number(mapping.total||0))*100):0;
-    root.innerHTML=`<article class="quiz-card bank-player" data-shared-quiz-status data-bank-set-id="${escapeHtml(set.setId||set.quizId)}" data-bank-question-id="${escapeHtml(qid)}"><div class="bank-player-top"><button class="btn ghost" id="bank-back">← Question Bank</button><span data-shared-status-label>Question ${index+1} of ${set.questions.length}</span></div><div class="progress-track"><div class="progress-fill" data-shared-status-fill data-default-value="${progress}" style="--value:${progress}%"></div></div>${mapping?`<div class="bank-map-progress" role="status"><small>Luna mapping · ${Number(mapping.progressDone||0)} / ${Number(mapping.total||0)}</small><div class="progress-track"><div class="progress-fill" style="--value:${mappedPercent}%"></div></div></div>`:''}<div class="topic-meta"><span>${escapeHtml(set.topic||setRecord(set.setId||set.quizId)?.title||'Saved set')}</span><span data-shared-status-detail>${escapeHtml(question.questionTypeLabel||'UKMLA question')}</span></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'Select the single best answer.')}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-bank-option="${escapeHtml(option.id)}" ${answer?'disabled':''}><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div>`:''}<div class="card-actions"><button class="btn" id="bank-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="bank-next">${index===set.questions.length-1?(allAnswered?'Results':'Next unanswered'):'Next'}</button></div></article>`;
+    root.innerHTML=`<article class="quiz-card bank-player" data-shared-quiz-status data-bank-set-id="${escapeHtml(set.setId||set.quizId)}" data-bank-question-id="${escapeHtml(qid)}"><div class="bank-player-top"><button class="btn ghost" id="bank-back">← Question Bank</button><span data-shared-status-label>Question ${index+1} of ${set.questions.length}</span></div><div class="progress-track"><div class="progress-fill" data-shared-status-fill data-default-value="${progress}" style="--value:${progress}%"></div></div>${mapping?`<div class="bank-map-progress" data-bank-map-live="${escapeHtml(set.setId||set.quizId)}" role="status"><small>Luna mapping · ${Number(mapping.progressDone||0)} / ${Number(mapping.total||0)}</small><div class="progress-track"><div class="progress-fill" style="--value:${mappedPercent}%"></div></div></div>`:''}<div class="topic-meta"><span>${escapeHtml(set.topic||setRecord(set.setId||set.quizId)?.title||'Saved set')}</span><span data-shared-status-detail>${escapeHtml(question.questionTypeLabel||'UKMLA question')}</span></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'Select the single best answer.')}</p><div class="options">${question.options.map(option=>`<button class="option ${answer?(option.id===question.correctOptionId?'correct':option.id===answer.selectedOptionId?'wrong':''):''}" data-bank-option="${escapeHtml(option.id)}" ${answer?'disabled':''}><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></button>`).join('')}</div>${answer?`<div class="feedback"><strong>${answer.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div>`:''}<div class="card-actions"><button class="btn" id="bank-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="bank-next">${index===set.questions.length-1?(allAnswered?'Results':'Next unanswered'):'Next'}</button></div></article>`;
     root.dataset.activeQuestionTab='bank';
     window.UKMLA_V2_AI?.refreshSharedStatus?.();
     root.querySelector('#bank-back').onclick=drawBank;
@@ -573,7 +573,7 @@
     const question=set.questions[index];
     const qid=String(question.id||index+1);
     const answer=attempt.answers?.[qid];
-    root.innerHTML=`<article class="quiz-card bank-player" data-shared-quiz-status data-bank-set-id="${escapeHtml(set.setId||set.quizId)}" data-bank-question-id="${escapeHtml(qid)}"><div class="bank-player-top"><button class="btn ghost" id="review-back">← Question Bank</button><span>Review ${index+1} of ${set.questions.length}</span></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'')}</p><div class="options">${question.options.map(option=>`<div class="option ${option.id===question.correctOptionId?'correct':answer&&option.id===answer.selectedOptionId?'wrong':''}"><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></div>`).join('')}</div><div class="feedback"><strong>${answer?.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div><div class="card-actions"><button class="btn" id="review-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="review-next">${index===set.questions.length-1?'Finish review':'Next'}</button></div></article>`;
+    root.innerHTML=`<article class="quiz-card bank-player" data-shared-quiz-status data-bank-set-id="${escapeHtml(set.setId||set.quizId)}" data-bank-question-id="${escapeHtml(qid)}"><div class="bank-player-top"><button class="btn ghost" id="review-back">← Question Bank</button><span data-shared-status-label>Review ${index+1} of ${set.questions.length}</span></div><div class="progress-track"><div class="progress-fill" data-shared-status-fill data-default-value="${Math.round((index+1)/set.questions.length*100)}" style="--value:${Math.round((index+1)/set.questions.length*100)}%"></div></div><div class="quiz-stem">${escapeHtml(question.stem)}</div><p>${escapeHtml(question.leadIn||'')}</p><div class="options">${question.options.map(option=>`<div class="option ${option.id===question.correctOptionId?'correct':answer&&option.id===answer.selectedOptionId?'wrong':''}"><span class="letter">${escapeHtml(option.id)}</span><span>${escapeHtml(option.text)}</span></div>`).join('')}</div><div class="feedback"><strong>${answer?.correct?'Correct.':'Incorrect.'}</strong> ${escapeHtml(question.rationale||'')}</div><div class="card-actions"><button class="btn" id="review-prev" ${index===0?'disabled':''}>Previous</button><button class="btn primary" id="review-next">${index===set.questions.length-1?'Finish review':'Next'}</button></div></article>`;
     root.dataset.activeQuestionTab='bank';
     root.querySelector('#review-back').onclick=drawBank;
     root.querySelector('#review-prev')?.addEventListener('click',()=>renderReview(set,attempt,index-1));
@@ -592,8 +592,27 @@
     initialised=true;
     document.addEventListener('ukmlaLearningEvent',event=>void handleLearningEvent(event.detail));
     document.addEventListener('ukmlaAiCompletedSetStored',event=>markUnseen(event.detail?.setId));
-    document.addEventListener('ukmlaQuestionMappingProgress',()=>{if(root?.querySelector('#bank-list'))drawBankList();});
-    document.addEventListener('ukmlaQuestionMappingUpdated',()=>{if(root?.querySelector('#bank-list'))drawBankList();});
+    document.addEventListener('ukmlaQuestionMappingProgress',()=>{
+      if(root?.querySelector('#bank-list'))drawBankList();
+      const bar=root?.querySelector('[data-bank-map-live]');
+      if(!bar)return;
+      const job=window.UKMLA_QUESTION_MAPPING?.activeJob?.(bar.dataset.bankMapLive);
+      if(!job){bar.remove();return;}
+      const percent=Math.round(Number(job.progressDone||0)/Math.max(1,Number(job.total||0))*100);
+      const text=bar.querySelector('small');
+      if(text)text.textContent='Luna mapping · '+Number(job.progressDone||0)+' / '+Number(job.total||0);
+      bar.querySelector('.progress-fill')?.style.setProperty('--value',percent+'%');
+    });
+    document.addEventListener('ukmlaQuestionMappingUpdated',event=>{
+      if(root?.querySelector('#bank-list'))drawBankList();
+      const activeId=player?.set?.setId||player?.set?.quizId;
+      if(String(activeId||'')!==String(event.detail?.setId||'')||!root?.querySelector('[data-bank-option]'))return;
+      void loadSet(activeId).then(latest=>{
+        if(!latest||!root?.querySelector('[data-bank-option]'))return;
+        const attempt=attemptById(player.attemptId);
+        if(attempt)renderPlayer(latest,attempt,player.index);
+      });
+    });
     void migrateLegacy().catch(error=>core()?.toast(`Storage migration paused: ${error.message}`));
     return true;
   }
