@@ -183,6 +183,23 @@
         "UKCPA Handbook of Perioperative Medicines — Clopidogrel: https://periop-handbook.ukclinicalpharmacy.org/drug/clopidogrel/",
         "ESC 2022 Guidelines on cardiovascular assessment and management of patients undergoing non-cardiac surgery: https://www.escardio.org/guidelines/clinical-practice-guidelines/all-esc-practice-guidelines/non-cardiac-surgery/"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Endocrine Problems",
+      "name": "Metformin: mechanism of glucose lowering",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "For use in type 2 diabetes, monitor HbA1c/glucose, eGFR before initiation and periodically, and vitamin B12 when symptoms or risk factors suggest deficiency. It is a biguanide, not an insulin secretagogue.",
+        "treatment": "Principal glucose-lowering action: suppress hepatic gluconeogenesis (and glycogenolysis), reducing endogenous glucose output. It also improves peripheral insulin sensitivity/glucose uptake and alters intestinal glucose handling. AMPK and other cellular pathways contribute; no single pathway fully explains all effects. It does not directly stimulate pancreatic insulin release.",
+        "escalation": "Use renal-adjusted dosing; contraindicated if eGFR <30 mL/min/1.73 m². Temporarily withhold during significant dehydration, AKI, sepsis or hypoxic illness; suspected metformin-associated lactic acidosis requires emergency assessment and cessation.",
+        "mimics": "Contrast mechanisms: sulfonylureas stimulate beta-cell insulin secretion (hypoglycaemia risk); SGLT2 inhibitors increase urinary glucose excretion; GLP-1 receptor agonists enhance glucose-dependent insulin release and suppress glucagon. Metformin monotherapy rarely causes hypoglycaemia.",
+        "redFlags": "Persistent gastrointestinal intolerance, symptomatic B12 deficiency (neuropathy or macrocytic anaemia), severe renal impairment, vomiting/dehydration, or acidotic breathing with abdominal pain and lethargy suggesting lactic acidosis."
+      },
+      "sourceReview": [
+        "UK electronic medicines compendium (eMC), Metformin Hydrochloride 500 mg SmPC, sections 4.2-4.4 and 5.1 (updated July 2025): https://www.medicines.org.uk/emc/product/13959/smpc",
+        "Rena G et al., The mechanisms of action of metformin (Diabetologia 2017): https://pubmed.ncbi.nlm.nih.gov/28776086/"
+      ]
     }
   ]
 }
