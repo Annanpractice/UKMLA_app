@@ -165,6 +165,24 @@
       "sourceReview": [
         "Resuscitation Council UK 2025 Paediatric Life Support (basic and advanced), tachyarrhythmia section: https://www.resus.org.uk/professional-library/2025-resuscitation-guidelines/paediatric-basic-life-support-guidelines"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Cardiovascular Problems",
+      "name": "Perioperative interruption and restart of antiplatelet therapy",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Identify indication (primary vs secondary prevention, ACS, PCI/stent date and complexity), aspirin alone vs DAPT, planned procedure and neuraxial anaesthesia; assess surgical bleeding against stent-thrombosis risk. Discuss recent PCI/ACS or DAPT with cardiology, surgery and anaesthesia.",
+        "treatment": "Low-bleeding-risk procedures may allow continuation; usually continue aspirin after PCI. If interruption is agreed: clopidogrel at least 5 days (UKCPA generally 7 days for elective clopidogrel monotherapy or neuraxial block); ticagrelor at least 3 days (5 before neuraxial block); prasugrel 7 days. Extremely high bleeding-risk procedures may also require stopping aspirin.",
+        "escalation": "Defer elective non-cardiac surgery until the recommended DAPT course is complete where feasible. Restart interrupted P2Y12 therapy as soon as haemostasis permits, preferably within 48 hours, following the agreed MDT plan. Do not routinely use heparin/LMWH to bridge antiplatelet interruption; exceptional IV bridging is cardiologist-led.",
+        "mimics": "Do not confuse antiplatelet interruption with DOAC/warfarin perioperative anticoagulation protocols. Aspirin primary prevention, established vascular disease, and recent coronary stents carry different thrombotic risks; minor procedures may not require treatment interruption.",
+        "redFlags": "Recent ACS or PCI/stent (especially within 1 month), complex PCI or previous stent thrombosis, stopping both agents in DAPT, neuraxial block before adequate P2Y12 washout, high-risk intracranial surgery, serious postoperative bleeding or new ischaemic chest pain."
+      },
+      "sourceReview": [
+        "UKCPA Handbook of Perioperative Medicines — Dual Antiplatelet Therapy: https://periop-handbook.ukclinicalpharmacy.org/drug/aspirin-as-dual-antiplatelet-therapy/",
+        "UKCPA Handbook of Perioperative Medicines — Clopidogrel: https://periop-handbook.ukclinicalpharmacy.org/drug/clopidogrel/",
+        "ESC 2022 Guidelines on cardiovascular assessment and management of patients undergoing non-cardiac surgery: https://www.escardio.org/guidelines/clinical-practice-guidelines/all-esc-practice-guidelines/non-cardiac-surgery/"
+      ]
     }
   ]
 }
