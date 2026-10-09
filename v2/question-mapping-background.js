@@ -44,9 +44,14 @@ function candidateList(question){
     const card=match.candidatePayload(item);
     // Keep enough clinical context for Luna, without sending every long atlas field.
     const fields={};
+    let budget=1100;
     for(const [key,value] of Object.entries(card.fields||{})){
+      if(budget<=0)break;
       const flat=typeof value==='string'?value:JSON.stringify(value);
-      fields[key]=String(flat??'').slice(0,450);
+      const excerpt=String(flat??'').slice(0,Math.min(300,budget));
+      if(!excerpt)continue;
+      fields[key]=excerpt;
+      budget-=excerpt.length;
     }
     return {...card,fields};
   });
