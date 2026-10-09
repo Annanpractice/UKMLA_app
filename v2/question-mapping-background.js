@@ -1,320 +1,280 @@
 (function(){
 'use strict';
 
+// One AI decision per imported question. Mapping results are checkpointed and
+// committed automatically; the user is never asked to approve a shortlist.
 const TOKEN_KEY='ukmlaJarvis2BuildTokenV1';
 const WORKER_KEY='ukmlaJarvis2WorkerUrlV1';
-const DEFAULT_WORKER='https://jarvis-2.j74569738.workers.dev';
-const ENDPOINT='/v1/ukmla/card-match';
+const WORKER_DEFAULT='https://jarvis-2.j74569738.workers.dev';
 const QUEUE_KEY='ukmlaQuestionMappingQueueV1';
-const RECOMMENDATIONS_KEY='ukmlaQuestionMappingRecommendationsV1';
+const ENDPOINT='/v1/ukmla/card-match';
 const BATCH_SIZE=5;
-const REQUEST_TIMEOUT_MS=25000;
-const RETRY_BASE_MS=30000;
+const CANDIDATE_COUNT=12;
+const TIMEOUT_MS=45000;
 let processing=false;
-let observer=null;
 let retryTimer=null;
 
 function core(){return window.UKMLA_V2;}
 function bank(){return window.UKMLA_QUESTION_BANK;}
+function importer(){return window.UKMLA_QUESTION_IMPORTER;}
 function clean(value){return String(value??'').replace(/\s+/g,' ').trim();}
-function parse(value,fallback){try{return JSON.parse(value||'null')??fallback;}catch(_){return fallback;}}
-function clone(value){return JSON.parse(JSON.stringify(value));}
+function parse(raw,fallback){try{return JSON.parse(raw||'null')??fallback;}catch(_){return fallback;}}
 function now(){return new Date().toISOString();}
-function workerUrl(){return clean(localStorage.getItem(WORKER_KEY))||DEFAULT_WORKER;}
+function uid(){return core()?.uid('mapping-job')||'mapping-job-'+Date.now();}
 function token(){return clean(localStorage.getItem(TOKEN_KEY));}
-function uid(prefix){return core()?.uid(prefix)||`${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;}
-function escapeHtml(value){return core()?.escapeHtml(value)??String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
-function onQuestionsRoute(){return location.hash.startsWith('#/quiz');}
-
-function queue(){return parse(localStorage.getItem(QUEUE_KEY),[]).filter(item=>item&&item.id&&item.setId);}
-function saveQueue(items){try{localStorage.setItem(QUEUE_KEY,JSON.stringify(items||[]));}catch(_){}notify();}
-function recommendations(){return parse(localStorage.getItem(RECOMMENDATIONS_KEY),[]).filter(item=>item&&item.id&&item.setId);}
-function saveRecommendations(items){try{localStorage.setItem(RECOMMENDATIONS_KEY,JSON.stringify(items||[]));}catch(_){}notify();}
-function bankRecord(setId){return bank()?.bankIndex?.().find(item=>String(item.setId)===String(setId))||null;}
-function candidateFor(question,conditionId){return(question?.importedMappingCandidates||[]).find(item=>String(item?.conditionId)===String(conditionId))||null;}
-function pendingQuestions(set){return(set?.questions||[]).filter(question=>question?.questionType==='imported_textbook_sba'&&question?.importedMappingStatus==='pending'&&Array.isArray(question?.importedMappingCandidates)&&question.importedMappingCandidates.length);}
-function correctAnswerText(question){return(question?.options||[]).find(option=>String(option?.id)===String(question?.correctOptionId))?.text||'';}
-
+function workerUrl(){return clean(localStorage.getItem(WORKER_KEY))||WORKER_DEFAULT;}
+function queue(){return parse(localStorage.getItem(QUEUE_KEY),[]).filter(item=>item?.id&&item?.setId);}
+function activeJob(setId){return queue().find(item=>String(item.setId)===String(setId))||null;}
 function notify(){
-  document.dispatchEvent(new CustomEvent('ukmlaQuestionMappingRecommendationsChanged',{detail:{unread:unreadCount(),queued:queue().length}}));
-  scheduleUi();
+  document.dispatchEvent(new CustomEvent('ukmlaQuestionMappingProgress',{detail:{queue:queue()}}));
 }
-function unreadCount(){return recommendations().filter(item=>item.unread!==false).length;}
-
-async function enqueueSet(setId,options={}){
-  const api=bank();
-  if(!api?.loadSet)return false;
-  const set=await api.loadSet(setId);
-  const pending=pendingQuestions(set);
-  if(!pending.length)return false;
-  const items=queue();
-  if(!items.some(item=>String(item.setId)===String(setId))){
-    const record=bankRecord(setId);
-    items.push({
-      id:uid('mapping-job'),
-      setId:String(setId),
-      title:clean(options.title||record?.title||set?.topic||'Imported textbook questions'),
-      createdAt:now(),updatedAt:now(),status:'queued',attempts:0,nextAttemptAt:0,
-      progressDone:0,total:pending.length,lastError:''
-    });
-    saveQueue(items);
-  }
-  setTimeout(()=>void processQueue(),150);
-  return true;
+function saveQueue(items){
+  localStorage.setItem(QUEUE_KEY,JSON.stringify(items));
+  notify();
 }
-
-function requestItems(questions){
-  return questions.map(question=>({
-    itemId:String(question.id),
-    question:{
-      stem:question.stem||'',
-      leadIn:question.leadIn||'',
-      correctAnswer:correctAnswerText(question),
-      rationale:question.rationale||''
-    },
-    candidates:(question.importedMappingCandidates||[]).map(candidate=>({
-      conditionId:candidate.conditionId,
-      name:candidate.name,
-      topicId:candidate.topicId,
-      topicName:candidate.topicName,
-      fields:candidate.fields&&typeof candidate.fields==='object'?candidate.fields:{},
-      localScore:Number(candidate.localScore||0)
-    }))
-  }));
+function isImported(question){return question?.questionType==='imported_textbook_sba';}
+function correctAnswer(question){
+  return (question.options||[]).find(option=>String(option?.id)===String(question.correctOptionId))?.text||'';
 }
-
+function candidateList(question){
+  const match=importer();
+  if(!match?.shortlist||!match?.candidatePayload)throw new Error('Card atlas search is not ready.');
+  const enriched={...question,correctAnswerText:correctAnswer(question)};
+  return match.shortlist(enriched,CANDIDATE_COUNT).map(item=>{
+    const card=match.candidatePayload(item);
+    // Keep enough clinical context for Luna, without sending every long atlas field.
+    const fields={};
+    let budget=1100;
+    for(const [key,value] of Object.entries(card.fields||{})){
+      if(budget<=0)break;
+      const flat=typeof value==='string'?value:JSON.stringify(value);
+      const excerpt=String(flat??'').slice(0,Math.min(300,budget));
+      if(!excerpt)continue;
+      fields[key]=excerpt;
+      budget-=excerpt.length;
+    }
+    return {...card,fields};
+  });
+}
+function requestItems(batch){
+  const candidatesByQuestion=new Map();
+  const items=batch.map(question=>{
+    const candidates=candidateList(question);
+    candidatesByQuestion.set(String(question.id),candidates);
+    return {
+      itemId:String(question.id),
+      question:{
+        stem:question.stem||'',
+        leadIn:question.leadIn||'',
+        correctAnswer:correctAnswer(question),
+        rationale:question.rationale||''
+      },
+      candidates,
+      missingCardLimit:4
+    };
+  });
+  return {items,candidatesByQuestion};
+}
 async function callLuna(items){
   const auth=token();
-  if(!auth)throw new Error('Luna mapping is waiting for Jarvis 2 pairing.');
+  if(!auth)throw new Error('Luna is not paired with Jarvis 2.');
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
+  const timer=setTimeout(()=>controller.abort(),TIMEOUT_MS);
   try{
-    const response=await fetch(`${workerUrl()}${ENDPOINT}`,{
+    const response=await fetch(workerUrl()+ENDPOINT,{
       method:'POST',
-      headers:{Authorization:`Bearer ${auth}`,'Content-Type':'application/json','X-Jarvis-Client':'ukmla-v2-background-mapper'},
+      headers:{Authorization:'Bearer '+auth,'Content-Type':'application/json','X-Jarvis-Client':'ukmla-v2-question-mapper'},
       body:JSON.stringify({items}),cache:'no-store',signal:controller.signal
     });
     const data=await response.json().catch(()=>null);
-    if(!response.ok)throw new Error(data?.error||`Jarvis 2 returned ${response.status}.`);
-    return Array.isArray(data?.results)?data.results:[];
-  }catch(error){
-    if(error?.name==='AbortError')throw new Error('Luna mapping timed out; it will retry automatically.');
-    throw error;
+    if(!response.ok)throw new Error(data?.error||'Luna returned '+response.status+'.');
+    if(!Array.isArray(data?.results))throw new Error('Luna returned no mapping decisions.');
+    return data.results;
   }finally{clearTimeout(timer);}
 }
-
-function normaliseResults(set,rawResults){
-  const byId=new Map((set?.questions||[]).map(question=>[String(question.id),question]));
-  return(rawResults||[]).map(result=>{
-    const question=byId.get(String(result.itemId));
-    if(!question)return null;
-    const candidate=candidateFor(question,result.selectedConditionId);
-    if(result.status==='matched'&&candidate){
-      return{
-        questionId:String(question.id),questionNumber:Number(question.questionNumber||0),status:'matched',
-        selectedConditionId:String(candidate.conditionId),selectedConditionName:clean(candidate.name),
-        topicId:clean(candidate.topicId),topicName:clean(candidate.topicName),suggestedCardTitle:''
-      };
-    }
-    return{
-      questionId:String(question.id),questionNumber:Number(question.questionNumber||0),status:'unmapped',
-      selectedConditionId:'',selectedConditionName:'',topicId:'',topicName:'',
-      suggestedCardTitle:clean(result.suggestedCardTitle)||'New card needed'
-    };
-  }).filter(Boolean);
+function suggestions(result){
+  const values=[];
+  const add=item=>{
+    if(typeof item==='string'){const title=clean(item).slice(0,120);if(title&&!values.includes(title))values.push(title);}
+    else if(item&&typeof item==='object')add(item.title||item.name||item.suggestedCardTitle);
+  };
+  const returned=result?.suggestedCardTitles||result?.suggestedCards||result?.missingCards||[];
+  if(Array.isArray(returned))returned.forEach(add);
+  add(result?.suggestedCardTitle);
+  return values.slice(0,4);
 }
-
+function normaliseResults(batch,raw,candidatesByQuestion){
+  const byId=new Map(raw.map(item=>[String(item?.itemId||''),item]));
+  return batch.map(question=>{
+    const id=String(question.id),result=byId.get(id);
+    if(!result)throw new Error('Luna missed a question in its response; retrying this batch.');
+    if(result.status==='matched'){
+      const card=(candidatesByQuestion.get(id)||[]).find(item=>String(item.conditionId)===String(result.selectedConditionId));
+      if(!card||!core()?.App?.byId?.get(String(card.conditionId)))throw new Error('Luna selected an invalid card; retrying this batch.');
+      return {questionId:id,status:'matched',selectedConditionId:String(card.conditionId),
+        selectedConditionName:clean(card.name),topicId:clean(card.topicId),topicName:clean(card.topicName)};
+    }
+    if(result.status!=='unmapped')throw new Error('Luna returned an unrecognised mapping decision.');
+    return {questionId:id,status:'unmapped',suggestedCardTitles:suggestions(result),
+      missingCardExplanation:clean(result.missingCardExplanation||result.explanation||result.reason||'').slice(0,450)};
+  });
+}
+function storeJob(job){
+  const items=queue();
+  const index=items.findIndex(item=>item.id===job.id);
+  if(index<0)return false;
+  items[index]={...job,updatedAt:now()};
+  saveQueue(items);
+  return true;
+}
 function scheduleRetry(){
   clearTimeout(retryTimer);
   const items=queue();
-  if(!items.length)return;
-  const next=Math.min(...items.map(item=>Math.max(Date.now(),Number(item.nextAttemptAt||0))));
-  retryTimer=setTimeout(()=>void processQueue(),Math.max(1000,next-Date.now()+50));
+  if(!items.length||!token())return;
+  const soonest=Math.min(...items.map(item=>Math.max(Date.now(),Number(item.nextAttemptAt||0))));
+  retryTimer=setTimeout(()=>void processQueue(),Math.max(1000,soonest-Date.now()+50));
 }
-
-async function processJob(job){
+async function enqueueSet(setId){
   const api=bank();
-  const set=await api?.loadSet?.(job.setId);
-  if(!set)throw new Error('Saved question set is unavailable.');
-  const pending=pendingQuestions(set);
-  if(!pending.length)return{results:[],empty:true};
-  const results=[];
-  for(let offset=0;offset<pending.length;offset+=BATCH_SIZE){
-    const batch=pending.slice(offset,offset+BATCH_SIZE);
-    const raw=await callLuna(requestItems(batch));
-    results.push(...normaliseResults(set,raw));
-    job.progressDone=Math.min(pending.length,offset+batch.length);
-    job.updatedAt=now();
-    const items=queue();
-    const index=items.findIndex(item=>item.id===job.id);
-    if(index>=0){items[index]={...items[index],...job};saveQueue(items);}
-    await new Promise(resolve=>setTimeout(resolve,0));
-  }
-  const seen=new Set(results.map(item=>item.questionId));
-  for(const question of pending){
-    if(!seen.has(String(question.id)))results.push({
-      questionId:String(question.id),questionNumber:Number(question.questionNumber||0),status:'unmapped',
-      selectedConditionId:'',selectedConditionName:'',topicId:'',topicName:'',suggestedCardTitle:'New card needed'
-    });
-  }
-  return{results,empty:false};
+  if(!api?.loadSet)return false;
+  const set=await api.loadSet(setId);
+  const questions=(set?.questions||[]).filter(isImported);
+  if(!questions.length){core()?.toast('This set does not contain imported textbook questions.');return false;}
+  if(activeJob(setId)){core()?.toast('Luna mapping is already queued for this set.');return true;}
+  const id=String(setId),record=api.bankIndex?.().find(item=>String(item.setId)===id);
+  const job={id:uid(),setId:id,title:clean(record?.title||set.topic||'Imported questions'),
+    questionIds:questions.map(question=>String(question.id)),results:[],
+    createdAt:now(),updatedAt:now(),status:'queued',attempts:0,nextAttemptAt:0,
+    progressDone:0,total:questions.length,lastError:''};
+  saveQueue([...queue(),job]);
+  core()?.toast(token()?'Luna is mapping the saved questions.':'Mapping queued; pair Jarvis 2 to connect Luna.');
+  setTimeout(()=>void processQueue(),100);
+  return true;
 }
-
+function cancelSet(setId){
+  saveQueue(queue().filter(item=>String(item.setId)!==String(setId)));
+}
+async function processJob(job){
+  const set=await bank()?.loadSet?.(job.setId);
+  if(!set)throw new Error('Saved question set is not on this device.');
+  // Old queued jobs can be resumed after migration to the new implementation.
+  if(!Array.isArray(job.questionIds)||!job.questionIds.length){
+    job.questionIds=(set.questions||[]).filter(isImported).map(q=>String(q.id));
+    job.results=[];
+    job.total=job.questionIds.length;
+  }
+  const requested=new Set(job.questionIds.map(String));
+  const questions=(set.questions||[]).filter(q=>isImported(q)&&requested.has(String(q.id)));
+  const done=new Set((job.results||[]).map(item=>String(item.questionId)));
+  const remaining=questions.filter(question=>!done.has(String(question.id)));
+  job.total=questions.length;
+  for(let offset=0;offset<remaining.length;offset+=BATCH_SIZE){
+    const batch=remaining.slice(offset,offset+BATCH_SIZE);
+    const request=requestItems(batch);
+    const raw=await callLuna(request.items);
+    const result=normaliseResults(batch,raw,request.candidatesByQuestion);
+    if(!activeJob(job.setId))return false; // Removed while a network request was running.
+    job.results=[...(job.results||[]),...result];
+    job.progressDone=job.results.length;
+    job.status='running';
+    job.lastError='';
+    if(!storeJob(job))return false;
+  }
+  if(job.results.length!==questions.length)throw new Error('Not all questions received Luna decisions.');
+  if(!activeJob(job.setId))return false;
+  // Reload immediately before writing to preserve intervening question-bank updates.
+  const latest=await bank().loadSet(job.setId);
+  if(!latest||!activeJob(job.setId))return false;
+  const results=new Map(job.results.map(row=>[String(row.questionId),row]));
+  const mapped=[];
+  for(const question of latest.questions||[]){
+    const result=results.get(String(question.id));
+    if(!result)continue;
+    if(result.status==='matched'){
+      Object.assign(question,{
+        targetConditionId:result.selectedConditionId,targetCondition:result.selectedConditionName,
+        topicId:result.topicId,topicName:result.topicName,importedMappingStatus:'confirmed',
+        suggestedCardTitle:'',suggestedCardTitles:[],missingCardExplanation:'',
+        mappingModel:'Luna',mappingVerifiedAt:now()
+      });
+      mapped.push(question);
+    }else{
+      Object.assign(question,{
+        targetConditionId:'',targetCondition:'',topicId:'',topicName:'',
+        importedMappingStatus:'unmapped',suggestedCardTitle:result.suggestedCardTitles?.[0]||'',
+        suggestedCardTitles:result.suggestedCardTitles||[],
+        missingCardExplanation:result.missingCardExplanation||'',
+        mappingModel:'Luna',mappingVerifiedAt:now()
+      });
+    }
+    delete question.importedMappingCandidates;
+  }
+  const record=bank().bankIndex().find(row=>String(row.setId)===String(job.setId));
+  const saved=await bank().storeSet(latest,{
+    setId:job.setId,sourceType:latest.sourceType||'imported',
+    title:record?.title||job.title,verifiedAt:now(),
+    verificationLabel:'Original questions preserved · Luna card mapping complete'
+  });
+  if(!saved)throw new Error('Mapped question set could not be saved.');
+  // Backfill analytics for earlier attempts that preceded card mapping.
+  for(const question of mapped){
+    for(const attempt of bank().attempts?.().filter(item=>String(item.setId)===String(job.setId))||[]){
+      const answer=attempt.answers?.[String(question.id)];
+      if(!answer)continue;
+      const base={source:'imported',quizId:attempt.attemptId,questionId:String(question.id),
+        conditionId:question.targetConditionId,conditionName:question.targetCondition,
+        topicId:question.topicId,topicName:question.topicName,
+        questionType:question.questionType,questionTypeLabel:question.questionTypeLabel,
+        at:answer.answeredAt||now()};
+      core()?.logPresented({...base,id:'present:'+attempt.attemptId+':'+question.id});
+      core()?.logAnswered({...base,id:'answer:'+attempt.attemptId+':'+question.id,
+        presentationId:'present:'+attempt.attemptId+':'+question.id,
+        selectedOptionId:answer.selectedOptionId,
+        correctOptionId:answer.correctOptionId||question.correctOptionId,
+        correct:Boolean(answer.correct)});
+    }
+  }
+  document.dispatchEvent(new CustomEvent('ukmlaQuestionMappingUpdated',{detail:{setId:job.setId,completed:questions.length}}));
+  return true;
+}
 async function processQueue(){
-  if(processing)return;
-  const auth=token();
-  if(!auth){scheduleRetry();scheduleUi();return;}
-  const items=queue();
-  const job=items.find(item=>Number(item.nextAttemptAt||0)<=Date.now());
+  if(processing||!token())return;
+  const jobs=queue();
+  const job=jobs.find(item=>Number(item.nextAttemptAt||0)<=Date.now());
   if(!job){scheduleRetry();return;}
   processing=true;
   try{
-    job.status='running';job.updatedAt=now();job.lastError='';
-    saveQueue(items.map(item=>item.id===job.id?job:item));
-    const outcome=await processJob(job);
-    const nextQueue=queue().filter(item=>item.id!==job.id);
-    saveQueue(nextQueue);
-    if(!outcome.empty){
-      const recs=recommendations().filter(item=>String(item.setId)!==String(job.setId));
-      recs.unshift({
-        id:uid('mapping-recommendation'),setId:job.setId,title:job.title,createdAt:job.createdAt,
-        completedAt:now(),unread:true,appliedAt:'',results:outcome.results
-      });
-      saveRecommendations(recs.slice(0,50));
-      core()?.toast(`Luna finished card recommendations for ${job.title}.`);
+    job.status='running';
+    job.lastError='';
+    storeJob(job);
+    const success=await processJob(job);
+    if(success){
+      cancelSet(job.setId);
+      core()?.toast('Luna finished mapping '+job.title+'.');
     }
   }catch(error){
-    const failed=queue();
-    const index=failed.findIndex(item=>item.id===job.id);
-    if(index>=0){
-      const attempts=Number(failed[index].attempts||0)+1;
-      failed[index]={...failed[index],status:'queued',attempts,lastError:clean(error?.message||error),updatedAt:now(),nextAttemptAt:Date.now()+Math.min(5*60*1000,RETRY_BASE_MS*Math.pow(2,Math.min(3,attempts-1)))};
-      saveQueue(failed);
+    const existing=activeJob(job.setId);
+    if(existing){
+      const attempts=Number(existing.attempts||0)+1;
+      existing.status='queued';
+      existing.lastError=clean(error?.message||error);
+      existing.attempts=attempts;
+      existing.nextAttemptAt=Date.now()+Math.min(300000,30000*Math.pow(2,Math.min(3,attempts-1)));
+      storeJob(existing);
     }
   }finally{
     processing=false;
     scheduleRetry();
-    setTimeout(()=>void processQueue(),250);
+    if(queue().some(item=>Number(item.nextAttemptAt||0)<=Date.now()))setTimeout(()=>void processQueue(),200);
   }
 }
-
-async function applyRecommendation(id){
-  const recs=recommendations();
-  const rec=recs.find(item=>item.id===id);
-  if(!rec)return false;
-  const api=bank();
-  const set=await api?.loadSet?.(rec.setId);
-  if(!set)return false;
-  const resultMap=new Map((rec.results||[]).map(result=>[String(result.questionId),result]));
-  for(const question of set.questions||[]){
-    const result=resultMap.get(String(question.id));
-    if(!result)continue;
-    if(result.status==='matched'){
-      question.targetConditionId=result.selectedConditionId;
-      question.targetCondition=result.selectedConditionName;
-      question.topicId=result.topicId;
-      question.topicName=result.topicName;
-      question.importedMappingStatus='confirmed';
-      question.suggestedCardTitle='';
-    }else{
-      question.targetConditionId='';question.targetCondition='';question.topicId='';question.topicName='';
-      question.importedMappingStatus='unmapped';
-      question.suggestedCardTitle=result.suggestedCardTitle||'New card needed';
-    }
-    delete question.importedMappingCandidates;
-  }
-  const record=bankRecord(rec.setId);
-  await api.storeSet(set,{
-    setId:rec.setId,sourceType:set.sourceType||'knowledge',title:record?.title||rec.title,
-    verifiedAt:now(),verificationLabel:'Original textbook wording preserved · Luna card recommendations applied'
+function init(){
+  setTimeout(()=>void processQueue(),900);
+  setInterval(()=>void processQueue(),60000);
+  window.addEventListener('storage',event=>{
+    if(event.key===TOKEN_KEY||event.key===QUEUE_KEY)setTimeout(()=>void processQueue(),200);
   });
-  rec.appliedAt=now();rec.unread=false;
-  saveRecommendations(recs);
-  core()?.toast('Luna card recommendations applied to the saved questions.');
-  return true;
 }
-
-function exportRecommendation(id){
-  const rec=recommendations().find(item=>item.id===id);
-  if(!rec)return false;
-  const matchedIds=[...new Set((rec.results||[]).filter(item=>item.status==='matched').map(item=>item.selectedConditionId))];
-  const cards=matchedIds.map(id=>core()?.App?.byId?.get(id)).filter(Boolean).map(clone);
-  const missing=(rec.results||[]).filter(item=>item.status==='unmapped').map(item=>({questionId:item.questionId,questionNumber:item.questionNumber,suggestedCardTitle:item.suggestedCardTitle}));
-  const payload={schemaVersion:'ukmla-recommended-cards-v1',sourceSetId:rec.setId,sourceTitle:rec.title,generatedAt:rec.completedAt,recommendedCards:cards,suggestedFutureCards:missing};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`ukmla-recommended-cards-${String(rec.setId).replace(/[^a-z0-9_-]+/gi,'-')}.json`;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-  return true;
-}
-
-function dismissRecommendation(id){
-  const recs=recommendations();
-  const rec=recs.find(item=>item.id===id);if(!rec)return;
-  rec.unread=false;saveRecommendations(recs);
-}
-
-function injectStyle(){
-  if(document.getElementById('ukmla-luna-map-style'))return;
-  const style=document.createElement('style');style.id='ukmla-luna-map-style';style.textContent=`
-  .luna-map-wrap{position:relative;display:inline-flex}.luna-map-button{position:relative}.luna-map-badge{display:inline-flex;min-width:1.25rem;height:1.25rem;padding:0 .32rem;align-items:center;justify-content:center;border-radius:999px;background:var(--danger,#b33);color:#fff;font-size:.72rem;font-weight:800;margin-left:.35rem}.luna-map-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:120;width:min(430px,92vw);max-height:68vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 18px 50px rgba(0,0,0,.24)}.luna-map-menu[hidden]{display:none}.luna-map-job,.luna-map-rec{padding:10px;border:1px solid var(--line);border-radius:12px;margin:8px 0}.luna-map-rec ul{margin:8px 0;padding-left:18px}.luna-map-rec .card-actions{gap:6px}.luna-map-muted{color:var(--muted);font-size:.82rem}@media(max-width:700px){.luna-map-menu{position:fixed;left:12px;right:12px;top:118px;width:auto;max-height:68vh}}
-  `;document.head.appendChild(style);
-}
-
-function menuHtml(){
-  const jobs=queue();
-  const recs=recommendations().slice(0,8);
-  const jobHtml=jobs.map(job=>`<div class="luna-map-job"><strong>${escapeHtml(job.title)}</strong><div class="luna-map-muted">${job.status==='running'?'Mapping':token()?'Queued':'Waiting for Jarvis pairing'} · ${Number(job.progressDone||0)}/${Number(job.total||0)}</div>${job.lastError?`<div class="luna-map-muted">${escapeHtml(job.lastError)}</div>`:''}</div>`).join('');
-  const recHtml=recs.map(rec=>{
-    const matched=(rec.results||[]).filter(item=>item.status==='matched');
-    const missing=(rec.results||[]).filter(item=>item.status==='unmapped');
-    const preview=[...matched.slice(0,4).map(item=>`Q${item.questionNumber||'?'} → ${escapeHtml(item.selectedConditionName)}`),...missing.slice(0,2).map(item=>`Q${item.questionNumber||'?'} → ${escapeHtml(item.suggestedCardTitle||'New card needed')}`)];
-    return`<div class="luna-map-rec" data-rec-id="${escapeHtml(rec.id)}"><strong>${escapeHtml(rec.title)}</strong><div class="luna-map-muted">${matched.length} card match${matched.length===1?'':'es'} · ${missing.length} possible card gap${missing.length===1?'':'s'}${rec.appliedAt?' · applied':''}</div>${preview.length?`<ul>${preview.map(text=>`<li>${text}</li>`).join('')}</ul>`:''}<div class="card-actions"><button class="btn" data-luna-export="${escapeHtml(rec.id)}">Export recommended cards</button>${rec.appliedAt?'':`<button class="btn primary" data-luna-apply="${escapeHtml(rec.id)}">Apply recommendations</button>`}<button class="btn" data-luna-dismiss="${escapeHtml(rec.id)}">Dismiss</button></div></div>`;
-  }).join('');
-  return`${jobs.length?`<div class="eyebrow">Background mapping</div>${jobHtml}`:''}<div class="eyebrow" style="margin-top:${jobs.length?'12px':'0'}">Luna recommendations</div>${recHtml||'<p class="luna-map-muted">No completed recommendations yet.</p>'}`;
-}
-
-function ensureControl(){
-  if(!onQuestionsRoute())return;
-  injectStyle();
-  const head=document.querySelector('#app .page-head');if(!head)return;
-  let actions=head.querySelector('.page-actions');if(!actions){actions=document.createElement('div');actions.className='page-actions';head.appendChild(actions);}
-  let wrap=actions.querySelector('[data-luna-map-control]');
-  if(!wrap){
-    wrap=document.createElement('div');wrap.className='luna-map-wrap';wrap.dataset.lunaMapControl='1';
-    wrap.innerHTML='<button class="btn luna-map-button" type="button" data-luna-map-toggle aria-expanded="false">Luna <span class="luna-map-badge" hidden></span></button><div class="luna-map-menu" data-luna-map-menu hidden></div>';
-    actions.appendChild(wrap);
-    const button=wrap.querySelector('[data-luna-map-toggle]');const menu=wrap.querySelector('[data-luna-map-menu]');
-    button.addEventListener('click',()=>{const open=menu.hidden;menu.hidden=!open;button.setAttribute('aria-expanded',open?'true':'false');if(open)renderControl();});
-    menu.addEventListener('click',event=>{
-      const apply=event.target.closest('[data-luna-apply]');if(apply)void applyRecommendation(apply.dataset.lunaApply).then(renderControl);
-      const exp=event.target.closest('[data-luna-export]');if(exp)exportRecommendation(exp.dataset.lunaExport);
-      const dismiss=event.target.closest('[data-luna-dismiss]');if(dismiss){dismissRecommendation(dismiss.dataset.lunaDismiss);renderControl();}
-    });
-  }
-  renderControl();
-}
-
-function renderControl(){
-  const wrap=document.querySelector('[data-luna-map-control]');if(!wrap)return;
-  const badge=wrap.querySelector('.luna-map-badge');const count=unreadCount();const jobs=queue().length;
-  badge.textContent=String(count||jobs);badge.hidden=!(count||jobs);
-  const menu=wrap.querySelector('[data-luna-map-menu]');if(menu&&!menu.hidden)menu.innerHTML=menuHtml();
-}
-
-let uiScheduled=false;
-function scheduleUi(){if(uiScheduled)return;uiScheduled=true;requestAnimationFrame(()=>{uiScheduled=false;ensureControl();});}
-function initObserver(){
-  if(observer)return;
-  const app=document.getElementById('app');if(!app)return;
-  observer=new MutationObserver(scheduleUi);observer.observe(app,{childList:true,subtree:true});
-  window.addEventListener('hashchange',()=>setTimeout(scheduleUi,0));
-  document.addEventListener('ukmlaQuestionBankChanged',scheduleUi);
-  scheduleUi();
-}
-
-function init(){initObserver();setTimeout(()=>void processQueue(),900);setInterval(()=>void processQueue(),60000);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-
-window.UKMLA_QUESTION_MAPPING={enqueueSet,processQueue,recommendations,unreadCount,applyRecommendation,exportRecommendation,dismissRecommendation,queue};
+window.UKMLA_QUESTION_MAPPING={enqueueSet,processQueue,queue,activeJob,cancelSet};
 })();

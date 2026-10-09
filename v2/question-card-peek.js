@@ -4,7 +4,6 @@
   const HOLD_MS=260;
   const cache=new Map();
   let observer=null;
-  let resolving=false;
   let holdTimer=null;
   let activeOverlay=null;
 
@@ -41,6 +40,13 @@
   }
 
   async function resolveQuestion(article){
+    const directSetId=article.dataset.bankSetId;
+    const directQuestionId=article.dataset.bankQuestionId;
+    if(directSetId&&directQuestionId){
+      const set=await bank()?.loadSet?.(directSetId);
+      const question=set?.questions?.find(item=>String(item.id)===String(directQuestionId));
+      return question?{question,setId:directSetId}:null;
+    }
     const sig=signature(article);
     if(!sig.stem)return null;
     if(cache.has(sig.key))return cache.get(sig.key);
@@ -106,8 +112,17 @@
     if(card){
       const rows=fieldRows(card);
       overlay.innerHTML=`<article class="bank-card-peek-sheet" role="dialog" aria-label="Mapped card: ${escapeHtml(card.name||question?.targetCondition||'Card')}"><div class="bank-card-peek-kicker">Mapped card${card.topic?` · ${escapeHtml(card.topic)}`:''}</div><h2>${escapeHtml(card.name||question?.targetCondition||'Mapped card')}</h2>${rows.length?`<div class="bank-card-peek-fields">${rows.map(([key,value])=>`<section><h3>${escapeHtml(labelFor(key))}</h3><p>${escapeHtml(value)}</p></section>`).join('')}</div>`:'<p class="bank-card-peek-empty">This card has no additional text fields.</p>'}<small>Release ? to return to the question.</small></article>`;
+    }else if(question?.questionType==='imported_textbook_sba'&&question.importedMappingStatus==='unmapped'&&question.mappingModel==='Luna'){
+      const titles=[...new Set((Array.isArray(question.suggestedCardTitles)?question.suggestedCardTitles:[])
+        .concat(question.suggestedCardTitle||[]).map(clean).filter(Boolean))].slice(0,4);
+      const list=titles.length
+        ?'<h3>Cards Luna recommends adding</h3><ol class="bank-card-gap-list">'+titles.map(title=>'<li>'+escapeHtml(title)+'</li>').join('')+'</ol>'
+        :'<p>Luna did not identify a sufficiently specific replacement card.</p>';
+      const explanation=clean(question.missingCardExplanation||'');
+      overlay.innerHTML='<article class="bank-card-peek-sheet bank-card-peek-empty-sheet" role="dialog" aria-label="Luna learning material gap"><div class="bank-card-peek-kicker">Luna · Learning material gap</div><h2>No appropriate card in this atlas</h2><p>Luna could not confidently match the learning topic covered by this question to an existing card.</p>'+list+(explanation?'<p class="bank-card-gap-explanation">'+escapeHtml(explanation)+'</p>':'')+'<small>These are suggested additions, not installed cards. Release ? to return to the question.</small></article>';
     }else{
-      overlay.innerHTML='<article class="bank-card-peek-sheet bank-card-peek-empty-sheet" role="dialog" aria-label="No mapped card"><div class="bank-card-peek-kicker">Card mapping</div><h2>No mapped card</h2><p>This question is not currently linked to a card in the atlas.</p><small>Release ? to return to the question.</small></article>';
+      const awaiting=question?.questionType==='imported_textbook_sba'&&question?.importedMappingStatus==='pending';
+      overlay.innerHTML='<article class="bank-card-peek-sheet bank-card-peek-empty-sheet" role="dialog" aria-label="No mapped card"><div class="bank-card-peek-kicker">Card mapping</div><h2>No mapped card</h2><p>'+(awaiting?'Luna has not mapped this imported question yet. Use Map Questions in the Question Bank.':'This question is not currently linked to a card in the atlas.')+'</p><small>Release ? to return to the question.</small></article>';
     }
     document.body.appendChild(overlay);
     activeOverlay=overlay;
@@ -145,7 +160,7 @@
   }
 
   async function enhance(article){
-    if(!article?.isConnected||article.dataset.cardPeekEnhanced==='1'||resolving)return;
+    if(!article?.isConnected||article.dataset.cardPeekEnhanced==='1')return;
     article.dataset.cardPeekEnhanced='1';
     const top=article.querySelector('.bank-player-top');
     if(!top)return;
@@ -161,9 +176,7 @@
     const status=top.querySelector('[data-shared-status-label]');
     if(status)top.insertBefore(button,status);else top.appendChild(button);
 
-    resolving=true;
-    let resolved=null;
-    try{resolved=await resolveQuestion(article);}finally{resolving=false;}
+    const resolved=await resolveQuestion(article).catch(()=>null);
     if(!article.isConnected)return;
     const question=resolved?.question||null;
     const card=cardForQuestion(question);
@@ -185,6 +198,15 @@
     observer=new MutationObserver(()=>scan());
     observer.observe(app,{childList:true,subtree:true});
     window.addEventListener('hashchange',hideOverlay);
+    document.addEventListener('ukmlaQuestionMappingUpdated',()=>{
+      cache.clear();hideOverlay();
+      document.querySelectorAll('.bank-player[data-card-peek-enhanced="1"]').forEach(article=>{
+        article.querySelector('.bank-card-peek-button')?.remove();
+        article.querySelector('.bank-player-top')?.classList.remove('has-card-peek');
+        delete article.dataset.cardPeekEnhanced;
+      });
+      scan();
+    });
     document.addEventListener('visibilitychange',()=>{if(document.hidden)hideOverlay();});
     scan();
   }
