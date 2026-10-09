@@ -149,6 +149,22 @@
         "NICE NG19: Charcot arthropathy — recognition, imaging, referral and off-loading",
         "NHS Tayside diabetic foot pathway teaching, 25 Sep 2026"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Infant supraventricular tachycardia (SVT)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "ABCDE, assess perfusion and obtain 12-lead ECG/rhythm strip. SVT is typically abrupt, fixed-rate, regular narrow-complex tachycardia, often >220/min in infants, with absent or retrograde P waves; monitor BP and SpO2.",
+        "treatment": "Haemodynamically stable regular narrow-complex SVT: under clinical monitoring, briefly apply an ice/cold pack to the infant's upper face to trigger the vagal diving reflex. Keep nose and mouth unobstructed; do not submerge the infant or press the eyes. Vagal stimulation temporarily slows AV-nodal conduction and may terminate AV-node-dependent re-entry. Older cooperative children: modified Valsalva.",
+        "escalation": "If vagal manoeuvres fail, give rapid IV adenosine with ECG monitoring, appropriate access and paediatric support. Decompensated circulatory failure: immediate synchronised cardioversion, starting at 1 J/kg and doubling up to 4 J/kg; do not delay for vagal manoeuvres. Seek paediatric cardiology advice.",
+        "mimics": "Sinus tachycardia due to fever, pain, dehydration or sepsis (variable rate, usually discernible sinus P waves); atrial flutter, focal atrial tachycardia and ventricular tachycardia.",
+        "redFlags": "Poor feeding, pallor, lethargy, irritability, diaphoresis, prolonged persistent tachycardia, hypotension, reduced consciousness, hepatomegaly/heart failure or shock."
+      },
+      "sourceReview": [
+        "Resuscitation Council UK 2025 Paediatric Life Support (basic and advanced), tachyarrhythmia section: https://www.resus.org.uk/professional-library/2025-resuscitation-guidelines/paediatric-basic-life-support-guidelines"
+      ]
     }
   ]
 }
