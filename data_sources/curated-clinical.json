@@ -238,6 +238,41 @@
         "NaTHNaC — Pregnancy and travel: https://travelhealthpro.org.uk/factsheets/pregnancy",
         "UKHSA — Malaria prevention guidelines for travellers from the UK 2026: https://www.gov.uk/government/publications/malaria-prevention-guidelines-for-travellers-from-the-uk-2026/general-issues"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Cardiovascular Problems",
+      "name": "Atrial fibrillation stroke prevention: CHA2DS2-VASc and anticoagulation threshold",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "For confirmed AF (paroxysmal, persistent or permanent) or atrial flutter, calculate CHA2DS2-VASc: C heart failure (1); H hypertension (1); A2 age ≥75 (2); D diabetes (1); S2 prior stroke/TIA/systemic embolus (2); V vascular disease (1); A age 65–74 (1); Sc female sex (1). Also assess ORBIT bleeding risk, FBC, U&E/renal function, LFTs and interactions.",
+        "treatment": "NICE NG196: offer a DOAC (apixaban, dabigatran, edoxaban or rivaroxaban) when CHA2DS2-VASc ≥2, taking bleeding risk into account; consider a DOAC in men scoring 1. Do not anticoagulate people <65 with no risk factors other than sex (0 men, 1 women). If a DOAC is unsuitable, consider a vitamin K antagonist. Aspirin monotherapy is NOT AF stroke prophylaxis.",
+        "escalation": "Make a shared decision using stroke risk, ORBIT bleeding risk, comorbidities and contraindications; calculate Cockcroft–Gault creatinine clearance for DOAC dosing. Review risks and anticoagulant treatment at least annually, and sooner if risk changes. After cardioversion or successful ablation, do not stop anticoagulation solely because AF is no longer detectable.",
+        "mimics": "CHA2DS2-VASc predicts ischaemic stroke/systemic embolism, not bleeding (ORBIT). AF symptoms or ventricular rate do not determine thromboembolic risk. Mechanical prosthetic valves or moderate/severe mitral stenosis need specific anticoagulant guidance rather than routine DOAC selection.",
+        "redFlags": "Previous stroke/TIA, age ≥75, very recent embolic event, possible contraindication such as active major bleeding, and renal impairment affecting DOAC selection/dose. Age or falls risk alone is not a reason to withhold anticoagulation."
+      },
+      "sourceReview": [
+        "NICE NG196 Atrial fibrillation: diagnosis and management, sections 1.2, 1.6 and 1.11: https://www.nice.org.uk/guidance/ng196/chapter/recommendations",
+        "NICE NG196 AF management algorithms: https://www.nice.org.uk/guidance/ng196/resources/algorithms-for-atrial-fibrillation-diagnosis-and-management-pdf-9082104877"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Cardiovascular Problems",
+      "name": "CHA2DS2-VASc versus ORBIT: stroke and bleeding risk assessment",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Calculate both scores when considering/continuing AF anticoagulation. CHA2DS2-VASc = stroke risk; ORBIT = major bleeding risk. ORBIT: age ≥75 (1); reduced Hb/anaemia or low haematocrit (2); prior bleeding (2); eGFR <60 mL/min/1.73m² (1); concomitant antiplatelet therapy (1). ORBIT 0–2 low, 3 medium, ≥4 high bleeding risk.",
+        "treatment": "Use CHA2DS2-VASc to guide anticoagulation decisions (NICE: offer DOAC if ≥2; consider in men if 1). Use ORBIT to communicate bleeding risk, correct modifiable risks (uncontrolled BP, antiplatelets/NSAIDs, harmful alcohol use; poor INR control on warfarin), and plan monitoring. An elevated ORBIT score is not in itself a contraindication to anticoagulation.",
+        "escalation": "Review anticoagulant treatment and stroke/bleeding risks at least annually or after a clinical change, bleeding event or deterioration in renal function. Severe unexplained anaemia, recurrent major bleeding or difficult combinations of antiplatelet and anticoagulant therapy merit specialist review; urgent assessment for active major bleeding.",
+        "mimics": "Do not swap the two scores: HAS-BLED is another bleeding score, but NICE favours ORBIT for prediction of absolute major bleeding risk. Anticoagulation selection is not driven by AF rate/rhythm symptoms or a successful return to sinus rhythm alone.",
+        "redFlags": "Active major bleeding, intracranial haemorrhage symptoms, unexplained marked anaemia, uncontrolled severe hypertension, renal deterioration or dual antithrombotic therapy increasing bleeding risk. Do not deny anticoagulation solely for age, falls or a high ORBIT score."
+      },
+      "sourceReview": [
+        "NICE NG196, section 1.2 Assessment of stroke and bleeding risks: https://www.nice.org.uk/guidance/ng196/chapter/recommendations",
+        "NICE NG196 evidence review E and F: risk tools for predicting bleeding: https://www.nice.org.uk/guidance/ng196/evidence/e-and-f-risk-stratification-tools-for-predicting-bleeding-in-people-with-atrial-fibrillation-pdf-9081923441",
+        "O'Brien et al. ORBIT bleeding score, European Heart Journal 2015: https://pmc.ncbi.nlm.nih.gov/articles/PMC4670965/"
+      ]
     }
   ]
 }
