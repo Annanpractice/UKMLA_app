@@ -200,6 +200,44 @@
         "UK electronic medicines compendium (eMC), Metformin Hydrochloride 500 mg SmPC, sections 4.2-4.4 and 5.1 (updated July 2025): https://www.medicines.org.uk/emc/product/13959/smpc",
         "Rena G et al., The mechanisms of action of metformin (Diabetologia 2017): https://pubmed.ncbi.nlm.nih.gov/28776086/"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Infectious Disease",
+      "name": "Zika virus: travel prevention and absence of a vaccine",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Travel and mosquito/sexual exposure history; often asymptomatic. Symptomatic Zika may cause mild fever, rash, arthralgia and conjunctivitis. Assess pregnancy status; discuss appropriate Zika testing with infection specialists/UKHSA if indicated. Urgently exclude malaria in a febrile traveller returning from a malaria-risk area.",
+        "treatment": "No licensed Zika vaccine, preventive drug or specific antiviral treatment. Prevention is daytime Aedes bite avoidance: 50% DEET repellent if suitable (including pregnancy; age over 2 months), covering clothing and insecticide-treated nets/screens. Symptomatic care: fluids and paracetamol; avoid NSAIDs until dengue is excluded.",
+        "escalation": "Pregnant travellers or those planning pregnancy need pre-travel risk discussion; during major outbreaks consider deferring non-essential travel. After possible exposure in pregnancy, seek midwife/GP assessment even if asymptomatic. For pregnancy planning, UKHSA advises protection against conception/sexual transmission for 2 months after a female traveller's last possible exposure and 3 months after male or both partners' exposure; use barriers throughout pregnancy if a partner has been exposed.",
+        "mimics": "Dengue, chikungunya, malaria, rubella, measles and other viral exanthems; distinguish Zika (no vaccine) from vaccine-preventable yellow fever or Japanese encephalitis.",
+        "redFlags": "Pregnancy with possible Zika exposure (congenital Zika syndrome/microcephaly risk), severe neurological symptoms such as ascending weakness (Guillain-Barré), dehydration or haemodynamic instability, or fever after travel to a malaria-endemic area."
+      },
+      "sourceReview": [
+        "NaTHNaC TravelHealthPro — Zika virus: https://travelhealthpro.org.uk/diseases/zika-virus",
+        "UKHSA — Zika virus: transmission (updated 1 April 2026): https://www.gov.uk/government/publications/zika-virus-transmission/zika-virus-transmission",
+        "UKHSA — Zika virus: preventing infection by sexual transmission: https://www.gov.uk/guidance/zika-virus-preventing-infection-by-sexual-transmission",
+        "NaTHNaC — Insect and tick bite avoidance: https://travelhealthpro.org.uk/factsheet/38/insect-and-tick-bite-avoidance"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "Travel vaccinations: indications by destination and traveller risk",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Pre-travel assessment: destination/region, route, season, duration, activities, accommodation, prior vaccines, age, pregnancy, immunosuppression, medication and allergies. Check NaTHNaC TravelHealthPro country recommendations and UK routine immunisation status; book ideally 4–6 weeks before departure.",
+        "treatment": "Update routine vaccines (e.g. MMR and tetanus/diphtheria/polio) as indicated. Offer destination/exposure-specific vaccines after risk assessment: hepatitis A, typhoid, cholera, hepatitis B, rabies, Japanese encephalitis, tick-borne encephalitis and yellow fever where appropriate. Certain vaccines/proof of vaccination may be entry requirements; confirm with destination guidance.",
+        "escalation": "Seek travel clinic/specialist advice for pregnancy, immunosuppression, complex medical conditions, young infants, vaccine allergies, live-vaccine precautions or yellow fever certification. Last-minute travellers still benefit from assessment; plan multi-dose schedules and advise if immunity will be incomplete.",
+        "mimics": "Vaccination is distinct from malaria chemoprophylaxis and mosquito-bite precautions. No vaccine is available against Zika, and many travel infections require food/water or insect-bite prevention even when other vaccines have been administered.",
+        "redFlags": "Live vaccines may be contraindicated in severe immunosuppression and generally avoided in pregnancy; unavoidable exposure to yellow fever requires specialist risk assessment. Unvaccinated measles exposure, travel to high-risk outbreak regions, or post-travel fever (especially malaria risk) requires prompt clinical action."
+      },
+      "sourceReview": [
+        "NHS — Travel vaccinations (reviewed 30 April 2026): https://www.nhs.uk/vaccinations/travel-vaccinations/",
+        "NaTHNaC — General travel advice: https://travelhealthpro.org.uk/factsheet/30/general-advice-for-travellers",
+        "NaTHNaC — Pregnancy and travel: https://travelhealthpro.org.uk/factsheets/pregnancy",
+        "UKHSA — Malaria prevention guidelines for travellers from the UK 2026: https://www.gov.uk/government/publications/malaria-prevention-guidelines-for-travellers-from-the-uk-2026/general-issues"
+      ]
     }
   ]
 }
