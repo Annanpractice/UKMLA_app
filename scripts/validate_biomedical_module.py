@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 876
+EXPECTED_TOTAL = 878
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -60,6 +60,8 @@ CURATED_CLINICAL_SENTINELS = {
     "Metformin: mechanism of glucose lowering",
     "Zika virus: travel prevention and absence of a vaccine",
     "Travel vaccinations: indications by destination and traveller risk",
+    "Atrial fibrillation stroke prevention: CHA2DS2-VASc and anticoagulation threshold",
+    "CHA2DS2-VASc versus ORBIT: stroke and bleeding risk assessment",
     "Deteriorating ward patient: first response",
     "Needlestick and sharps exposure",
     "MRI safety screening before scanning",
