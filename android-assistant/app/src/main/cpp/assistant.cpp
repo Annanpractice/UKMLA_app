@@ -42,7 +42,7 @@ Java_uk_co_qwen_assistant_Native_load(JNIEnv* e, jobject, jstring path) {
     mp.n_gpu_layers=0;
     model=llama_model_load_from_file(modelPath.c_str(),mp);
     if(!model) {
-        error(e,"Could not load the Qwen GGUF on CPU. Reimport the recommended model and retry.");
+        error(e,"Could not load the Gemma 4 GGUF on CPU. Reimport the recommended model and retry.");
         return;
     }
 
@@ -56,7 +56,7 @@ Java_uk_co_qwen_assistant_Native_load(JNIEnv* e, jobject, jstring path) {
     if(!ctx) {
         llama_model_free(model);
         model=nullptr;
-        error(e,"Could not initialise Qwen on CPU. Close other heavy apps and retry.");
+        error(e,"Could not initialise Gemma 4 on CPU. Close other heavy apps and retry.");
         return;
     }
 }
@@ -81,20 +81,15 @@ Java_uk_co_qwen_assistant_Native_generate(
     for(int i=0;i<n;i+=512) {
         if(cancelled) return e->NewByteArray(0);
         if(llama_decode(ctx,llama_batch_get_one(tokens.data()+i,std::min(512,n-i)))) {
-            error(e,"Qwen could not process this prompt.");
+            error(e,"Gemma 4 could not process this prompt.");
             return nullptr;
         }
     }
 
     auto sampler=llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(sampler,llama_sampler_init_top_k(20));
-    if(thinkingMode) {
-        llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.95f,1));
-        llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.6f));
-    } else {
-        llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.8f,1));
-        llama_sampler_chain_add(sampler,llama_sampler_init_temp(0.7f));
-    }
+    llama_sampler_chain_add(sampler,llama_sampler_init_top_k(64));
+    llama_sampler_chain_add(sampler,llama_sampler_init_top_p(0.95f,1));
+    llama_sampler_chain_add(sampler,llama_sampler_init_temp(1.0f));
     const auto now=std::chrono::high_resolution_clock::now().time_since_epoch().count();
     llama_sampler_chain_add(sampler,llama_sampler_init_dist((uint32_t)now));
 
