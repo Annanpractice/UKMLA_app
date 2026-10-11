@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     companion object {
-        private const val MODEL_URL="https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf?download=true"
+        private const val MODEL_URL="https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf?download=true"
         private const val IMPORT_REQUEST=42
         private val fileWorker=Executors.newSingleThreadExecutor()
     }
@@ -53,7 +53,7 @@ class MainActivity : Activity() {
     private var tts:TextToSpeech?=null
     private var ttsReady=false
 
-    private val modelFile get()=File(filesDir,"qwen3-4b-q4km.gguf")
+    private val modelFile get()=File(filesDir,"gemma4-e4b-it-q4km.gguf")
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
 
     private val inferenceReceiver=object:BroadcastReceiver() {
@@ -129,8 +129,8 @@ class MainActivity : Activity() {
             gravity=Gravity.CENTER_VERTICAL
         }
         val titles=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        titles.addView(label("Local Qwen",24f).apply { typeface=Typeface.DEFAULT_BOLD;setPadding(0,0,0,0) })
-        titles.addView(label("Qwen3 4B · completely on-device",11f,muted).apply { setPadding(0,0,0,0) })
+        titles.addView(label("Local Gemma",24f).apply { typeface=Typeface.DEFAULT_BOLD;setPadding(0,0,0,0) })
+        titles.addView(label("Gemma 4 E4B · completely on-device",11f,muted).apply { setPadding(0,0,0,0) })
         header.addView(titles,LinearLayout.LayoutParams(0,-2,1f))
         header.addView(smallButton("New") { newChat() })
         header.addView(smallButton("Model") { modelDialog() })
@@ -170,7 +170,7 @@ class MainActivity : Activity() {
         root.addView(chatScroll,LinearLayout.LayoutParams(-1,0,1f))
 
         input=EditText(this).apply {
-            hint="Message Qwen…"
+            hint="Message Gemma…"
             setHintTextColor(muted)
             setTextColor(textColor)
             textSize=16f
@@ -237,7 +237,7 @@ class MainActivity : Activity() {
                 setPadding(dp(16),dp(14),dp(16),dp(14))
             }
             intro.addView(label("A deliberately small local assistant",18f).apply { typeface=Typeface.DEFAULT_BOLD })
-            intro.addView(label("Fast mode uses Qwen's /no_think switch. Think mode lets Qwen reason first and can take several minutes. Medical mode adds one short clinical instruction; General mode adds no system prompt.",14f,muted))
+            intro.addView(label("Fast mode answers directly. Think mode enables Gemma 4's native thinking control and can take longer. Medical mode adds one short clinical instruction; General mode adds no system prompt.",14f,muted))
             chat.addView(intro)
         }
         history.forEach { turn ->
@@ -317,7 +317,7 @@ class MainActivity : Activity() {
         val user=input.text.toString().trim()
         if(user.isBlank())return
         if(!modelFile.exists()) {
-            Toast.makeText(this,"Import the Qwen3 4B GGUF first.",Toast.LENGTH_LONG).show()
+            Toast.makeText(this,"Import the Gemma 4 E4B Q4_K_M GGUF first.",Toast.LENGTH_LONG).show()
             modelDialog()
             return
         }
@@ -338,7 +338,7 @@ class MainActivity : Activity() {
             putExtra(BackgroundInferenceService.EXTRA_USER,user)
             putExtra(BackgroundInferenceService.EXTRA_THINKING,thinking)
             putExtra(BackgroundInferenceService.EXTRA_MEDICAL,medical)
-            putExtra(BackgroundInferenceService.EXTRA_MAX_TOKENS,if(thinking)768 else 512)
+            putExtra(BackgroundInferenceService.EXTRA_MAX_TOKENS,if(thinking)1024 else 512)
         }
         try {
             if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
@@ -456,8 +456,8 @@ class MainActivity : Activity() {
 
     private fun updateStatus(custom:String?=null) {
         status.text=custom ?: when {
-            BackgroundInferenceService.isRunning(this) -> "Local Qwen is working in background"
-            modelFile.exists() -> "Qwen3 4B Q4_K_M • CPU • offline"
+            BackgroundInferenceService.isRunning(this) -> "Local Gemma is working in background"
+            modelFile.exists() -> "Gemma 4 E4B Q4_K_M • CPU • offline"
             else -> "Model not imported"
         }
     }
@@ -494,7 +494,7 @@ class MainActivity : Activity() {
         val spoken=value
             .replace(Regex("\\s*\\[\\d+\\]"),"")
             .replace(Regex("\\*\\*(.*?)\\*\\*"),"$1")
-        tts?.speak(spoken,TextToSpeech.QUEUE_FLUSH,null,"qwen-answer")
+        tts?.speak(spoken,TextToSpeech.QUEUE_FLUSH,null,"gemma-answer")
     }
 
     private fun requestNotificationPermission() {
@@ -509,10 +509,10 @@ class MainActivity : Activity() {
             setPadding(dp(18),dp(8),dp(18),dp(8))
         }
         box.addView(label(
-            if(modelFile.exists()) "Qwen3 4B Q4_K_M is imported." else "Import Qwen3 4B Q4_K_M (~2.5 GB).",
+            if(modelFile.exists()) "Gemma 4 E4B IT Q4_K_M is imported." else "Import Gemma 4 E4B IT Q4_K_M (~5.34 GB).",
             16f
         ))
-        box.addView(label("This separate app has its own Android sandbox, so it needs its own imported copy of the GGUF. If you still have the original download, select that file.",13f,muted))
+        box.addView(label("This app needs a GGUF copy in its own Android sandbox. Edge Gallery's downloaded model uses a different runtime/package and cannot be read directly from its private app storage; import the Gemma 4 E4B IT Q4_K_M GGUF here.",13f,muted))
         box.addView(button("Open model download") {
             startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(MODEL_URL)))
         })
@@ -527,8 +527,8 @@ class MainActivity : Activity() {
             }
         })
         box.addView(label("Modes",17f).apply { typeface=Typeface.DEFAULT_BOLD })
-        box.addView(label("Fast: /no_think, up to 512 generated tokens.\nThink: /think, up to 768 generated tokens.\nActual output is automatically limited by the remaining 4096-token context.\nMedical: adds one short clinical system instruction. General: no system prompt.",13f,muted))
-        box.addView(label("Local Qwen Assistant 0.1.2 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
+        box.addView(label("Fast: native Gemma 4 direct mode, up to 512 generated tokens.\nThink: enables Gemma 4's <|think|> control, up to 1024 generated tokens.\nSampling: temperature 1.0, top-p 0.95, top-k 64.\nActual output is automatically limited by the remaining 4096-token context.\nMedical: adds one short clinical system instruction. General: no clinical instruction.",13f,muted))
+        box.addView(label("Local Gemma Assistant 0.2.0 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
         val scroll=ScrollView(this).apply { addView(box) }
         AlertDialog.Builder(this).setTitle("Model & runtime").setView(scroll).setPositiveButton("Close",null).show()
     }
@@ -544,7 +544,7 @@ class MainActivity : Activity() {
         setBusyUi()
         updateStatus("Importing model…")
         fileWorker.execute {
-            val temp=File(filesDir,"qwen-import.tmp")
+            val temp=File(filesDir,"gemma-import.tmp")
             try {
                 contentResolver.openInputStream(uri)!!.use { source ->
                     val magic=ByteArray(4)
@@ -563,7 +563,7 @@ class MainActivity : Activity() {
                             val count=source.read(buffer)
                             if(count<0)break
                             total+=count
-                            require(total<5L*1024*1024*1024) { "Model exceeds 5 GB" }
+                            require(total<6L*1024*1024*1024) { "Model exceeds 6 GB" }
                             require(filesDir.usableSpace>count+64L*1024*1024) { "Insufficient storage" }
                             out.write(buffer,0,count)
                         }
