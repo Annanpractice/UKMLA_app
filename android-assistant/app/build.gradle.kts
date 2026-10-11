@@ -5,7 +5,7 @@ android {
     ndkVersion = "27.2.12479018"
     defaultConfig {
         applicationId = "uk.co.qwen.assistant"
-        minSdk = 28
+        minSdk = 31
         targetSdk = 35
         versionCode = 4
         versionName = "0.2.0"
@@ -15,7 +15,7 @@ android {
     signingConfigs { getByName("debug") { storeFile = rootProject.file("preview.keystore") } }
     buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("debug"); isMinifyEnabled = false } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions { jvmTarget = "17"; freeCompilerArgs += "-Xskip-metadata-version-check" }
 }
 dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
