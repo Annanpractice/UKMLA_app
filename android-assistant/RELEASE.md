@@ -1,20 +1,18 @@
 **Local Gemma Assistant 0.2.0**
 
-The standalone local-chat experiment now uses **Gemma 4 E4B IT Q4_K_M** instead of Qwen3 4B.
+The standalone local chat app now uses **Gemma 4 E4B IT through Google's LiteRT-LM runtime**, matching the model package format used by Google AI Edge Gallery.
 
-Changes:
-
-- Gemma 4 E4B IT Q4_K_M GGUF (~5.34 GB).
-- Native Gemma 4 turn formatting.
-- Think mode uses Gemma 4's official `<|think|>` control token.
-- Internal thought-channel output is discarded; only the final answer is displayed/stored.
-- Gemma-recommended sampling: temperature 1.0, top-p 0.95, top-k 64.
-- Fast output limit 512 tokens; Think output limit 1,024 tokens.
-- 4,096-token phone-oriented context retained.
-- Updated llama.cpp pin with Gemma 4 support.
-- Existing background inference, Stop control, local history and offline TTS retained.
+- `gemma-4-E4B-it.litertlm` (~3.66 GB).
+- LiteRT-LM Android 0.18.0.
+- GPU-first inference with automatic CPU fallback.
+- Native Gemma 4 conversation templating.
+- Native thinking configuration; thought-channel content is not added to stored chat history.
+- Temperature 1.0, top-p 0.95, top-k 64.
+- Fast output cap 512 tokens; Think cap 1,024 tokens.
+- 4,096-token phone-oriented context.
+- Background inference, Stop control, local chat history and offline TTS retained.
 - No INTERNET permission and no cloud fallback.
 
-**Important:** the copy of Gemma downloaded inside Google AI Edge Gallery cannot simply be opened by this app. Edge Gallery uses a different runtime/package and its model lives in another Android app sandbox. Use the Model button to download/import the llama.cpp-compatible Gemma 4 E4B IT Q4_K_M GGUF.
+Because Android isolates each application's private files, the app cannot directly reuse the bytes already stored inside Edge Gallery. The Model button opens the same public LiteRT-LM model download; import that `.litertlm` file once.
 
-The Android application ID is intentionally unchanged so this preview updates the existing Local Qwen test app in place.
+The application ID remains `uk.co.qwen.assistant` intentionally so this preview upgrades the earlier local-assistant test installation in place.
