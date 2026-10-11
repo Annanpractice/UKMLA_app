@@ -306,7 +306,7 @@ class MainActivity : Activity() {
     private fun showPending(user:String,thinking:Boolean) {
         addUserBubble(user)
         addAssistantBubble(
-            if(thinking) "Thinking locally on CPU… You can switch apps." else "Generating locally on CPU… You can switch apps.",
+            if(thinking) "Thinking locally with LiteRT-LM… You can switch apps." else "Generating locally with LiteRT-LM… You can switch apps.",
             false
         )
         scrollBottom()
@@ -317,7 +317,7 @@ class MainActivity : Activity() {
         val user=input.text.toString().trim()
         if(user.isBlank())return
         if(!modelFile.exists()) {
-            Toast.makeText(this,"Import the Gemma 4 E4B Q4_K_M GGUF first.",Toast.LENGTH_LONG).show()
+            Toast.makeText(this,"Import the Gemma 4 E4B .litertlm model first.",Toast.LENGTH_LONG).show()
             modelDialog()
             return
         }
@@ -340,7 +340,7 @@ class MainActivity : Activity() {
         }
         try {
             if(Build.VERSION.SDK_INT>=26) startForegroundService(service) else startService(service)
-            updateStatus(if(thinking) "Thinking in background • CPU" else "Generating in background • CPU")
+            updateStatus(if(thinking) "Thinking in background • LiteRT-LM" else "Generating in background • LiteRT-LM")
         } catch(e:Exception) {
             busy=false
             setBusyUi()
@@ -361,14 +361,14 @@ class MainActivity : Activity() {
             BackgroundInferenceService.STATE_RUNNING -> {
                 busy=true
                 setBusyUi()
-                updateStatus(if(thinking) "Thinking in background • CPU" else "Generating in background • CPU")
+                updateStatus(if(thinking) "Thinking in background • LiteRT-LM" else "Generating in background • LiteRT-LM")
             }
             BackgroundInferenceService.STATE_DONE -> {
                 busy=false
                 completeTurn(user,result)
                 BackgroundInferenceService.markConsumed(this)
                 setBusyUi()
-                updateStatus("Answer ready • CPU")
+                updateStatus("Answer ready • LiteRT-LM")
             }
             BackgroundInferenceService.STATE_ERROR -> {
                 busy=false
