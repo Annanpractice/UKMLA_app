@@ -29,12 +29,10 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-      - name: Prepare SDK and pinned llama.cpp
+      - name: Prepare Android SDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
-          mkdir -p android-assistant/vendor/llama.cpp
-          curl --fail --retry 3 -L https://github.com/ggml-org/llama.cpp/archive/5c8854fd88319125125dc4b836c98b1b215b0f23.tar.gz | tar xz --strip-components=1 -C android-assistant/vendor/llama.cpp
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
           base64 -d android-reader/preview.keystore.b64 > android-assistant/preview.keystore
       - name: Test and assemble APK
         working-directory: android-assistant
@@ -47,7 +45,7 @@ jobs:
           grep -q android.permission.FOREGROUND_SERVICE /tmp/qwen-permissions.txt
           grep -q android.permission.FOREGROUND_SERVICE_SPECIAL_USE /tmp/qwen-permissions.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-          unzip -l "$APK" | grep 'lib/arm64-v8a/libassistant.so'
+          unzip -l "$APK" | grep 'lib/arm64-v8a/' >/dev/null
           cp "$APK" Local-Gemma-Assistant-v0.2.0-arm64.apk
           sha256sum Local-Gemma-Assistant-v0.2.0-arm64.apk > LOCAL-GEMMA-SHA256SUMS.txt
       - name: Enable emulator acceleration
