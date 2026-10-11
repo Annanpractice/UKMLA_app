@@ -42,8 +42,8 @@ jobs:
           APK=android-assistant/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" | tee /tmp/gemma-permissions.txt
           if grep -q android.permission.INTERNET /tmp/gemma-permissions.txt; then exit 1; fi
-          grep -q android.permission.FOREGROUND_SERVICE /tmp/qwen-permissions.txt
-          grep -q android.permission.FOREGROUND_SERVICE_SPECIAL_USE /tmp/qwen-permissions.txt
+          grep -q android.permission.FOREGROUND_SERVICE /tmp/gemma-permissions.txt
+          grep -q android.permission.FOREGROUND_SERVICE_SPECIAL_USE /tmp/gemma-permissions.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep 'lib/arm64-v8a/' >/dev/null
           cp "$APK" Local-Gemma-Assistant-v0.2.0-arm64.apk
