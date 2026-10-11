@@ -51,8 +51,8 @@ class BackgroundInferenceService : Service() {
         const val STATE_ERROR="error"
         const val STATE_CANCELLED="cancelled"
 
-        private const val WORK_CHANNEL="qwen_inference"
-        private const val RESULT_CHANNEL="qwen_results"
+        private const val WORK_CHANNEL="gemma_inference"
+        private const val RESULT_CHANNEL="gemma_results"
         private const val WORK_NOTIFICATION=3101
         private const val RESULT_NOTIFICATION=3102
 
@@ -154,14 +154,14 @@ class BackgroundInferenceService : Service() {
                     if(visible.isBlank()) {
                         val message=if(thinking)
                             "Think mode used its reasoning budget before reaching a final answer. Retry with a narrower question or use Fast mode."
-                        else "Qwen returned no usable answer."
+                        else "Gemma returned no usable answer."
                         finish(STATE_ERROR,user,"",message,thinking,medical)
                     } else {
                         finish(STATE_DONE,user,visible,"",thinking,medical)
                     }
                 }
             } catch(t:Throwable) {
-                finish(STATE_ERROR,user,"",t.message ?: "Local Qwen generation failed.",thinking,medical)
+                finish(STATE_ERROR,user,"",t.message ?: "Local Gemma generation failed.",thinking,medical)
             }
         }
     }
@@ -194,7 +194,7 @@ class BackgroundInferenceService : Service() {
         when(state) {
             STATE_DONE -> manager.notify(
                 RESULT_NOTIFICATION,
-                resultNotification("Answer ready",if(thinking) "Qwen finished thinking. Tap to read." else "Qwen finished. Tap to read.")
+                resultNotification("Answer ready",if(thinking) "Gemma finished thinking. Tap to read." else "Gemma finished. Tap to read.")
             )
             STATE_ERROR -> manager.notify(
                 RESULT_NOTIFICATION,
@@ -249,13 +249,13 @@ class BackgroundInferenceService : Service() {
         if(Build.VERSION.SDK_INT<26)return
         val manager=getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(WORK_CHANNEL,"Local Qwen generation",NotificationManager.IMPORTANCE_LOW).apply {
-                description="Shows while the on-device Qwen model is generating."
+            NotificationChannel(WORK_CHANNEL,"Local Gemma generation",NotificationManager.IMPORTANCE_LOW).apply {
+                description="Shows while the on-device Gemma model is generating."
                 setSound(null,null)
             }
         )
         manager.createNotificationChannel(
-            NotificationChannel(RESULT_CHANNEL,"Local Qwen results",NotificationManager.IMPORTANCE_DEFAULT).apply {
+            NotificationChannel(RESULT_CHANNEL,"Local Gemma results",NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description="Alerts when an on-device answer is ready."
             }
         )
@@ -284,7 +284,7 @@ class BackgroundInferenceService : Service() {
     private fun workNotification(thinking:Boolean,text:String?=null):Notification =
         builder(WORK_CHANNEL)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle(if(thinking) "Qwen is thinking locally" else "Qwen is answering locally")
+            .setContentTitle(if(thinking) "Gemma is thinking locally" else "Gemma is answering locally")
             .setContentText(text ?: "CPU inference is running. You can use other apps.")
             .setContentIntent(openAppPendingIntent())
             .setOngoing(true)
