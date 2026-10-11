@@ -56,7 +56,7 @@ jobs:
       - name: Android assistant smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 31
           arch: x86_64
           disable-animations: true
           script: cd android-assistant && gradle --no-daemon -PassistantAbi=x86_64 :app:connectedDebugAndroidTest
