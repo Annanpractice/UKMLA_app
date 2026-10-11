@@ -6,6 +6,15 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Conversation
+import com.google.ai.edge.litertlm.ConversationConfig
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ThinkingConfig
 import java.util.concurrent.Executors
 
 data class InferenceSnapshot(
@@ -24,7 +33,6 @@ class BackgroundInferenceService : Service() {
         const val ACTION_CANCEL="uk.co.qwen.assistant.CANCEL"
         const val ACTION_STATE="uk.co.qwen.assistant.STATE"
 
-        const val EXTRA_PROMPT="prompt"
         const val EXTRA_MODEL_PATH="model_path"
         const val EXTRA_USER="user"
         const val EXTRA_THINKING="thinking"
@@ -56,7 +64,10 @@ class BackgroundInferenceService : Service() {
         private const val WORK_NOTIFICATION=3101
         private const val RESULT_NOTIFICATION=3102
 
+        @Volatile private var engine:Engine?=null
         @Volatile private var loadedModelPath:String?=null
+        @Volatile private var activeConversation:Conversation?=null
+        @Volatile private var backendLabel:String="GPU"
 
         fun snapshot(context:Context):InferenceSnapshot {
             val p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
@@ -92,12 +103,14 @@ class BackgroundInferenceService : Service() {
         }
 
         fun clearStoredState(context:Context) {
-            if(!isRunning(context)) {
-                context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().clear().apply()
-            }
+            if(!isRunning(context)) context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().clear().apply()
         }
 
-        fun invalidateModel() {
+        @Synchronized fun invalidateModel() {
+            runCatching { activeConversation?.close() }
+            activeConversation=null
+            runCatching { engine?.close() }
+            engine=null
             loadedModelPath=null
         }
     }
@@ -121,16 +134,43 @@ class BackgroundInferenceService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun createEngine(modelPath:String,backend:Backend,label:String):Engine {
+        val instance=Engine(
+            EngineConfig(
+                modelPath=modelPath,
+                backend=backend,
+                maxNumTokens=4096,
+                cacheDir=cacheDir.absolutePath
+            )
+        )
+        instance.initialize()
+        backendLabel=label
+        return instance
+    }
+
+    @Synchronized
+    private fun ensureEngine(modelPath:String):Engine {
+        if(engine!=null && loadedModelPath==modelPath)return engine!!
+        invalidateModel()
+        val loaded=try {
+            createEngine(modelPath,Backend.GPU(),"GPU")
+        } catch(gpuError:Throwable) {
+            createEngine(modelPath,Backend.CPU(threadCount=6),"CPU")
+        }
+        engine=loaded
+        loadedModelPath=modelPath
+        return loaded
+    }
+
     private fun startGeneration(intent:Intent) {
-        val prompt=intent.getStringExtra(EXTRA_PROMPT).orEmpty()
         val modelPath=intent.getStringExtra(EXTRA_MODEL_PATH).orEmpty()
         val user=intent.getStringExtra(EXTRA_USER).orEmpty()
         val thinking=intent.getBooleanExtra(EXTRA_THINKING,false)
         val medical=intent.getBooleanExtra(EXTRA_MEDICAL,false)
-        val maxTokens=intent.getIntExtra(EXTRA_MAX_TOKENS,if(thinking)384 else 160)
+        val maxTokens=intent.getIntExtra(EXTRA_MAX_TOKENS,if(thinking)1024 else 512)
 
-        if(prompt.isBlank() || modelPath.isBlank()) {
-            finish(STATE_ERROR,user,"","Missing prompt or model path.",thinking,medical)
+        if(user.isBlank() || modelPath.isBlank()) {
+            finish(STATE_ERROR,user,"","Missing message or model path.",thinking,medical)
             return
         }
 
@@ -141,27 +181,49 @@ class BackgroundInferenceService : Service() {
         broadcast(STATE_RUNNING,user,"","",thinking,medical)
 
         worker.execute {
+            var conversation:Conversation?=null
             try {
-                if(loadedModelPath!=modelPath) {
-                    Native.load(modelPath)
-                    loadedModelPath=modelPath
-                }
-                val raw=if(cancelRequested) ByteArray(0) else Native.generate(prompt,maxTokens,thinking)
+                val localEngine=ensureEngine(modelPath)
                 if(cancelRequested) {
                     finish(STATE_CANCELLED,user,"","",thinking,medical)
+                    return@execute
+                }
+
+                val initial=ChatStore.load(this).takeLast(3).flatMap { turn ->
+                    listOf(
+                        Message.user(turn.user.take(650)),
+                        Message.model(turn.assistant.take(950))
+                    )
+                }
+                val system=if(medical) Contents.of(
+                    "You are a concise medical study assistant. Give practical, cautious answers; use UK terminology when known, flag urgent red flags when relevant, and say when uncertain."
+                ) else null
+
+                conversation=localEngine.createConversation(
+                    ConversationConfig(
+                        systemInstruction=system,
+                        initialMessages=initial,
+                        samplerConfig=SamplerConfig(topK=64,topP=0.95,temperature=1.0),
+                        maxOutputToken=maxTokens,
+                        thinkingConfig=ThinkingConfig(enableThinking=thinking,thinkingTokenBudget=if(thinking)-1 else 0)
+                    )
+                )
+                activeConversation=conversation
+                val response=conversation.sendMessage(user).toString().trim()
+
+                if(cancelRequested) {
+                    finish(STATE_CANCELLED,user,"","",thinking,medical)
+                } else if(response.isBlank()) {
+                    finish(STATE_ERROR,user,"","Gemma returned no usable answer.",thinking,medical)
                 } else {
-                    val visible=PromptBuilder.visibleAnswer(raw.toString(Charsets.UTF_8),thinking)
-                    if(visible.isBlank()) {
-                        val message=if(thinking)
-                            "Think mode used its reasoning budget before reaching a final answer. Retry with a narrower question or use Fast mode."
-                        else "Gemma returned no usable answer."
-                        finish(STATE_ERROR,user,"",message,thinking,medical)
-                    } else {
-                        finish(STATE_DONE,user,visible,"",thinking,medical)
-                    }
+                    finish(STATE_DONE,user,response,"",thinking,medical)
                 }
             } catch(t:Throwable) {
-                finish(STATE_ERROR,user,"",t.message ?: "Local Gemma generation failed.",thinking,medical)
+                if(cancelRequested) finish(STATE_CANCELLED,user,"","",thinking,medical)
+                else finish(STATE_ERROR,user,"",t.message ?: "Local Gemma generation failed.",thinking,medical)
+            } finally {
+                activeConversation=null
+                runCatching { conversation?.close() }
             }
         }
     }
@@ -172,7 +234,7 @@ class BackgroundInferenceService : Service() {
             return
         }
         cancelRequested=true
-        Native.cancel()
+        runCatching { activeConversation?.cancelProcess() }
         getSystemService(NotificationManager::class.java)
             .notify(WORK_NOTIFICATION,workNotification(false,"Stopping local generation…"))
     }
@@ -285,7 +347,7 @@ class BackgroundInferenceService : Service() {
         builder(WORK_CHANNEL)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle(if(thinking) "Gemma is thinking locally" else "Gemma is answering locally")
-            .setContentText(text ?: "CPU inference is running. You can use other apps.")
+            .setContentText(text ?: "LiteRT-LM $backendLabel inference is running. You can use other apps.")
             .setContentIntent(openAppPendingIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
