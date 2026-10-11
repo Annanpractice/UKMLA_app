@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     companion object {
-        private const val MODEL_URL="https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf?download=true"
+        private const val MODEL_URL="https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm?download=true"
         private const val IMPORT_REQUEST=42
         private val fileWorker=Executors.newSingleThreadExecutor()
     }
@@ -53,7 +53,7 @@ class MainActivity : Activity() {
     private var tts:TextToSpeech?=null
     private var ttsReady=false
 
-    private val modelFile get()=File(filesDir,"gemma4-e4b-it-q4km.gguf")
+    private val modelFile get()=File(filesDir,"gemma-4-E4B-it.litertlm")
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
 
     private val inferenceReceiver=object:BroadcastReceiver() {
@@ -324,8 +324,7 @@ class MainActivity : Activity() {
 
         val thinking=thinkSwitch.isChecked
         val medical=medicalSwitch.isChecked
-        val prompt=PromptBuilder.build(history,user,thinking,medical)
-        input.setText("")
+                input.setText("")
         busy=true
         setBusyUi()
         showPending(user,thinking)
@@ -333,7 +332,6 @@ class MainActivity : Activity() {
 
         val service=Intent(this,BackgroundInferenceService::class.java).apply {
             action=BackgroundInferenceService.ACTION_START
-            putExtra(BackgroundInferenceService.EXTRA_PROMPT,prompt)
             putExtra(BackgroundInferenceService.EXTRA_MODEL_PATH,modelFile.path)
             putExtra(BackgroundInferenceService.EXTRA_USER,user)
             putExtra(BackgroundInferenceService.EXTRA_THINKING,thinking)
@@ -457,7 +455,7 @@ class MainActivity : Activity() {
     private fun updateStatus(custom:String?=null) {
         status.text=custom ?: when {
             BackgroundInferenceService.isRunning(this) -> "Local Gemma is working in background"
-            modelFile.exists() -> "Gemma 4 E4B Q4_K_M • CPU • offline"
+            modelFile.exists() -> "Gemma 4 E4B • LiteRT-LM • offline"
             else -> "Model not imported"
         }
     }
@@ -509,14 +507,14 @@ class MainActivity : Activity() {
             setPadding(dp(18),dp(8),dp(18),dp(8))
         }
         box.addView(label(
-            if(modelFile.exists()) "Gemma 4 E4B IT Q4_K_M is imported." else "Import Gemma 4 E4B IT Q4_K_M (~5.34 GB).",
+            if(modelFile.exists()) "Gemma 4 E4B IT (Edge Gallery package) is imported." else "Import Gemma 4 E4B IT (~3.66 GB).",
             16f
         ))
-        box.addView(label("This app needs a GGUF copy in its own Android sandbox. Edge Gallery's downloaded model uses a different runtime/package and cannot be read directly from its private app storage; import the Gemma 4 E4B IT Q4_K_M GGUF here.",13f,muted))
+        box.addView(label("This uses the same LiteRT-LM Gemma 4 E4B package format as Google AI Edge Gallery. Android still prevents this app from opening Edge Gallery's private copy directly, so download/select the same .litertlm file once for this app.",13f,muted))
         box.addView(button("Open model download") {
             startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(MODEL_URL)))
         })
-        box.addView(button("Import GGUF") {
+        box.addView(button("Import .litertlm") {
             if(busy || BackgroundInferenceService.isRunning(this)) {
                 Toast.makeText(this,"Stop generation first.",Toast.LENGTH_SHORT).show()
             } else {
@@ -527,8 +525,8 @@ class MainActivity : Activity() {
             }
         })
         box.addView(label("Modes",17f).apply { typeface=Typeface.DEFAULT_BOLD })
-        box.addView(label("Fast: native Gemma 4 direct mode, up to 512 generated tokens.\nThink: enables Gemma 4's <|think|> control, up to 1024 generated tokens.\nSampling: temperature 1.0, top-p 0.95, top-k 64.\nActual output is automatically limited by the remaining 4096-token context.\nMedical: adds one short clinical system instruction. General: no clinical instruction.",13f,muted))
-        box.addView(label("Local Gemma Assistant 0.2.0 · CPU only · 4096 context · background inference · no INTERNET permission",12f,muted))
+        box.addView(label("Fast: direct Gemma 4 response, up to 512 generated tokens.\nThink: LiteRT-LM enables Gemma 4 reasoning, up to 1024 generated tokens.\nSampling: temperature 1.0, top-p 0.95, top-k 64.\nRuntime: LiteRT-LM, 4096-token context, GPU first with CPU fallback.\nMedical: adds one short clinical system instruction. General: no clinical instruction.",13f,muted))
+        box.addView(label("Local Gemma Assistant 0.2.0 · LiteRT-LM · GPU/CPU · 4096 context · background inference · no INTERNET permission",12f,muted))
         val scroll=ScrollView(this).apply { addView(box) }
         AlertDialog.Builder(this).setTitle("Model & runtime").setView(scroll).setPositiveButton("Close",null).show()
     }
@@ -547,23 +545,23 @@ class MainActivity : Activity() {
             val temp=File(filesDir,"gemma-import.tmp")
             try {
                 contentResolver.openInputStream(uri)!!.use { source ->
-                    val magic=ByteArray(4)
+                    val magic=ByteArray(8)
                     var n=0
-                    while(n<4) {
-                        val got=source.read(magic,n,4-n)
+                    while(n<8) {
+                        val got=source.read(magic,n,8-n)
                         require(got>0) { "Empty file" }
                         n+=got
                     }
-                    require(magic.contentEquals(byteArrayOf(71,71,85,70))) { "Selected file is not GGUF" }
+                    require(String(magic,Charsets.US_ASCII)=="LITERTLM") { "Selected file is not a LiteRT-LM model" }
                     temp.outputStream().use { out ->
                         out.write(magic)
                         val buffer=ByteArray(1024*1024)
-                        var total=4L
+                        var total=8L
                         while(true) {
                             val count=source.read(buffer)
                             if(count<0)break
                             total+=count
-                            require(total<6L*1024*1024*1024) { "Model exceeds 6 GB" }
+                            require(total<4500L*1024*1024) { "Model exceeds 4.5 GB" }
                             require(filesDir.usableSpace>count+64L*1024*1024) { "Insufficient storage" }
                             out.write(buffer,0,count)
                         }
