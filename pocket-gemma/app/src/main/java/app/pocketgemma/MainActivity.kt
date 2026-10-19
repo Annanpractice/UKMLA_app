@@ -802,26 +802,81 @@ private fun PocketGemmaApp() {
     )
     if (showHistory) AlertDialog(
         onDismissRequest = { showHistory = false },
-        title = { Text("Saved chats") },
+        title = { Text("Saved conversations") },
         text = {
-            if (sessions.isEmpty()) Text("No saved chats yet.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                itemsIndexed(sessions.asReversed()) { _, chat ->
-                    TextButton(onClick = {
-                        activeId = chat.id
-                        lines = chat.lines
-                        prefs.writeSavedChats(activeId, sessions)
-                        showHistory = false
-                        scope.launch { createEngine() }
-                    }, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.fillMaxWidth()) {
-                            Text(chat.title.ifBlank { "New chat" }, maxLines = 1, fontWeight = FontWeight.Medium)
-                            Text("${chat.lines.size} messages", style = MaterialTheme.typography.labelSmall)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (sessions.isEmpty()) {
+                    Text("No saved conversations.")
+                } else {
+                    Text("${sessions.size} saved conversation(s)", style = MaterialTheme.typography.bodySmall)
+                    LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                        itemsIndexed(sessions.asReversed(), key = { _, chat -> chat.id }) { _, chat ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(
+                                    onClick = {
+                                        activeId = chat.id
+                                        lines = chat.lines
+                                        prefs.writeSavedChats(activeId, sessions)
+                                        showHistory = false
+                                        scope.launch { createEngine() }
+                                    },
+                                    enabled = !generating && !loading,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        Text(chat.title.ifBlank { "New chat" }, maxLines = 1, fontWeight = FontWeight.Medium)
+                                        Text("${chat.lines.size} messages", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                                TextButton(onClick = {
+                                    pendingChatDeletion = chat
+                                    showHistory = false
+                                }, enabled = !generating && !loading) {
+                                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Close") } }
+        confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Close") } },
+        dismissButton = {
+            if (sessions.isNotEmpty()) TextButton(onClick = {
+                confirmClearAll = true
+                showHistory = false
+            }, enabled = !generating && !loading) {
+                Text("Clear all", color = MaterialTheme.colorScheme.error)
+            }
+        }
+    )
+    pendingChatDeletion?.let { chat ->
+        AlertDialog(
+            onDismissRequest = { pendingChatDeletion = null; showHistory = true },
+            title = { Text("Delete conversation?") },
+            text = { Text("Permanently delete '${chat.title.ifBlank { "New chat" }}' and its saved messages? Attached files copied into Clara will also be removed if no other conversation uses them. The Gemma model and settings will remain.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteSavedConversation(chat)
+                    pendingChatDeletion = null
+                    showHistory = true
+                }, enabled = !generating && !loading) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingChatDeletion = null; showHistory = true }) { Text("Cancel") } }
+        )
+    }
+    if (confirmClearAll) AlertDialog(
+        onDismissRequest = { confirmClearAll = false; showHistory = true },
+        title = { Text("Clear all conversations?") },
+        text = { Text("Permanently delete all saved conversations and their messages, including the current conversation. Unshared attachment copies will also be deleted. The Gemma model, voice settings and app settings will remain.") },
+        confirmButton = {
+            TextButton(onClick = {
+                clearSavedConversations()
+                confirmClearAll = false
+                showHistory = false
+            }, enabled = !generating && !loading) { Text("Clear all", color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = { confirmClearAll = false; showHistory = true }) { Text("Cancel") } }
     )
 }
 
