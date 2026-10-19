@@ -332,52 +332,6 @@ private fun PocketGemmaApp() {
         prefs.writeSavedChats(activeId, sessions)
     }
 
-    fun deleteSavedConversation(chat: SavedChat) {
-        if (generating || loading) return
-        val deleted = sessions.firstOrNull { it.id == chat.id } ?: return
-        val remaining = sessions.filterNot { it.id == deleted.id }
-        val isActive = deleted.id == activeId
-        sessions = remaining
-        if (isActive) {
-            activeId = java.util.UUID.randomUUID().toString()
-            lines = emptyList()
-            input = ""
-        }
-        val abandoned = if (isActive) pendingAttachments else emptyList()
-        if (isActive) pendingAttachments = emptyList()
-        prefs.writeSavedChats(activeId, remaining)
-        val deletedTurns = deleted.lines + abandoned.map {
-            ChatLine("user", "", attachments = listOf(it))
-        }
-        if (isActive) {
-            scope.launch {
-                conversation?.close()
-                conversation = null
-                pruneConversationAttachments(context, deletedTurns, remaining, emptyList())
-                if (modelFile.isFile) createEngine()
-            }
-        } else {
-            pruneConversationAttachments(context, deletedTurns, remaining, pendingAttachments)
-        }
-    }
-
-    fun clearSavedConversations() {
-        if (generating || loading) return
-        val allTurns = sessions.flatMap { it.lines } + lines +
-            pendingAttachments.map { ChatLine("user", "", attachments = listOf(it)) }
-        sessions = emptyList()
-        activeId = java.util.UUID.randomUUID().toString()
-        lines = emptyList()
-        input = ""
-        pendingAttachments = emptyList()
-        prefs.writeSavedChats(activeId, emptyList())
-        scope.launch {
-            conversation?.close()
-            conversation = null
-            pruneConversationAttachments(context, allTurns, emptyList(), emptyList())
-            if (modelFile.isFile) createEngine()
-        }
-    }
     suspend fun createEngine(selected: Preferences = config, excludePendingUser: Boolean = false) {
         if (!modelFile.exists()) error("Model file is missing")
         loading = true
@@ -439,6 +393,52 @@ private fun PocketGemmaApp() {
         } finally { loading = false }
     }
 
+    fun deleteSavedConversation(chat: SavedChat) {
+        if (generating || loading) return
+        val deleted = sessions.firstOrNull { it.id == chat.id } ?: return
+        val remaining = sessions.filterNot { it.id == deleted.id }
+        val isActive = deleted.id == activeId
+        sessions = remaining
+        if (isActive) {
+            activeId = java.util.UUID.randomUUID().toString()
+            lines = emptyList()
+            input = ""
+        }
+        val abandoned = if (isActive) pendingAttachments else emptyList()
+        if (isActive) pendingAttachments = emptyList()
+        prefs.writeSavedChats(activeId, remaining)
+        val deletedTurns = deleted.lines + abandoned.map {
+            ChatLine("user", "", attachments = listOf(it))
+        }
+        if (isActive) {
+            scope.launch {
+                conversation?.close()
+                conversation = null
+                pruneConversationAttachments(context, deletedTurns, remaining, emptyList())
+                if (modelFile.isFile) createEngine()
+            }
+        } else {
+            pruneConversationAttachments(context, deletedTurns, remaining, pendingAttachments)
+        }
+    }
+
+    fun clearSavedConversations() {
+        if (generating || loading) return
+        val allTurns = sessions.flatMap { it.lines } + lines +
+            pendingAttachments.map { ChatLine("user", "", attachments = listOf(it)) }
+        sessions = emptyList()
+        activeId = java.util.UUID.randomUUID().toString()
+        lines = emptyList()
+        input = ""
+        pendingAttachments = emptyList()
+        prefs.writeSavedChats(activeId, emptyList())
+        scope.launch {
+            conversation?.close()
+            conversation = null
+            pruneConversationAttachments(context, allTurns, emptyList(), emptyList())
+            if (modelFile.isFile) createEngine()
+        }
+    }
     fun submitMessage(rawPrompt: String, attachments: List<ChatAttachment> = emptyList()) {
         if (generating || loading) return
         input = ""
