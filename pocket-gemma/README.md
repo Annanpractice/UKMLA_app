@@ -32,7 +32,7 @@ Requirements: Android SDK platform 36, Java 17, Kotlin 2.4.0, Android Gradle Plu
 
 ## Install and test
 
-The app uses application ID `app.clara.assistant`. A v1.7 APK must be signed with the same key as the installed version to install as an in-place update. If Android reports **App not installed**, check the signing certificate or remove the old app first (removing it deletes its private model and chat data).
+Clara v1.7 uses a new application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
 
 On first run, download the model, wait for completion, then tap **Load model**. GPU is attempted by default; switch to CPU in Settings if initialization fails. GPU inference, multimodal decoding, notification tool calling and offline TTS voice availability require testing on the target phone.
 
