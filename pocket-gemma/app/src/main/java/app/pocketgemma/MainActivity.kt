@@ -340,7 +340,7 @@ private fun PocketGemmaApp() {
 
     MaterialTheme(colorScheme = darkColorScheme()) {
         Scaffold(topBar = {
-            TopAppBar(title = { Text("Pocket Gemma") }, actions = {
+            TopAppBar(title = { Text("Clara") }, actions = {
                 TextButton(onClick = { showSettings = true }) { Text("Settings") }
                 TextButton(onClick = { showSpeechSettings = true }) { Text("Voice") }
                 TextButton(onClick = { persist(); showHistory = true }) { Text("History") }
@@ -366,7 +366,7 @@ private fun PocketGemmaApp() {
                     Card(Modifier.fillMaxWidth().padding(top = 10.dp)) {
                         Column(Modifier.padding(16.dp)) {
                             Text("Gemma 4 E4B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            val actualSize = if (modelFile.isFile) " Current file: ${modelFile.length()} bytes; expected $MODEL_SIZE bytes." else " No model file was found in Pocket Gemma's storage."
+                            val actualSize = if (modelFile.isFile) " Current file: ${modelFile.length()} bytes; expected $MODEL_SIZE bytes." else " No model file was found in Clara's storage."
                             Text("Download the 3.66 GB LiteRT-LM model once. It is stored on this phone and works offline after download.$actualSize", Modifier.padding(top = 6.dp))
                             Button(enabled = downloadId < 0, onClick = {
                                 if (modelFile.exists() && modelFile.length() != MODEL_SIZE) modelFile.delete()
@@ -393,7 +393,7 @@ private fun PocketGemmaApp() {
                                 Text(line.text, Modifier.padding(top = 5.dp))
                                 if (line.thought.isNotBlank()) Text("Thinking: ${line.thought}", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                                 if (line.notificationSources.isNotEmpty()) {
-                                    Text("Sources read by Pocket Gemma", Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                                    Text("Sources read by Clara", Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                                     line.notificationSources.forEach { source ->
                                         Card(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                                             Column(Modifier.padding(8.dp)) {
@@ -459,7 +459,7 @@ private fun PocketGemmaApp() {
                         downloadId = -1
                         verifiedModelSignature = null
                         status = when {
-                            !modelFile.isFile -> "Download Manager reported success, but Pocket Gemma cannot find the model file"
+                            !modelFile.isFile -> "Download Manager reported success, but Clara cannot find the model file"
                             modelFile.length() != MODEL_SIZE -> "Download reported success, but file size is ${modelFile.length()} bytes; expected $MODEL_SIZE bytes. Retry the download."
                             else -> "Download complete • checksum will be checked on load"
                         }
@@ -559,7 +559,7 @@ private fun PocketGemmaApp() {
                             }
                         }
                     }
-                    Text("Android grants notification-listener access broadly. Pocket Gemma sends only selected apps' currently active notifications to the local model, and does not save their text to chat history.", style = MaterialTheme.typography.bodySmall)
+                    Text("Android grants notification-listener access broadly. Clara sends only selected apps' currently active notifications to the local model, and does not save their text to chat history.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         },

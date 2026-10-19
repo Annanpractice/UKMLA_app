@@ -9,11 +9,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.pocketgemma.verified"
+        applicationId = "app.clara.assistant"
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "1.7.0"
+        versionName = "1.7"
     }
 
     buildTypes {

@@ -28,9 +28,9 @@ jobs:
       - name: Build debug APK
         working-directory: pocket-gemma
         run: gradle :app:assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
+      - name: Name the APK Clara v1.7\n        run: cp pocket-gemma/app/build/outputs/apk/debug/app-debug.apk Clara-v1.7.apk\n      - uses: actions/upload-artifact@v4
         with:
-          name: pocket-gemma-v1.7-debug-apk
-          path: pocket-gemma/app/build/outputs/apk/debug/app-debug.apk
+          name: Clara-v1.7-debug-apk
+          path: Clara-v1.7.apk
           if-no-files-found: error
           retention-days: 14
