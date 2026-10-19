@@ -78,6 +78,26 @@ private fun sha256(file: File): String {
 
 private data class TtsEngineChoice(val packageName: String, val label: String)
 
+// Remove only unreferenced copies from Clara's private attachment directory.
+private fun pruneConversationAttachments(
+    context: Context,
+    removed: List<ChatLine>,
+    survivingChats: List<SavedChat>,
+    pending: List<ChatAttachment>
+) {
+    val attachmentDir = File(context.filesDir, "attachments").canonicalFile
+    val stillUsed = (survivingChats.flatMap { it.lines.flatMap { line -> line.attachments } } + pending)
+        .mapNotNull { runCatching { File(it.path).canonicalPath }.getOrNull() }.toSet()
+    removed.flatMap { it.attachments }.map { it.path }.distinct().forEach { path ->
+        runCatching {
+            val copy = File(path).canonicalFile
+            if (copy.parentFile == attachmentDir && copy.canonicalPath !in stillUsed && copy.isFile) {
+                copy.delete()
+            }
+        }
+    }
+}
+
 data class ChatAttachment(val kind: String, val path: String, val name: String)
 data class ChatLine(
     val role: String,
@@ -142,6 +162,8 @@ private fun PocketGemmaApp() {
     var showSettings by remember { mutableStateOf(false) }
     var showSpeechSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    var pendingChatDeletion by remember { mutableStateOf<SavedChat?>(null) }
+    var confirmClearAll by remember { mutableStateOf(false) }
     var showBriefingSettings by remember { mutableStateOf(false) }
     var demoNotifications by remember { mutableStateOf(prefs.readDemoNotifications()) }
     var allowedNotificationPackages by remember { mutableStateOf(prefs.readAllowedNotificationPackages()) }
@@ -301,10 +323,60 @@ private fun PocketGemmaApp() {
 
     fun persist() {
         prefs.writeConfig(config)
-        val title = lines.firstOrNull { it.role == "user" }?.text?.take(36)?.ifBlank { "New chat" } ?: "New chat"
-        val updated = SavedChat(activeId, title, lines)
-        sessions = (sessions.filterNot { it.id == activeId } + updated).takeLast(30)
+        val withoutCurrent = sessions.filterNot { it.id == activeId }
+        // Do not recreate a blank chat immediately after a clear-all.
+        sessions = if (lines.isEmpty()) withoutCurrent else {
+            val title = lines.firstOrNull { it.role == "user" }?.text?.take(36)?.ifBlank { "New chat" } ?: "New chat"
+            (withoutCurrent + SavedChat(activeId, title, lines)).takeLast(30)
+        }
         prefs.writeSavedChats(activeId, sessions)
+    }
+
+    fun deleteSavedConversation(chat: SavedChat) {
+        if (generating || loading) return
+        val deleted = sessions.firstOrNull { it.id == chat.id } ?: return
+        val remaining = sessions.filterNot { it.id == deleted.id }
+        val isActive = deleted.id == activeId
+        sessions = remaining
+        if (isActive) {
+            activeId = java.util.UUID.randomUUID().toString()
+            lines = emptyList()
+            input = ""
+        }
+        val abandoned = if (isActive) pendingAttachments else emptyList()
+        if (isActive) pendingAttachments = emptyList()
+        prefs.writeSavedChats(activeId, remaining)
+        val deletedTurns = deleted.lines + abandoned.map {
+            ChatLine("user", "", attachments = listOf(it))
+        }
+        if (isActive) {
+            scope.launch {
+                conversation?.close()
+                conversation = null
+                pruneConversationAttachments(context, deletedTurns, remaining, emptyList())
+                if (modelFile.isFile) createEngine()
+            }
+        } else {
+            pruneConversationAttachments(context, deletedTurns, remaining, pendingAttachments)
+        }
+    }
+
+    fun clearSavedConversations() {
+        if (generating || loading) return
+        val allTurns = sessions.flatMap { it.lines } + lines +
+            pendingAttachments.map { ChatLine("user", "", attachments = listOf(it)) }
+        sessions = emptyList()
+        activeId = java.util.UUID.randomUUID().toString()
+        lines = emptyList()
+        input = ""
+        pendingAttachments = emptyList()
+        prefs.writeSavedChats(activeId, emptyList())
+        scope.launch {
+            conversation?.close()
+            conversation = null
+            pruneConversationAttachments(context, allTurns, emptyList(), emptyList())
+            if (modelFile.isFile) createEngine()
+        }
     }
     suspend fun createEngine(selected: Preferences = config, excludePendingUser: Boolean = false) {
         if (!modelFile.exists()) error("Model file is missing")
@@ -454,10 +526,9 @@ private fun PocketGemmaApp() {
                     persist()
                     activeId = java.util.UUID.randomUUID().toString()
                     lines = emptyList()
-                    sessions = sessions + SavedChat(activeId, "New chat", emptyList())
                     prefs.writeSavedChats(activeId, sessions)
                     scope.launch { conversation?.close(); conversation = null; if (modelFile.exists()) createEngine() }
-                }) { Text("New chat") }
+                }, enabled = !generating && !loading) { Text("New chat") }
             })
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp)) {
