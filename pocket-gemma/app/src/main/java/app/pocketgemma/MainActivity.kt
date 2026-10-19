@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.provider.OpenableColumns
@@ -72,6 +75,8 @@ private fun sha256(file: File): String {
     }
     return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
 }
+
+private data class TtsEngineChoice(val packageName: String, val label: String)
 
 data class ChatAttachment(val kind: String, val path: String, val name: String)
 data class ChatLine(
@@ -152,7 +157,12 @@ private fun PocketGemmaApp() {
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
     var ttsVoices by remember { mutableStateOf<List<Voice>>(emptyList()) }
-    var selectedTtsVoice by remember { mutableStateOf("") }
+    var ttsEngines by remember { mutableStateOf<List<TtsEngineChoice>>(emptyList()) }
+    var selectedTtsEngine by remember { mutableStateOf(prefs.readTtsEngine()) }
+    var selectedTtsVoice by remember { mutableStateOf(prefs.readLockedTtsVoice()) }
+    var activeTtsEngine by remember { mutableStateOf("") }
+    var activeTtsVoice by remember { mutableStateOf("") }
+    var ttsProblem by remember { mutableStateOf("") }
     var verifiedModelSignature by remember { mutableStateOf<String?>(null) }
     var notificationTool by remember { mutableStateOf<ListNotificationsTool?>(null) }
 
@@ -175,28 +185,118 @@ private fun PocketGemmaApp() {
     }
 
     val modelFile = remember { File(context.getExternalFilesDir(null) ?: context.filesDir, MODEL_NAME) }
-    LaunchedEffect(Unit) {
-        tts = TextToSpeech(context) { result ->
-            ttsReady = result == TextToSpeech.SUCCESS
-            if (ttsReady) {
-                val voices = tts?.voices.orEmpty()
-                ttsVoices = voices.filterNot { it.isNetworkConnectionRequired }.sortedWith(compareBy({ it.locale.displayName }, { it.name }))
-                val savedName = prefs.readTtsVoice()
-                val offline = voices.firstOrNull { it.name == savedName && !it.isNetworkConnectionRequired }
-                    ?: voices.filter { it.locale.language == Locale.getDefault().language && !it.isNetworkConnectionRequired }
-                    .minByOrNull { it.name }
-                if (offline != null) {
-                    tts?.voice = offline
-                    selectedTtsVoice = offline.name
+    DisposableEffect(selectedTtsEngine) {
+        // Recreate Android TTS whenever the requested engine changes. Never continue
+        // with an engine that differs from the one explicitly selected.
+        var disposed = false
+        var instance: TextToSpeech? = null
+        val requestedEngine = selectedTtsEngine
+        ttsReady = false
+        ttsVoices = emptyList()
+        ttsProblem = ""
+        activeTtsEngine = ""
+        activeTtsVoice = ""
+
+        val onInit = TextToSpeech.OnInitListener { result ->
+            Handler(Looper.getMainLooper()).post {
+                val current = instance
+                if (!disposed) {
+                    if (result != TextToSpeech.SUCCESS || current == null) {
+                        ttsProblem = "The selected speech engine failed to initialise."
+                        ttsReady = false
+                    } else {
+                        try {
+                            val actualEngine = current.currentEngine.orEmpty()
+                            activeTtsEngine = actualEngine
+                            val available = current.engines.orEmpty().map {
+                                TtsEngineChoice(it.name.orEmpty(), it.label ?: it.name.orEmpty())
+                            }.filter { it.packageName.isNotBlank() }.distinctBy { it.packageName }
+                            if (available.isNotEmpty()) ttsEngines = available.sortedBy { it.label.lowercase(Locale.ROOT) }
+                            if (requestedEngine.isNotBlank() && requestedEngine != actualEngine) {
+                                ttsProblem = "Android loaded ${actualEngine.ifBlank { "another engine" }} instead of $requestedEngine. Check that engine is installed."
+                                ttsReady = false
+                            } else {
+                                val offlineEnglish = current.voices.orEmpty()
+                                    .filter { it.locale.language == "en" && !it.isNetworkConnectionRequired &&
+                                        it.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true }
+                                    .sortedWith(compareBy({ it.locale.displayName }, { it.name }))
+                                ttsVoices = offlineEnglish
+                                current.setSpeechRate(1f)
+                                current.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                                    override fun onStart(utteranceId: String?) {}
+                                    override fun onDone(utteranceId: String?) {}
+                                    override fun onError(utteranceId: String?) {
+                                        Handler(Looper.getMainLooper()).post {
+                                            if (!disposed) ttsProblem = "Speech synthesis failed in ${activeTtsEngine.ifBlank { "the selected engine" }}."
+                                        }
+                                    }
+                                })
+                                val locked = prefs.readLockedTtsVoice()
+                                if (locked.isNotBlank()) {
+                                    val exact = offlineEnglish.firstOrNull { it.name == locked }
+                                    if (exact == null) {
+                                        ttsProblem = "The saved voice '$locked' is unavailable in this engine. Select another voice."
+                                        ttsReady = false
+                                    } else if (current.setVoice(exact) != TextToSpeech.SUCCESS) {
+                                        ttsProblem = "This engine refused the saved voice '$locked'."
+                                        ttsReady = false
+                                    } else {
+                                        activeTtsVoice = exact.name
+                                        ttsReady = true
+                                    }
+                                } else {
+                                    // The engine's own voice is valid; selecting a specific voice is optional.
+                                    val default = current.voice
+                                    val usable = offlineEnglish.firstOrNull { it.name == default?.name }
+                                        ?: offlineEnglish.firstOrNull()
+                                    if (usable != null) {
+                                        ttsReady = current.setVoice(usable) == TextToSpeech.SUCCESS
+                                        activeTtsVoice = if (ttsReady) usable.name else ""
+                                    } else {
+                                        // Some third-party engines do not enumerate voices. Allow
+                                        // their default voice to be tested without claiming a voice lock.
+                                        val code = current.setLanguage(Locale.UK)
+                                        ttsReady = code != TextToSpeech.LANG_MISSING_DATA &&
+                                            code != TextToSpeech.LANG_NOT_SUPPORTED
+                                        activeTtsVoice = current.voice?.name.orEmpty()
+                                    }
+                                    if (!ttsReady) ttsProblem = "No usable English voice could be initialised. Check the engine's installed models."
+                                }
+                            }
+                        } catch (e: Exception) {
+                            ttsReady = false
+                            ttsProblem = "Speech engine error: ${e.message ?: "unknown error"}"
+                        }
+                    }
                 }
             }
         }
+
+        try {
+            instance = if (requestedEngine.isBlank()) {
+                TextToSpeech(context.applicationContext, onInit)
+            } else {
+                TextToSpeech(context.applicationContext, onInit, requestedEngine)
+            }
+            tts = instance
+        } catch (e: Exception) {
+            ttsProblem = "Unable to start speech engine: ${e.message ?: "unknown error"}"
+        }
+
+        onDispose {
+            disposed = true
+            instance?.stop()
+            instance?.shutdown()
+            if (tts === instance) tts = null
+        }
+    }
+    LaunchedEffect(Unit) {
         if (modelFile.exists() && modelFile.length() == MODEL_SIZE) status = "Model downloaded • checksum verified when loaded"
     }
     LaunchedEffect(demoNotifications, allowedNotificationPackages) {
         prefs.writeNotificationSettings(demoNotifications, allowedNotificationPackages)
     }
-    DisposableEffect(Unit) { onDispose { tts?.stop(); tts?.shutdown(); conversation?.close(); engine?.close() } }
+    DisposableEffect(Unit) { onDispose { conversation?.close(); engine?.close() } }
 
     fun persist() {
         prefs.writeConfig(config)
@@ -408,9 +508,12 @@ private fun PocketGemmaApp() {
                                 if (line.role == "assistant") Row {
                                     TextButton(onClick = {
                                         if (ttsReady) {
-                                            ttsVoices.firstOrNull { it.name == selectedTtsVoice }?.let { tts?.voice = it }
-                                            tts?.speak(line.text, TextToSpeech.QUEUE_FLUSH, null, "reply-$index")
-                                        } else status = "No TTS engine is ready"
+                                            val result = tts?.speak(line.text, TextToSpeech.QUEUE_FLUSH, null, "reply-$index")
+                                            if (result != TextToSpeech.SUCCESS) ttsProblem = "The selected voice could not start playback."
+                                        } else {
+                                            ttsProblem = "Speech unavailable: ${ttsProblem.ifBlank { "select a working engine and voice" }}"
+                                            showSpeechSettings = true
+                                        }
                                     }) { Text("Read aloud") }
                                     TextButton(onClick = { tts?.stop() }) { Text("Stop") }
                                 }
@@ -478,43 +581,92 @@ private fun PocketGemmaApp() {
     })
     if (showSpeechSettings) AlertDialog(
         onDismissRequest = { showSpeechSettings = false },
-        title = { Text("Speech voice") },
+        title = { Text("Clara voice") },
         text = {
-            var expanded by remember { mutableStateOf(false) }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Engine: ${tts?.defaultEngine ?: "Android default"}", style = MaterialTheme.typography.bodySmall)
-                Text("Choose an installed offline voice. To use Sherpa, install and select its TTS engine in Android's text-to-speech settings first.")
+            var engineExpanded by remember { mutableStateOf(false) }
+            var voiceExpanded by remember { mutableStateOf(false) }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Speech engine", style = MaterialTheme.typography.titleSmall)
                 Box {
-                    OutlinedButton(onClick = { expanded = true }, enabled = ttsReady) {
-                        Text(ttsVoices.firstOrNull { it.name == selectedTtsVoice }?.let { "${it.name} · ${it.locale.displayName}" } ?: "System voice")
+                    OutlinedButton(onClick = { engineExpanded = true }) {
+                        Text(ttsEngines.firstOrNull { it.packageName == selectedTtsEngine }?.label
+                            ?: if (selectedTtsEngine.isBlank()) "Android system default" else selectedTtsEngine)
                     }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        DropdownMenuItem(text = { Text("System recommended") }, onClick = {
-                            val voice = ttsVoices.firstOrNull { it.locale.language == Locale.getDefault().language }
-                            selectedTtsVoice = voice?.name.orEmpty()
-                            if (voice != null) tts?.voice = voice
-                            prefs.writeTtsVoice(selectedTtsVoice)
-                            expanded = false
+                    DropdownMenu(expanded = engineExpanded, onDismissRequest = { engineExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Android system default") }, onClick = {
+                            prefs.writeTtsSelection("", "")
+                            selectedTtsVoice = ""
+                            selectedTtsEngine = ""
+                            engineExpanded = false
                         })
-                        ttsVoices.forEach { voice ->
-                            DropdownMenuItem(text = { Text("${voice.name} · ${voice.locale.displayName}") }, onClick = {
-                                selectedTtsVoice = voice.name
-                                tts?.voice = voice
-                                prefs.writeTtsVoice(voice.name)
-                                expanded = false
+                        ttsEngines.forEach { item ->
+                            DropdownMenuItem(text = { Text("${item.label} ( ${item.packageName} )") }, onClick = {
+                                // Clear the previous voice: voice names are engine-specific.
+                                prefs.writeTtsSelection(item.packageName, "")
+                                selectedTtsVoice = ""
+                                selectedTtsEngine = item.packageName
+                                engineExpanded = false
                             })
                         }
                     }
                 }
-                Text("Only offline voices are listed. Voice availability depends on the TTS engine installed on this phone.", style = MaterialTheme.typography.bodySmall)
+                Text("Active engine: ${activeTtsEngine.ifBlank { "initialising" }}", style = MaterialTheme.typography.bodySmall)
+                Text("Offline English voice", style = MaterialTheme.typography.titleSmall)
+                Box {
+                    OutlinedButton(onClick = { voiceExpanded = true }, enabled = tts != null && ttsVoices.isNotEmpty()) {
+                        Text(ttsVoices.firstOrNull { it.name == selectedTtsVoice }?.name
+                            ?: "Engine default / not locked")
+                    }
+                    DropdownMenu(expanded = voiceExpanded, onDismissRequest = { voiceExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Engine default (no voice lock)") }, onClick = {
+                            prefs.writeTtsSelection(selectedTtsEngine, "")
+                            selectedTtsVoice = ""
+                            val candidate = ttsVoices.firstOrNull { it.name == activeTtsVoice }
+                                ?: ttsVoices.firstOrNull()
+                            ttsReady = candidate == null || tts?.setVoice(candidate) == TextToSpeech.SUCCESS
+                            activeTtsVoice = tts?.voice?.name.orEmpty()
+                            ttsProblem = if (ttsReady) "" else "The selected engine refused its default voice."
+                            voiceExpanded = false
+                        })
+                        ttsVoices.forEach { voice ->
+                            DropdownMenuItem(text = { Text("${voice.name} · ${voice.locale.displayName}") }, onClick = {
+                                val applied = tts?.setVoice(voice) == TextToSpeech.SUCCESS
+                                if (applied) {
+                                    selectedTtsVoice = voice.name
+                                    activeTtsVoice = voice.name
+                                    prefs.writeTtsSelection(selectedTtsEngine, voice.name)
+                                    ttsProblem = ""
+                                    ttsReady = true
+                                } else {
+                                    ttsReady = false
+                                    ttsProblem = "This engine rejected voice ${voice.name}."
+                                }
+                                voiceExpanded = false
+                            })
+                        }
+                    }
+                }
+                Text("Voice in use: ${activeTtsVoice.ifBlank { "not reported" }}", style = MaterialTheme.typography.bodySmall)
+                if (ttsProblem.isNotBlank()) {
+                    Text(ttsProblem, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text(if (ttsReady) "Ready to speak offline." else "Initialising selected engine…",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                OutlinedButton(onClick = {
+                    val result = tts?.speak("Hello. I'm Clara, your local assistant.", TextToSpeech.QUEUE_FLUSH, null, "clara-voice-test")
+                    if (result != TextToSpeech.SUCCESS) ttsProblem = "Voice test failed to start."
+                }, enabled = ttsReady) { Text("Test voice") }
+                Text("Select the Sherpa / Next-gen Kaldi engine above. Clara will not silently switch to Google.",
+                    style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = { TextButton(onClick = { showSpeechSettings = false }) { Text("Done") } },
         dismissButton = {
             TextButton(onClick = {
                 try { context.startActivity(Intent("com.android.settings.TTS_SETTINGS")) }
-                catch (_: Exception) { status = "Open Android Settings and search for Text-to-speech output" }
-            }) { Text("TTS settings") }
+                catch (_: Exception) { ttsProblem = "Open Android Settings and search for Text-to-speech output" }
+            }) { Text("Android TTS settings") }
         }
     )
     if (showBriefingSettings) AlertDialog(
@@ -646,8 +798,13 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
 private class PrefStore(context: Context) {
     private val p = context.getSharedPreferences("pocket-gemma", Context.MODE_PRIVATE)
     fun readDemoNotifications() = p.getBoolean("notificationDemoMode", true)
-    fun readTtsVoice() = p.getString("ttsVoice", "") ?: ""
-    fun writeTtsVoice(name: String) { p.edit().putString("ttsVoice", name).apply() }
+    fun readTtsEngine() = p.getString("ttsEngine", "") ?: ""
+    // The old ttsVoice preference belonged to Google and must not be reused
+    // with a different provider after this upgrade.
+    fun readLockedTtsVoice() = p.getString("ttsLockedVoice", "") ?: ""
+    fun writeTtsSelection(engine: String, voice: String) {
+        p.edit().putString("ttsEngine", engine).putString("ttsLockedVoice", voice).apply()
+    }
     fun readAllowedNotificationPackages(): Set<String> = p.getStringSet("notificationAllowedPackages", emptySet())?.toSet().orEmpty()
     fun writeNotificationSettings(useDemo: Boolean, packages: Set<String>) {
         p.edit().putBoolean("notificationDemoMode", useDemo)
