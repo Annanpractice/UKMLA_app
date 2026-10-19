@@ -1,4 +1,4 @@
-# Clara v1.8 — explicit offline voice engine selection
+# Clara v1.9 — conversation deletion and offline voice selection
 
 Standalone Android chat app using the official LiteRT-LM 0.17.1 runtime and the Gemma 4 E4B LiteRT-LM model.
 
@@ -24,6 +24,15 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - Android TextToSpeech Read aloud and Stop controls. Voice settings explicitly enumerate installed TTS engine packages and offline English voices, permit testing, and lock an exact engine/voice pair across app restarts. If the requested engine is unavailable or Android silently switches providers, Clara reports an error rather than substituting Google.
 - Sherpa-ONNX / Next-gen Kaldi can be chosen directly in Clara after installing an Android TTS service that exposes it. The voice list is populated only from that engine. Engines that do not enumerate voices can be tested using their default voice.
 
+## Conversation history
+
+- History provides a Delete action for each saved conversation and a Clear all action. Both require confirmation.
+- Deleting the active conversation resets the visible chat and its Gemma conversation context; deleting an inactive conversation keeps the active chat.
+- Clear all removes all stored conversations without deleting the separately downloaded Gemma model or app preferences.
+- Clara deletes copied attachment files belonging exclusively to deleted conversations from its private attachments directory, leaving files still referenced by other chats untouched.
+- Destructive chat actions are disabled while model loading or generating is in progress.
+- The empty current chat is not saved automatically. This prevents a cleared history from immediately repopulating with a placeholder.
+
 ## Build
 
 Open the project in Android Studio, allow Gradle sync, and build the `app` debug variant. The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
@@ -32,7 +41,7 @@ Requirements: Android SDK platform 36, Java 17, Kotlin 2.4.0, Android Gradle Plu
 
 ## Install and test
 
-Clara v1.8 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
+Clara v1.9 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
 
 On first run, download the model, wait for completion, then tap **Load model**. GPU is attempted by default; switch to CPU in Settings if initialization fails. GPU inference, multimodal decoding, notification tool calling and offline TTS voice availability require testing on the target phone.
 
