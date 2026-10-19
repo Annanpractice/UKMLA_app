@@ -206,14 +206,15 @@ private fun PocketGemmaApp() {
                         ttsReady = false
                     } else {
                         try {
-                            val actualEngine = current.currentEngine.orEmpty()
-                            activeTtsEngine = actualEngine
                             val available = current.engines.orEmpty().map {
                                 TtsEngineChoice(it.name.orEmpty(), it.label ?: it.name.orEmpty())
                             }.filter { it.packageName.isNotBlank() }.distinctBy { it.packageName }
                             if (available.isNotEmpty()) ttsEngines = available.sortedBy { it.label.lowercase(Locale.ROOT) }
-                            if (requestedEngine.isNotBlank() && requestedEngine != actualEngine) {
-                                ttsProblem = "Android loaded ${actualEngine.ifBlank { "another engine" }} instead of $requestedEngine. Check that engine is installed."
+                            // Android exposes its *default* engine, not the active package
+                            // of this TextToSpeech instance. Never claim to verify the latter.
+                            activeTtsEngine = requestedEngine.ifBlank { current.defaultEngine.orEmpty() }
+                            if (requestedEngine.isNotBlank() && available.none { it.packageName == requestedEngine }) {
+                                ttsProblem = "Requested TTS engine $requestedEngine is not installed or not visible."
                                 ttsReady = false
                             } else {
                                 val offlineEnglish = current.voices.orEmpty()
@@ -610,7 +611,7 @@ private fun PocketGemmaApp() {
                         }
                     }
                 }
-                Text("Active engine: ${activeTtsEngine.ifBlank { "initialising" }}", style = MaterialTheme.typography.bodySmall)
+                Text("Requested engine: ${activeTtsEngine.ifBlank { "initialising" }}", style = MaterialTheme.typography.bodySmall)
                 Text("Offline English voice", style = MaterialTheme.typography.titleSmall)
                 Box {
                     OutlinedButton(onClick = { voiceExpanded = true }, enabled = tts != null && ttsVoices.isNotEmpty()) {
@@ -657,7 +658,7 @@ private fun PocketGemmaApp() {
                     val result = tts?.speak("Hello. I'm Clara, your local assistant.", TextToSpeech.QUEUE_FLUSH, null, "clara-voice-test")
                     if (result != TextToSpeech.SUCCESS) ttsProblem = "Voice test failed to start."
                 }, enabled = ttsReady) { Text("Test voice") }
-                Text("Select the Sherpa / Next-gen Kaldi engine above. Clara will not silently switch to Google.",
+                Text("Select Sherpa / Next-gen Kaldi, lock its voice, and test playback. Android does not expose a reliable active-engine identifier.",
                     style = MaterialTheme.typography.bodySmall)
             }
         },
