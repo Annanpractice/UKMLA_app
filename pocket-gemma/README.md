@@ -1,4 +1,4 @@
-# Clara v1.7 — notification briefing and voice selection
+# Clara v1.8 — explicit offline voice engine selection
 
 Standalone Android chat app using the official LiteRT-LM 0.17.1 runtime and the Gemma 4 E4B LiteRT-LM model.
 
@@ -21,8 +21,8 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - LiteRT-LM inference controls: GPU/CPU backend, context tokens (2,000–32,000), Top-K, Top-P, temperature, thinking, speculative decoding/MTP, and editable system prompt.
 - Multi-turn chats and settings are stored locally. Thinking output is displayed separately and excluded from ordinary restored conversation history.
 - Attach images and audio files through Android's picker. Attachments are copied to app-private storage and restored with saved conversations.
-- Android TextToSpeech Read aloud and Stop controls, plus a Voice dialog for selecting among installed offline voices. Clara remembers the selected voice and falls back to a system-language offline voice if it is unavailable.
-- Sherpa-ONNX can be used as the speech provider after its Android TTS engine and a compatible voice model are installed and selected in Android's text-to-speech settings. Restart Clara after changing the system TTS engine so the available voices refresh. Speech remains on-device when an offline Sherpa voice is selected.
+- Android TextToSpeech Read aloud and Stop controls. Voice settings explicitly enumerate installed TTS engine packages and offline English voices, permit testing, and lock an exact engine/voice pair across app restarts. If the requested engine is unavailable or Android silently switches providers, Clara reports an error rather than substituting Google.
+- Sherpa-ONNX / Next-gen Kaldi can be chosen directly in Clara after installing an Android TTS service that exposes it. The voice list is populated only from that engine. Engines that do not enumerate voices can be tested using their default voice.
 
 ## Build
 
@@ -32,7 +32,7 @@ Requirements: Android SDK platform 36, Java 17, Kotlin 2.4.0, Android Gradle Plu
 
 ## Install and test
 
-Clara v1.7 uses a new application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
+Clara v1.8 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
 
 On first run, download the model, wait for completion, then tap **Load model**. GPU is attempted by default; switch to CPU in Settings if initialization fails. GPU inference, multimodal decoding, notification tool calling and offline TTS voice availability require testing on the target phone.
 
