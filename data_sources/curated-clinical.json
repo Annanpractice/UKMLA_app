@@ -273,6 +273,374 @@
         "NICE NG196 evidence review E and F: risk tools for predicting bleeding: https://www.nice.org.uk/guidance/ng196/evidence/e-and-f-risk-stratification-tools-for-predicting-bleeding-in-people-with-atrial-fibrillation-pdf-9081923441",
         "O'Brien et al. ORBIT bleeding score, European Heart Journal 2015: https://pmc.ncbi.nlm.nih.gov/articles/PMC4670965/"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: notification duties and Group 1 versus Group 2",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Establish exact licence categories, professional driving, diagnosis, symptoms, treatment and functional impairment; consult DVLA Assessing fitness to drive (DVA for Northern Ireland).",
+        "treatment": "Group 1 covers cars/motorcycles. A medical driving restriction does not always require DVLA notification: document both decisions separately.",
+        "escalation": "Group 2 covers lorries/buses and has stricter thresholds and relicensing tests; some Group 1 permissions do not apply to Group 2.",
+        "mimics": "Driver normally has the legal duty to notify DVLA; the clinician must advise and document. If a patient continues to drive despite serious risk, follow GMC disclosure guidance.",
+        "redFlags": "Stop driving when a condition or medication impairs safe control even before DVLA responds. Do not assume 'not notifiable' means 'safe to drive'."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/assessing-fitness-to-drive-a-guide-for-medical-professionals"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: aortic aneurysm size and driving",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Identify aneurysm diameter, aortic segment, syndromic aortopathy, symptoms, repair status and interval imaging; ensure regular clinical review.",
+        "treatment": "Group 1: <6.0 cm may drive without notification; 6.0–6.4 cm may drive but notify and undergo annual licensing review; ≥6.5 cm stop and notify.",
+        "escalation": "Group 2: ≤5.5 cm may drive but must notify; >5.5 cm stop and notify. Descending thoracic/abdominal aneurysm also needs appropriate cardiac functional testing.",
+        "mimics": "Do not substitute the usual 5.5 cm elective AAA-repair threshold for DVLA Group 1 cut-offs; Marfan and bicuspid aortopathy follow separate rules.",
+        "redFlags": "Symptomatic aneurysm, suspected dissection/rupture, rapidly enlarging aneurysm or threshold breach: stop driving and urgent assessment as clinically indicated."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: severe hypertension thresholds",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Repeat resting BP and check symptoms/end-organ damage; distinguish sustained hypertension from malignant hypertension.",
+        "treatment": "Group 1: ordinary hypertension need not be notified. Malignant hypertension (≥180 systolic or ≥110 diastolic WITH progressive organ damage) requires stopping until controlled; no DVLA notification ordinarily.",
+        "escalation": "Group 2: sustained resting BP ≥180 systolic OR ≥100 diastolic means stop and notify; malignant hypertension also means stop and notify. Resume only after control and absence of impairing treatment effects.",
+        "mimics": "Group 1 does not have an automatic ban at an isolated 180/100 reading; malignant hypertension requires organ damage.",
+        "redFlags": "Headache plus neurological deficit, chest pain, acute pulmonary oedema or renal injury merits urgent assessment for hypertensive emergency."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: acute coronary syndrome / myocardial infarction",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Confirm PCI success, urgent further revascularisation plan, LVEF before discharge and other disqualifying symptoms.",
+        "treatment": "Group 1: after ACS successful PCI, may resume after 1 week only if no urgent revascularisation planned within 4 weeks, LVEF ≥40% and no other disqualification; otherwise after 4 weeks. Need not notify DVLA.",
+        "escalation": "Group 2: stop and notify for all ACS; potential relicensing after ≥6 weeks if LVEF ≥40%, required functional cardiac testing passed and no other disqualification.",
+        "mimics": "Uncomplicated ACS with successful PCI differs from ACS managed medically; successful PCI is not itself sufficient without the LVEF and planned-treatment criteria.",
+        "redFlags": "Recurrent chest pain, syncope, arrhythmia or heart failure may independently prevent safe driving."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: elective PCI and coronary bypass",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Clarify elective PCI versus ACS-related PCI versus CABG; assess complications, angina, LVEF and revascularisation status.",
+        "treatment": "Group 1: elective PCI requires ≥1 week off; CABG ≥4 weeks off. Usually no notification if uncomplicated and no other disqualification.",
+        "escalation": "Group 2: elective PCI ≥6 weeks off; CABG ≥3 months off. Must notify and meet LVEF ≥40%, functional cardiac test and other licensing criteria.",
+        "mimics": "Never use the elective PCI interval to clear someone after a myocardial infarction; apply the ACS rules when intervention treats ACS.",
+        "redFlags": "Residual angina, arrhythmia, poor ventricular function or incomplete recovery may require longer restriction."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: incapacitating arrhythmia and pacemaker",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Establish syncope/presyncope or inability to control a vehicle, arrhythmia treatment and device type; distinguish pacemaker from ICD.",
+        "treatment": "Group 1: incapacitating/likely incapacitating arrhythmia: stop and notify; resume ≥4 weeks after last event only if cause treated and no likely recurrence. Pacemaker insertion/box change: ≥1 week off; notify insertion, not routine box change.",
+        "escalation": "Group 2: incapacitating arrhythmia: stop and notify; consider licence only after ≥3 months without likely incapacity, cause treated and LVEF ≥40%. Pacemaker insertion/box change: ≥6 weeks off; notify insertion, not box change.",
+        "mimics": "Stable asymptomatic AF is not automatically subject to the 4-week incapacitating-arrhythmia restriction; correlate rhythm with symptoms.",
+        "redFlags": "Syncope from arrhythmia, recurrent VT, symptomatic bradycardia or new ICD indication merits immediate driving review."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: implantable cardioverter-defibrillator (ICD)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Check primary versus secondary prevention implant, ventricular arrhythmia, appropriate shocks and device interrogation history.",
+        "treatment": "Group 1: secondary-prevention ICD generally ≥6 months off and notify. Prophylactic ICD in asymptomatic patient: ≥1 month off and notify. Appropriate ICD shock for VT/VF generally restarts a 6-month restriction.",
+        "escalation": "Group 2: ICD implanted OR clinically indicated/recommended is a permanent bar to licensing; stop and notify, even if implantation is declined.",
+        "mimics": "Do not confuse ICD rules with pacemaker rules or assume prophylactic devices have the same Group 1 restriction as secondary prevention.",
+        "redFlags": "Appropriate ICD therapy, sustained VT/VF, loss of consciousness or new device malfunction requires specialist assessment."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: first seizure and established epilepsy",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Clarify provoked/unprovoked event, previous seizures, awake/asleep pattern, EEG/MRI, neurologist opinion and antiseizure medication.",
+        "treatment": "Group 1: first unprovoked seizure: stop and notify; usually 6 months off, 12 if increased recurrence risk. Established epilepsy: usually 12 months seizure-free before driving; permitted-seizure exceptions exist.",
+        "escalation": "Group 2: first unprovoked seizure: ≥5 years off and no antiseizure drugs in preceding 5 years, with favourable neurologist risk assessment. Established epilepsy: generally 10 years seizure-free without antiseizure drugs.",
+        "mimics": "Do not apply a universal 6-month rule to recurrent epilepsy, provoked seizures or solely nocturnal seizure concessions.",
+        "redFlags": "Any new seizure while licensed ordinarily requires immediate cessation and notification unless a DVLA-recognised permitted-seizure rule applies."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/neurological-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: stroke and TIA",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Determine TIA versus stroke, date of last event, recurrence, residual motor/visual/cognitive deficits and seizure history.",
+        "treatment": "Group 1: TIA stop for 1 month, normally no DVLA notification. Stroke stop for ≥1 month; notify if a relevant deficit persists at 1 month. Resume only after satisfactory clinical recovery.",
+        "escalation": "Group 2: stroke or TIA: stop and notify; licence refused/revoked for 1 year, then specialist/DVLA assessment of residual impairment and risk factors.",
+        "mimics": "Amaurosis fugax/retinal artery occlusion may follow cerebrovascular guidance; recurrent episodes and associated seizures may trigger additional rules.",
+        "redFlags": "Visual field loss, cognitive impairment, recurrent TIA or post-stroke seizure may independently disqualify driving."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/neurological-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: reflex vasovagal syncope and warning symptoms",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Make a positive diagnosis of reflex syncope; assess reliable prodrome long enough to stop safely, avoidable provocation, recurrence within 24 months and occurrence at wheel.",
+        "treatment": "Group 1: single reflex syncope with reliable prodrome NOT at wheel can continue driving without notifying. If at wheel: 1 month off, ordinarily no notification. Without reliable prodrome, stop and notify; often 3 months if not avoidably provoked.",
+        "escalation": "Group 2: must notify even for a single episode with reliable warning; if no avoidable trigger or event at wheel, typically 3 months off with reliable warning, 12 months without warning, plus specialist report.",
+        "mimics": "Brief light-headedness is not necessarily syncope; if cause cannot be confidently attributed, apply unexplained loss-of-consciousness rules instead.",
+        "redFlags": "Sudden syncope without warning, syncope while driving, recurrent episodes, exertional syncope or abnormal ECG requires careful exclusion of cardiac causes."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/appendices-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: unexplained blackout versus cough syncope",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Document witnesses, prodrome, triggers, seizure markers, ECG, orthostatic findings and number/timing of episodes.",
+        "treatment": "Group 1: single unexplained loss of consciousness without seizure markers: stop and notify, 6 months off; recurrent episodes: generally 12 months. Cough syncope: stop and notify; 6 months after one event, 12 months after multiple events.",
+        "escalation": "Group 2: one unexplained blackout requires 12 months off and notification; multiple unexplained episodes may require 5 years. Cough syncope: 12 months off after one episode, 5 years after multiple episodes over 5 years; notify in all cases.",
+        "mimics": "Do not diagnose vasovagal syncope without convincing evidence merely to shorten restrictions; cough syncope remains relevant even after cough resolves.",
+        "redFlags": "Tongue biting, post-ictal confusion, exertional collapse, cardiac symptoms or blackouts at wheel warrant specialist investigation."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/appendices-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: insulin-treated diabetes and glucose monitoring",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess insulin use, hypoglycaemia awareness, severe events, visual/neurological complications and documented glucose self-monitoring.",
+        "treatment": "Group 1: must notify; licence may be granted if adequate awareness, no disqualifying severe hypoglycaemia pattern and appropriate monitoring. Check glucose before first journey and at least every 2 hours driving.",
+        "escalation": "Group 2: notify and stop Group 2 driving on starting insulin until DVLA licensing decision; annual specialist assessment, full hypo awareness, no severe hypo in past 12 months and at least 4 weeks stored readings. Check at least twice daily, plus before driving and every 2 hours.",
+        "mimics": "CGM can be used if approved for non-adjunctive monitoring, but carry a finger-prick meter as backup; alarms do not replace symptom awareness.",
+        "redFlags": "Severe hypoglycaemia, hypoglycaemia unawareness or inability to monitor safely requires prompt driving cessation/advice."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/diabetes-mellitus-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: severe hypoglycaemia and impaired awareness",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Severe hypoglycaemia means needing another person's assistance; record daytime versus sleep episodes and whether it occurred while driving.",
+        "treatment": "Group 1: ≥2 episodes while awake within 12 months: stop and notify; any severe event at wheel: stop and notify. Nocturnal episodes in established sleep generally do not count unless awareness is concerning.",
+        "escalation": "Group 2: any severe episode, including during sleep, means stop and notify. No severe hypoglycaemia in past 12 months is a licensing requirement.",
+        "mimics": "Impaired hypo awareness: stop and notify for both groups; Group 1 may resume after clinical confirmation awareness restored; Group 2 requires full awareness.",
+        "redFlags": "Do not equate one self-treated low glucose reading with severe hypoglycaemia; recurrent episodes or inability to detect lows threaten driving safety."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/diabetes-mellitus-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: non-insulin diabetes treatment",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Identify diet alone, sulfonylurea/glinide versus non-hypoglycaemia-inducing agents, hypoglycaemia and diabetic complications.",
+        "treatment": "Group 1: diet alone, metformin, SGLT2, GLP-1, DPP-4 drugs and generally sulfonylureas may drive without DVLA notification if standards met.",
+        "escalation": "Group 2: diet alone no notification. Drug-treated diabetes (including metformin or SGLT2/GLP-1 therapy) requires notification; sulfonylurea/glinide users must meet extra glucose-monitoring and hypo-awareness criteria.",
+        "mimics": "Do not assume insulin is the only diabetes treatment relevant to Group 2 notification.",
+        "redFlags": "Any severe hypo, impaired awareness, disabling neuropathy or visual complication triggers separate DVLA review."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/diabetes-mellitus-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: minimum visual acuity and visual field",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Test binocular Snellen acuity with correction, number-plate reading and binocular field; use formal Esterman field testing when required.",
+        "treatment": "Group 1: read modern number plate at 20 m, binocular (or only eye) acuity at least 6/12 and horizontal visual field at least 120°, extending ≥50° each side, without significant central defect.",
+        "escalation": "Group 2: acuity ≥6/7.5 better eye and ≥6/60 worse eye; continuous field ≥160° with ≥70° each side, 30° up/down and no central 30° defect; other optical criteria also apply.",
+        "mimics": "Meeting Snellen acuity does not compensate for hemianopia or central field loss; historical Group 2 grandfather-rights exceptions are limited.",
+        "redFlags": "Failure to meet statutory eyesight standards means stop driving and notify DVLA."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/visual-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: diplopia and monocular vision",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Differentiate new diplopia from adapted monocular vision; assess cause, visual acuity, field and impact on navigation.",
+        "treatment": "Group 1: diplopia requires stop and notify; may drive only after DVLA accepts satisfactory control (e.g. prism or patch with monocular standard met). Monocular vision may be licensed after successful adaptation if standards met.",
+        "escalation": "Group 2: insuperable diplopia cannot be licensed; patching is not accepted. Monocular vision usually excludes Group 2 except narrowly defined historic entitlements.",
+        "mimics": "Driving with a patch is not universally valid; Group 2 vision standards remain stricter even if diplopia seems controlled.",
+        "redFlags": "New-onset double vision can signal acute neurological disease and should be clinically assessed urgently as appropriate."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/visual-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: obstructive sleep apnoea and excessive sleepiness",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess driving-relevant sleepiness, sleep attacks, near misses, AHI severity, CPAP adherence and other sedating causes.",
+        "treatment": "Group 1: mild OSA (AHI <15) or suspected OSA with excessive sleepiness: stop until controlled; notify if not controlled within 3 months. Moderate/severe OSA (AHI ≥15) WITH excessive sleepiness: stop and notify; resume only after effective control and DVLA criteria.",
+        "escalation": "Group 2: same notification trigger but stricter follow-up: moderate/severe OSA with excessive sleepiness needs documented control, adherence and at least annual review; Group 1 review at least every 3 years.",
+        "mimics": "OSA diagnosis/AHI alone does not establish the sleepiness restriction: assess excessive sleepiness likely to impair driving.",
+        "redFlags": "Microsleeps, sleepiness at wheel, untreated sleepy OSA or sedative co-prescribing make driving unsafe."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/miscellaneous-conditions-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: dementia, Parkinson disease and cognitive impairment",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess insight, memory, executive function, attention, navigation, motor control, fluctuation and potential formal driving assessment.",
+        "treatment": "Group 1: dementia must be notified; early slowly progressive dementia may be licensed after DVLA assessment, often annual review. Parkinson disease and MS must be notified but driving can continue if control is safe and DVLA permits.",
+        "escalation": "Group 2: dementia: stop and notify, licence refused/revoked. Other neurological disorders need DVLA notification and specialist assessment; severe motor variability or disability may prevent licensing.",
+        "mimics": "Diagnosis of dementia is not automatically an immediate Group 1 driving ban, but absence of insight or disorientation strongly argues against fitness.",
+        "redFlags": "Getting lost, significant inattention, poor judgement, falls from uncontrolled movement or inability to use controls needs safety action."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/psychiatric-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: severe depression, psychosis and mania",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess cognitive impairment, suicidal thoughts, agitation, insight, treatment stability and medication-related sedation.",
+        "treatment": "Group 1: mild/moderate depression without driving impairment need not be notified. Severe depression/anxiety: stop and notify; consider licence after ≥3 months stable. Acute psychosis and stable mania typically need ≥3 months stable plus specialist input.",
+        "escalation": "Group 2: severe depression/anxiety generally ≥6 months stable; psychosis or mania generally ≥12 months well and stable with specialist support. Stop and notify DVLA while unfit.",
+        "mimics": "Diagnostic label alone is not decisive for mild depression; acuity, insight, relapse risk and medication effects control the decision.",
+        "redFlags": "Suicidal intent at wheel, active psychosis/mania or medication impairing alertness means no driving."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/psychiatric-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: alcohol misuse and alcohol dependence",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Determine persistent misuse versus dependence with high-risk features: withdrawal seizure or medically assisted alcohol withdrawal; assess sobriety and complications.",
+        "treatment": "Group 1: persistent misuse/dependence without high-risk features: stop, notify; ≥6 months controlled drinking or abstinence. High-risk-feature dependence: ≥1 year abstinence before relicensing consideration.",
+        "escalation": "Group 2: persistent misuse/dependence without high-risk features: stop, notify; ≥1 year controlled drinking or abstinence. High-risk dependence: ≥3 years abstinence.",
+        "mimics": "High-risk physiological dependence has much stricter abstinence standards than persistent misuse; one episode of intoxication is not synonymous with dependence.",
+        "redFlags": "Alcohol-related seizures, cognitive dysfunction, sedating co-medication, drink-driving or relapses may impose additional restrictions."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/drug-or-alcohol-misuse-or-dependence-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: sedating medicines, anaesthesia and driving",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Review opioids, benzodiazepines, hypnotics, sedating antihistamines, antipsychotics, new doses, anaesthesia and the driver's ability to safely operate controls.",
+        "treatment": "Group 1: do not drive when impaired by medicine, excessive sleepiness, sedative effects or post-operative limitations; no universal DVLA notification simply because a sedative was prescribed.",
+        "escalation": "Group 2: same prohibition on impairment, with stricter occupational medical standards; check diagnosis-specific notification and post-procedure rules.",
+        "mimics": "An allowed prescribed medicine is not permission to drive while impaired; sedative interactions and dose changes can make otherwise stable patients unsafe.",
+        "redFlags": "Sleepiness, reduced reaction time, confusion, impaired coordination or inability to emergency brake means stop driving and assess."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/miscellaneous-conditions-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: sudden disabling vertigo",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess whether dizziness is sudden, unprovoked, sufficiently severe to prevent safe control, and likely to recur.",
+        "treatment": "Group 1: sudden unheralded disabling dizziness: stop on presentation and notify DVLA; relicensing may follow satisfactory symptom control.",
+        "escalation": "Group 2: stop and notify; if underlying diagnosis predicts recurrence, generally requires 1 year asymptomatic and fully controlled before reapplication.",
+        "mimics": "Brief positional vertigo with sufficient warning is not necessarily the same as sudden, disabling, unprecipitated dizziness; apply the specific clinical criteria.",
+        "redFlags": "Vertigo with new focal neurology, ataxia, diplopia, severe headache or inability to walk warrants urgent assessment for central pathology."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/neurological-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: angina at rest, with emotion or driving",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Ask whether angina occurs at rest, with emotion or at the wheel; assess control on treatment, cardiovascular events and Group 2 functional test eligibility.",
+        "treatment": "Group 1: stop driving if angina occurs at rest, with emotion or while driving; resume when satisfactorily controlled. DVLA notification is not required for uncomplicated angina.",
+        "escalation": "Group 2: must notify DVLA and stop driving if symptomatic; relicensing may be considered after ≥6 weeks without angina AND meeting exercise or other cardiac functional test criteria.",
+        "mimics": "Do not automatically impose an ACS 1-week or 4-week restriction on stable angina; follow ACS rules instead if MI/ACS has occurred.",
+        "redFlags": "New rest chest pain or suspected ACS warrants emergency assessment; uncontrolled angina at the wheel or with minimal exertion is unsafe for driving."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
+      ]
     }
   ]
 }
