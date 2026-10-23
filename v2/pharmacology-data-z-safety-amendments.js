@@ -77,7 +77,7 @@
     geriatric:true,
     highRiskClass:'Sedatives'
   });
-}
+
   // ScotGEM 2026–27 prescribing teaching cross-audit (19 case/extra-question topics).
   // Avoid re-adding concepts already covered in the core 142 pharmacology cards.
   amend("Acute coronary syndrome first medicines",{"indication":"Suspected acute coronary syndrome, including severe typical pain when the first ECG is normal or non-diagnostic; start ABC assessment, urgent 12-lead ECG and emergency transfer pathway.","toxicityAct":"Urgent hospital transfer/reperfusion planning must not be delayed by a normal initial ECG or by administering GTN. The ScotGEM forced-choice quiz selected sublingual GTN for symptom relief; do not omit 300 mg aspirin if indicated or definitive ACS care."},["ScotGEM Prescribing Teaching 2026–27 slides 15–26","NICE NG185"]);
