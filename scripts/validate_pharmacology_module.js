@@ -27,8 +27,8 @@ const data=loadData();
 assert.equal(data.schemaVersion,'ukmla-pharmacology-v1');
 assert.equal(data.topic,'Clinical Pharmacology & Safe Prescribing');
 assert.equal(data.checkedDate,'2026-09-11');
-assert.equal(data.cards.length,142);
-assert.equal(new Set(data.cards.map(card=>card.name)).size,142);
+assert.equal(data.cards.length,150);
+assert.equal(new Set(data.cards.map(card=>card.name)).size,150);
 assert(data.sections.includes('Oncology & SACT'));
 assert.deepEqual(Array.from(data.fieldOrder),['indication','prescribe','checkMonitor','interactionsAvoid','toxicityAct']);
 
@@ -79,7 +79,15 @@ const names=new Set(data.cards.map(card=>card.name));
   'Tumour lysis syndrome and time-critical rasburicase',
   'Immune-checkpoint inhibitor pneumonitis',
   'Fluoropyrimidines and DPD deficiency',
-  'SACT extravasation and infusion reactions'
+  'SACT extravasation and infusion reactions',
+  'Buccal midazolam: Epistatus versus Buccolam concentration',
+  'Fentanyl patch initiation and opioid switching',
+  'Rivaroxaban: crushing, food and counselling',
+  'Levothyroxine absorption: calcium and interacting medicines',
+  'Sulfasalazine DMARD: initiation and toxicity monitoring',
+  'Combined hormonal contraception: annual prescription review',
+  'Paediatric anaphylaxis: adrenaline age-band volumes',
+  'Adverse-drug-reaction assessment and Yellow Card'
 ].forEach(name=>assert(names.has(name),`Missing sentinel card: ${name}`));
 
 const counts=data.cards.reduce((result,card)=>{
@@ -88,8 +96,10 @@ const counts=data.cards.reduce((result,card)=>{
 },{});
 assert.equal(counts.Cardiovascular,26);
 assert.equal(counts.Antimicrobials,27);
-assert.equal(counts['Emergency & acute'],18);
-assert.equal(counts['High-risk medicines'],24);
+assert.equal(counts['Emergency & acute'],19);
+assert.equal(counts.Anticoagulation,8);
+assert.equal(counts['Calculations & prescribing'],10);
+assert.equal(counts['High-risk medicines'],28);
 assert.equal(counts['Geriatrics & frailty'],12);
 assert.equal(counts['Oncology & SACT'],13);
 assert(data.cards.filter(card=>card.paediatric).length>=10);
@@ -146,9 +156,9 @@ vm.runInContext(pharmacologyRuntime,sandbox,{filename:'pharmacology.js'});
 assert(sandbox.UKMLA_PHARMACOLOGY);
 assert(pharmacologyRuntime.includes('<option value="oncology">Oncology &amp; SACT toxicities</option>'));
 assert(sandbox.UKMLA_PHARMACOLOGY.injectData());
-assert.equal(app.conditions.length,142);
+assert.equal(app.conditions.length,150);
 assert.equal(app.topics.length,1);
-assert.equal(app.topics[0].count,142);
+assert.equal(app.topics[0].count,150);
 assert.equal(app.conditions[0].profile,'pharmacology');
 assert.deepEqual(new Set(Object.keys(app.conditions[0].fields)),new Set(['mimics','treatment','investigations','redFlags','escalation']));
 assert(Object.keys(fakeCore.TYPE_LABELS).filter(key=>key.startsWith('pharm_')).length===10);
