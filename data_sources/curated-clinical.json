@@ -442,7 +442,7 @@
       "fields": {
         "investigations": "Document witnesses, prodrome, triggers, seizure markers, ECG, orthostatic findings and number/timing of episodes.",
         "treatment": "Group 1: single unexplained loss of consciousness without seizure markers: stop and notify, 6 months off; recurrent episodes: generally 12 months. Cough syncope: stop and notify; 6 months after one event, 12 months after multiple events.",
-        "escalation": "Group 2: single unexplained blackout: 12 months off, notify; multiple unexplained episodes can mean 5 years. Cough syncope requires stop/notification and separate Group 2 schedule.",
+        "escalation": "Group 2: one unexplained blackout requires 12 months off and notification; multiple unexplained episodes may require 5 years. Cough syncope: 12 months off after one episode, 5 years after multiple episodes over 5 years; notify in all cases.",
         "mimics": "Do not diagnose vasovagal syncope without convincing evidence merely to shorten restrictions; cough syncope remains relevant even after cough resolves.",
         "redFlags": "Tongue biting, post-ictal confusion, exertional collapse, cardiac symptoms or blackouts at wheel warrant specialist investigation."
       },
@@ -570,7 +570,7 @@
       "fields": {
         "investigations": "Assess cognitive impairment, suicidal thoughts, agitation, insight, treatment stability and medication-related sedation.",
         "treatment": "Group 1: mild/moderate depression without driving impairment need not be notified. Severe depression/anxiety: stop and notify; consider licence after ≥3 months stable. Acute psychosis and stable mania typically need ≥3 months stable plus specialist input.",
-        "escalation": "Group 2: severe depression/anxiety generally ≥6 months stable; mania usually ≥12 months stable. Psychosis requires specialist assessment and longer restrictions. Must stop and notify for disqualifying illness.",
+        "escalation": "Group 2: severe depression/anxiety generally ≥6 months stable; psychosis or mania generally ≥12 months well and stable with specialist support. Stop and notify DVLA while unfit.",
         "mimics": "Diagnostic label alone is not decisive for mild depression; acuity, insight, relapse risk and medication effects control the decision.",
         "redFlags": "Suicidal intent at wheel, active psychosis/mania or medication impairing alertness means no driving."
       },
@@ -624,6 +624,22 @@
       },
       "sourceReview": [
         "https://www.gov.uk/guidance/neurological-disorders-assessing-fitness-to-drive"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Public Health / Prevention",
+      "name": "DVLA: angina at rest, with emotion or driving",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Ask whether angina occurs at rest, with emotion or at the wheel; assess control on treatment, cardiovascular events and Group 2 functional test eligibility.",
+        "treatment": "Group 1: stop driving if angina occurs at rest, with emotion or while driving; resume when satisfactorily controlled. DVLA notification is not required for uncomplicated angina.",
+        "escalation": "Group 2: must notify DVLA and stop driving if symptomatic; relicensing may be considered after ≥6 weeks without angina AND meeting exercise or other cardiac functional test criteria.",
+        "mimics": "Do not automatically impose an ACS 1-week or 4-week restriction on stable angina; follow ACS rules instead if MI/ACS has occurred.",
+        "redFlags": "New rest chest pain or suspected ACS warrants emergency assessment; uncontrolled angina at the wheel or with minimal exertion is unsafe for driving."
+      },
+      "sourceReview": [
+        "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
       ]
     }
   ]
