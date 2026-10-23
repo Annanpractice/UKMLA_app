@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 139
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 878
+EXPECTED_TOTAL = 901
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -71,6 +71,29 @@ CURATED_CLINICAL_SENTINELS = {
     "Parkinson’s disease in hospital and nil by mouth",
     "Rapid tranquillisation is not delirium treatment",
     "Recognising high-dose antipsychotic therapy",
+    "DVLA: notification duties and Group 1 versus Group 2",
+    "DVLA: aortic aneurysm size and driving",
+    "DVLA: severe hypertension thresholds",
+    "DVLA: acute coronary syndrome / myocardial infarction",
+    "DVLA: elective PCI and coronary bypass",
+    "DVLA: incapacitating arrhythmia and pacemaker",
+    "DVLA: implantable cardioverter-defibrillator (ICD)",
+    "DVLA: first seizure and established epilepsy",
+    "DVLA: stroke and TIA",
+    "DVLA: reflex vasovagal syncope and warning symptoms",
+    "DVLA: unexplained blackout versus cough syncope",
+    "DVLA: insulin-treated diabetes and glucose monitoring",
+    "DVLA: severe hypoglycaemia and impaired awareness",
+    "DVLA: non-insulin diabetes treatment",
+    "DVLA: minimum visual acuity and visual field",
+    "DVLA: diplopia and monocular vision",
+    "DVLA: obstructive sleep apnoea and excessive sleepiness",
+    "DVLA: dementia, Parkinson disease and cognitive impairment",
+    "DVLA: severe depression, psychosis and mania",
+    "DVLA: alcohol misuse and alcohol dependence",
+    "DVLA: sedating medicines, anaesthesia and driving",
+    "DVLA: sudden disabling vertigo",
+    "DVLA: angina at rest, with emotion or driving",
 }
 
 
