@@ -13,13 +13,21 @@ NEURO_LOCALISATION = ROOT / "data_sources" / "biomedical-neuro-localisation.tsv"
 DATA = ROOT / "data" / "conditions.json"
 APP = ROOT / "v2" / "app.html"
 
-EXPECTED_ANATOMY = 139
+EXPECTED_ANATOMY = 172
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 901
+EXPECTED_TOTAL = 934
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
     "Surgical neck humerus",
+    "Histology: adenocarcinoma",
+    "Histology: ductal carcinoma in situ (DCIS)",
+    "Histology: invasive lobular breast carcinoma",
+    "Histology: pulmonary small-cell carcinoma",
+    "Histology: pancreatic ductal adenocarcinoma",
+    "Histology: follicular thyroid carcinoma",
+    "Histology: ovarian high-grade serous carcinoma",
+    "Histology: cutaneous melanoma",
     "Tarsal tunnel contents",
     "Cavernous sinus contents",
     "Epidural needle layers",

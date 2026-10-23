@@ -10,7 +10,7 @@ PHYSIOLOGY_SOURCE = ROOT / "data_sources" / "biomedical-physiology.tsv"
 NEURO_LOCALISATION_SOURCE = ROOT / "data_sources" / "biomedical-neuro-localisation.tsv"
 ANATOMY_TOPIC = "Clinical Anatomy"
 PHYSIOLOGY_TOPIC = "Clinical Physiology"
-EXPECTED_ANATOMY = 139
+EXPECTED_ANATOMY = 172
 EXPECTED_PHYSIOLOGY = 215
 
 
@@ -73,20 +73,38 @@ def load_biomedical_records(
         "discriminator": "Discriminator / trap",
         "examUse": "Applied exam use",
     }
+    histology_labels = {
+        "exactAnswer": "Defining histological feature",
+        "clinicalPattern": "Clinical association",
+        "localisation": "Tissue morphology",
+        "discriminator": "Diagnostic distinction",
+        "examUse": "Exam application",
+    }
     for name, answer, clinical in anatomy_rows:
-        fields = {
-            "exactAnswer": answer,
-            "clinicalPattern": clinical,
-            "localisation": f"Anchor the lesion, relation or landmark at {name}; the required anatomical answer is {answer}.",
-            "discriminator": f"The decisive separator is the pattern: {clinical}.",
-            "examUse": f"Applied spotter sequence: identify {name}, state {answer}, then predict {clinical}.",
-        }
+        is_histology = name.startswith("Histology: ")
+        if is_histology:
+            tumour_name = name.split(": ", 1)[1]
+            fields = {
+                "exactAnswer": answer,
+                "clinicalPattern": clinical,
+                "localisation": f"Microscopic recognition of {tumour_name}: {answer}.",
+                "discriminator": f"Distinguish {tumour_name} using its cellular architecture, tissue origin and invasion pattern rather than organ alone.",
+                "examUse": f"Histology spotter/SBA: link {tumour_name} with the distinguishing clinical clue: {clinical}.",
+            }
+        else:
+            fields = {
+                "exactAnswer": answer,
+                "clinicalPattern": clinical,
+                "localisation": f"Anchor the lesion, relation or landmark at {name}; the required anatomical answer is {answer}.",
+                "discriminator": f"The decisive separator is the pattern: {clinical}.",
+                "examUse": f"Applied spotter sequence: identify {name}, state {answer}, then predict {clinical}.",
+            }
         records.append(_record(
             topic=ANATOMY_TOPIC,
             name=name,
             profile="anatomy",
             fields=fields,
-            labels=anatomy_labels,
+            labels=histology_labels if is_histology else anatomy_labels,
             topic_id=topic_id,
             condition_id=condition_id,
             clean=clean,
