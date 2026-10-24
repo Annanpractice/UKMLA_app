@@ -15,7 +15,7 @@ android {
         // Every GitHub workflow run receives a higher Android versionCode;
         // users can install future builds as upgrades rather than downgrades.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 13
-        versionName = "2.0.6"
+        versionName = "2.0.7"
     }
 
     // Build the original package and an independently installable companion.
@@ -41,9 +41,22 @@ android {
             resValue("string", "clara_app_name", "Clara Cards")
         }
     }
-    // Use the standard Android development signing configuration. GitHub
-    // restores the same fixed test-only debug keystore for each build.
+    // Explicitly bind all test APKs to the version-controlled debug key.
+    // Relying on Android's implicit debug.keystore location caused GitHub's
+    // ephemeral runners to sign successive versions with different keys.
+    signingConfigs {
+        create("claraFixedDebug") {
+            storeFile = rootProject.file("clara-fixed-debug.keystore")
+            storeType = "jks"
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("claraFixedDebug")
+        }
         getByName("release") {
             isMinifyEnabled = false
         }
