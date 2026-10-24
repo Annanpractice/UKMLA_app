@@ -10,16 +10,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import org.json.JSONArray
-import org.json.JSONObject
-import org.json.JSONTokener
-import java.io.File
-import java.util.UUID
 
 data class ClaraStudyCard(
     val id: String,
@@ -36,100 +33,13 @@ data class ClaraStudyDeck(val cards: List<ClaraStudyCard> = emptyList())
 fun cardPlainText(html: String): String =
     Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString().replace(Regex("\\s+"), " ").trim()
 
-object ClaraDeckStorage {
-    private const val MAX_IMPORT = 100L * 1024 * 1024
-    private fun deckFile(context: Context) = File(context.filesDir, "clara-flashcards.json")
-    fun load(context: Context): ClaraStudyDeck = runCatching {
-        val file = deckFile(context)
-        if (file.isFile) parse(file.readText(Charsets.UTF_8)) else ClaraStudyDeck()
-    }.getOrDefault(ClaraStudyDeck())
-
-    fun importLocal(context: Context, uri: Uri): ClaraStudyDeck {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
-            val buffer = ByteArray(8192)
-            val output = java.io.ByteArrayOutputStream()
-            var size = 0L
-            while (true) {
-                val count = stream.read(buffer)
-                if (count < 0) break
-                size += count
-                require(size <= MAX_IMPORT) { "Deck is too large (100 MB limit)." }
-                output.write(buffer, 0, count)
-            }
-            output.toByteArray()
-        } ?: error("Cannot read the selected deck.")
-        val parsed = parse(bytes.toString(Charsets.UTF_8))
-        require(parsed.cards.isNotEmpty()) { "No cards were found in this JSON deck." }
-        save(context, parsed)
-        return parsed
-    }
-
-    private fun parse(json: String): ClaraStudyDeck {
-        val root = JSONTokener(json.trimStart('\uFEFF')).nextValue()
-        val collected = mutableListOf<ClaraStudyCard>()
-        val ids = mutableSetOf<String>()
-        fun read(array: JSONArray?, status: String) {
-            if (array == null) return
-            require(array.length() <= 20000) { "Deck exceeds 20,000 cards." }
-            for (i in 0 until array.length()) {
-                val obj = array.optJSONObject(i) ?: continue
-                val q = listOf("q", "Question", "question", "front", "Front", "prompt").firstNotNullOfOrNull { obj.optString(it).takeIf(String::isNotBlank) } ?: ""
-                val a = listOf("a", "Answer", "answer", "back", "Back", "response").firstNotNullOfOrNull { obj.optString(it).takeIf(String::isNotBlank) } ?: ""
-                if (q.isBlank() && a.isBlank()) continue
-                val originalId = obj.optString("id", "").ifBlank { UUID.randomUUID().toString() }
-                val uniqueId = if (ids.add(originalId)) originalId else UUID.randomUUID().toString().also { ids.add(it) }
-                val actualStatus = if (status == "remaining") obj.optString("status", status) else status
-                collected.add(ClaraStudyCard(
-                    id = uniqueId,
-                    question = q,
-                    answer = a,
-                    topic = obj.optString("topic", ""),
-                    qImage = obj.optString("qImg", obj.optString("QImage", "")),
-                    aImage = obj.optString("aImg", obj.optString("AImage", "")),
-                    status = if (actualStatus in setOf("remaining","understood","mastered")) actualStatus else "remaining"
-                ))
-            }
-        }
-        when (root) {
-            is JSONArray -> read(root, "remaining")
-            is JSONObject -> {
-                read(root.optJSONArray("cards") ?: root.optJSONArray("flashcards") ?: root.optJSONArray("items"), "remaining")
-                read(root.optJSONArray("understood") ?: root.optJSONArray("seen"), "understood")
-                read(root.optJSONArray("mastered"), "mastered")
-            }
-            else -> error("Expected a JSON deck or an array of cards.")
-        }
-        return ClaraStudyDeck(collected)
-    }
-
-    fun save(context: Context, deck: ClaraStudyDeck) {
-        val groups = JSONObject()
-        for (status in listOf("remaining","understood","mastered")) {
-            val a = JSONArray()
-            deck.cards.filter { it.status == status }.forEach { c ->
-                a.put(JSONObject().put("id", c.id).put("q", c.question).put("a", c.answer)
-                    .put("topic", c.topic).put("qImg", c.qImage).put("aImg", c.aImage))
-            }
-            groups.put(status, a)
-        }
-        val target = deckFile(context)
-        val tmp = File(context.filesDir, "clara-flashcards.tmp")
-        tmp.writeText(groups.toString(), Charsets.UTF_8)
-        require(tmp.renameTo(target) || run {
-            tmp.copyTo(target, overwrite = true)
-            tmp.delete()
-            true
-        }) { "Could not save imported cards." }
-    }
-}
-
 // Displays locally imported formatting and data-URI images without JavaScript,
 // disk access, Android bridges, or external network requests.
 @Composable
 private fun StudyCardFace(html: String, imageData: String) {
     val context = LocalContext.current
     val document = remember(html, imageData) {
-        val safeImg = if (imageData.startsWith("data:image/") && imageData.length <= 12_000_000)
+        val safeImg = if (imageData.startsWith("data:image/"))
             "<p><img src=\"" + imageData.replace("\"", "") + "\" /></p>" else ""
         """<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
