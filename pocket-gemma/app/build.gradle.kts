@@ -12,8 +12,8 @@ android {
         applicationId = "app.clara.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "2.0"
+        versionCode = 12
+        versionName = "2.0.1"
     }
 
     // Build the original package and an independently installable companion.
