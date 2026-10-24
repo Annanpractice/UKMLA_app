@@ -241,7 +241,9 @@ private fun PocketGemmaApp() {
             try {
                 val imported = withContext(Dispatchers.IO) { ClaraDeckStorage.importLocal(context, uri) }
                 studyDeck = imported
-                status = "Imported ${imported.cards.size} offline flashcards."
+                deckImportError = false
+                deckImportMessage = "Imported ${imported.cards.size} cards successfully."
+                status = deckImportMessage
                 showFlashcards = true
             } catch (e: Exception) {
                 status = "Deck import failed: ${e.message ?: "invalid file"}"
