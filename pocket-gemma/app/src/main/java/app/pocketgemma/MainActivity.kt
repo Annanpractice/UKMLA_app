@@ -53,6 +53,15 @@ import java.io.FileInputStream
 import java.security.MessageDigest
 import java.util.Locale
 
+private val DEFAULT_CARD_TUTOR_PROMPT = """
+Act as a patient, encouraging UK clinical Socratic tutor. Explain the clinical scenario briefly, then ask one targeted
+question at a time and wait for my reply. Do not reveal the flashcard's model answer at the outset.
+Probe my reasoning, differential diagnosis, investigations, management, red flags and prescribing safety where relevant.
+After I attempt an answer, provide precise feedback, correct misconceptions and relate your explanation to the supplied
+card answer. If I ask for the answer, state it directly. Distinguish information present in the card from your own
+general clinical knowledge; avoid inventing guidelines or certainty. Keep each reply short and conversational.
+""".trimIndent()
+
 private const val MODEL_NAME = "gemma-4-E4B-it.litertlm"
 private const val MODEL_URL = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/28299f30ee4d43294517a4ac93abd6163412f07f/gemma-4-E4B-it.litertlm"
 private const val MODEL_SIZE = 3_659_530_240L
@@ -104,7 +113,8 @@ data class ChatLine(
     val text: String,
     val thought: String = "",
     val attachments: List<ChatAttachment> = emptyList(),
-    val notificationSources: List<PocketNotification> = emptyList()
+    val notificationSources: List<PocketNotification> = emptyList(),
+    val displayText: String = ""
 )
 data class SavedChat(val id: String, val title: String, val lines: List<ChatLine>)
 data class StoredChats(val activeId: String, val sessions: List<SavedChat>)
@@ -164,6 +174,11 @@ private fun PocketGemmaApp() {
     var showHistory by remember { mutableStateOf(false) }
     var pendingChatDeletion by remember { mutableStateOf<SavedChat?>(null) }
     var confirmClearAll by remember { mutableStateOf(false) }
+    var showFlashcards by remember { mutableStateOf(false) }
+    var studyDeck by remember { mutableStateOf(ClaraDeckStorage.load(context)) }
+    var tutorPrompt by remember { mutableStateOf(prefs.readCardTutorPrompt()) }
+    var speakTutorReplies by remember { mutableStateOf(prefs.readCardTutorSpeech()) }
+    var tutoringThisChat by remember { mutableStateOf(lines.firstOrNull()?.displayText?.startsWith("Study card:") == true) }
     var showBriefingSettings by remember { mutableStateOf(false) }
     var demoNotifications by remember { mutableStateOf(prefs.readDemoNotifications()) }
     var allowedNotificationPackages by remember { mutableStateOf(prefs.readAllowedNotificationPackages()) }
@@ -203,6 +218,18 @@ private fun PocketGemmaApp() {
         if (uri != null) scope.launch {
             try { pendingAttachments = pendingAttachments + stageAttachment(context, uri, "audio") }
             catch (e: Exception) { status = "Could not attach audio: ${e.message}" }
+        }
+    }
+    val studyDeckPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            try {
+                val imported = withContext(Dispatchers.IO) { ClaraDeckStorage.importLocal(context, uri) }
+                studyDeck = imported
+                status = "Imported ${imported.cards.size} offline flashcards."
+                showFlashcards = true
+            } catch (e: Exception) {
+                status = "Deck import failed: ${e.message ?: "invalid file"}"
+            }
         }
     }
 
@@ -439,7 +466,7 @@ private fun PocketGemmaApp() {
             if (modelFile.isFile) createEngine()
         }
     }
-    fun submitMessage(rawPrompt: String, attachments: List<ChatAttachment> = emptyList()) {
+    fun submitMessage(rawPrompt: String, attachments: List<ChatAttachment> = emptyList(), displayText: String = "") {
         if (generating || loading) return
         input = ""
         pendingAttachments = emptyList()
@@ -447,7 +474,7 @@ private fun PocketGemmaApp() {
             if (attachments.any { it.kind == "image" }) "Describe the attached image."
             else "Please transcribe and summarise the attached audio."
         }
-        val userLine = ChatLine("user", prompt, attachments = attachments)
+        val userLine = ChatLine("user", prompt, attachments = attachments, displayText = displayText)
         lines = lines + userLine
         persist()
         scope.launch {
@@ -506,6 +533,10 @@ private fun PocketGemmaApp() {
                     }
                 }
                 persist()
+                if (tutoringThisChat && speakTutorReplies && ttsReady && answer.isNotBlank()) {
+                    val spoken = answer.replace(Regex("[*#_`]+"), " ").take(3000)
+                    tts?.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "card-tutor-" + System.nanoTime())
+                }
             } catch (e: Exception) { status = "Generation failed: ${e.message}" }
             finally { generating = false }
         }
@@ -517,6 +548,7 @@ private fun PocketGemmaApp() {
                 TextButton(onClick = { showSettings = true }) { Text("Settings") }
                 TextButton(onClick = { showSpeechSettings = true }) { Text("Voice") }
                 TextButton(onClick = { persist(); showHistory = true }) { Text("History") }
+                TextButton(onClick = { showFlashcards = true }) { Text("Cards") }
                 TextButton(onClick = {
                     notificationAccess = hasPocketGemmaNotificationAccess(context)
                     notificationSources = ActiveNotificationStore.currentSources()
@@ -526,11 +558,75 @@ private fun PocketGemmaApp() {
                     persist()
                     activeId = java.util.UUID.randomUUID().toString()
                     lines = emptyList()
+                    tutoringThisChat = false
+                    showFlashcards = false
                     prefs.writeSavedChats(activeId, sessions)
                     scope.launch { conversation?.close(); conversation = null; if (modelFile.exists()) createEngine() }
                 }, enabled = !generating && !loading) { Text("New chat") }
             })
         }) { padding ->
+            if (showFlashcards) {
+                ClaraFlashcardScreen(
+                    deck = studyDeck,
+                    onBack = { showFlashcards = false },
+                    onImport = { studyDeckPicker.launch("*/*") },
+                    onMark = { id, cardStatus ->
+                        val updated = studyDeck.copy(cards = studyDeck.cards.map {
+                            if (it.id == id) it.copy(status = cardStatus) else it
+                        })
+                        studyDeck = updated
+                        scope.launch {
+                            try { withContext(Dispatchers.IO) { ClaraDeckStorage.save(context, updated) } }
+                            catch (e: Exception) { status = "Could not save card progress: ${e.message}" }
+                        }
+                    },
+                    onSpeak = { text ->
+                        if (ttsReady && text.isNotBlank()) {
+                            val rc = tts?.speak(text.take(3000), TextToSpeech.QUEUE_FLUSH, null, "card-reading-" + System.nanoTime())
+                            if (rc != TextToSpeech.SUCCESS) status = "The selected speech engine could not read the card."
+                        } else status = "Open Voice to select an offline speech engine."
+                    },
+                    onDiscuss = { card ->
+                        if (!generating && !loading) {
+                            if (!modelFile.isFile || modelFile.length() != MODEL_SIZE) {
+                                status = "Download Gemma before starting a Socratic discussion."
+                            } else {
+                                persist()
+                                activeId = java.util.UUID.randomUUID().toString()
+                                lines = emptyList()
+                                input = ""
+                                pendingAttachments = emptyList()
+                                tutoringThisChat = true
+                                showFlashcards = false
+                                val question = cardPlainText(card.question).take(6000)
+                                val answer = cardPlainText(card.answer).take(8000)
+                                val tutorMessage = """
+${tutorPrompt.trim()}
+
+Flashcard topic: ${card.topic.ifBlank { "General medicine" }}
+QUESTION:
+$question
+REFERENCE ANSWER (for your private teaching guidance, not to recite upfront):
+$answer
+
+Begin by introducing the clinical significance of this question, and ask one Socratic question.
+Wait for me to respond, then continue one question at a time.
+""".trimIndent()
+                                scope.launch {
+                                    createEngine()
+                                    if (conversation != null) {
+                                        submitMessage(tutorMessage, displayText = "Study card: ${question.take(100)}")
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    tutorPrompt = tutorPrompt,
+                    onTutorPromptChange = { tutorPrompt = it; prefs.writeCardTutorPrompt(it) },
+                    speakTutorReplies = speakTutorReplies,
+                    onSpeakTutorRepliesChange = { speakTutorReplies = it; prefs.writeCardTutorSpeech(it) }
+                )
+            } else {
             Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp)) {
                 Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                 if (downloadProgress >= 0) LinearProgressIndicator(progress = { downloadProgress / 100f }, Modifier.fillMaxWidth())
@@ -562,7 +658,7 @@ private fun PocketGemmaApp() {
                                 line.attachments.forEach { attachment ->
                                     Text(if (attachment.kind == "image") "📷 ${attachment.name}" else "🎧 ${attachment.name}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                                 }
-                                Text(line.text, Modifier.padding(top = 5.dp))
+                                Text(line.displayText.ifBlank { line.text }, Modifier.padding(top = 5.dp))
                                 if (line.thought.isNotBlank()) Text("Thinking: ${line.thought}", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                                 if (line.notificationSources.isNotEmpty()) {
                                     Text("Sources read by Clara", Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
@@ -614,6 +710,7 @@ private fun PocketGemmaApp() {
                 }
                 }
                 if (modelFile.exists() && conversation == null) Button(onClick = { scope.launch { createEngine() } }, enabled = !loading, modifier = Modifier.align(Alignment.End).padding(bottom = 8.dp)) { Text(if (loading) "Loading…" else "Load model") }
+            }
             }
         }
     }
@@ -816,6 +913,7 @@ private fun PocketGemmaApp() {
                                     onClick = {
                                         activeId = chat.id
                                         lines = chat.lines
+                                        tutoringThisChat = chat.lines.firstOrNull()?.displayText?.startsWith("Study card:") == true
                                         prefs.writeSavedChats(activeId, sessions)
                                         showHistory = false
                                         scope.launch { createEngine() }
@@ -925,6 +1023,10 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
 private class PrefStore(context: Context) {
     private val p = context.getSharedPreferences("pocket-gemma", Context.MODE_PRIVATE)
     fun readDemoNotifications() = p.getBoolean("notificationDemoMode", true)
+    fun readCardTutorPrompt() = p.getString("cardTutorPrompt", DEFAULT_CARD_TUTOR_PROMPT) ?: DEFAULT_CARD_TUTOR_PROMPT
+    fun writeCardTutorPrompt(text: String) { p.edit().putString("cardTutorPrompt", text).apply() }
+    fun readCardTutorSpeech() = p.getBoolean("cardTutorSpeech", true)
+    fun writeCardTutorSpeech(value: Boolean) { p.edit().putBoolean("cardTutorSpeech", value).apply() }
     fun readTtsEngine() = p.getString("ttsEngine", "") ?: ""
     // The old ttsVoice preference belonged to Google and must not be reused
     // with a different provider after this upgrade.
@@ -956,7 +1058,7 @@ private class PrefStore(context: Context) {
                     val a = attachmentJson.getJSONObject(k)
                     ChatAttachment(a.getString("kind"), a.getString("path"), a.getString("name"))
                 }
-                ChatLine(o.getString("role"), o.getString("text"), o.optString("thought"), attachments)
+                ChatLine(o.getString("role"), o.getString("text"), o.optString("thought"), attachments, displayText = o.optString("displayText", ""))
             }
             SavedChat(c.getString("id"), c.optString("title", "New chat"), lines)
         }
@@ -968,7 +1070,7 @@ private class PrefStore(context: Context) {
                 val turns = JSONArray().apply {
                     chat.lines.forEach { line ->
                         val attachments = JSONArray().apply { line.attachments.forEach { a -> put(JSONObject().put("kind", a.kind).put("path", a.path).put("name", a.name)) } }
-                        put(JSONObject().put("role", line.role).put("text", line.text).put("thought", line.thought).put("attachments", attachments))
+                        put(JSONObject().put("role", line.role).put("text", line.text).put("thought", line.thought).put("attachments", attachments).put("displayText", line.displayText))
                     }
                 }
                 put(JSONObject().put("id", chat.id).put("title", chat.title).put("lines", turns))
