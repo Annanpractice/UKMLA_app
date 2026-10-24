@@ -2,3 +2,9 @@
 private-media/
 *.apkg
 spranki-local-image-pack*.zip
+
+# Locally decrypted Clara development signing files (never commit)
+/pocket-gemma/clara-signing.p12
+/pocket-gemma/*.jks
+/pocket-gemma/*.keystore
+/pocket-gemma/app/clara-signing.*
