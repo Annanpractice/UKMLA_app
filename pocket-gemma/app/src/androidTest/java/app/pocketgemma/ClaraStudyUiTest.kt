@@ -50,7 +50,7 @@ class ClaraStudyUiTest {
         ui.setContent {
             MaterialTheme(colorScheme=darkColorScheme(primary=ClaraColors.accent,surface=ClaraColors.background)) {
                 ClaraTutorPanel(card=card,lines=listOf(ChatLine("user","Can you give me a hint?"),ChatLine("assistant",reply)),
-                    input="",onInput={},onSend={},modelAvailable=true,onOpenChat={},onMic={},listening=false,loading=false,
+                    input="",onInput={},onSend={},modelAvailable=true,onOpenChat={},onMic={},listening=false,recognitionBusy=false,loading=false,
                     generating=false,status="GPU backend initialized",speech=ClaraSpeech(reply,0,33,true),speakReplies=true,
                     onSpeakReplies={},onSpeak={},onStop={},onVoiceSettings={},onModelSettings={},onDismiss={})
             }

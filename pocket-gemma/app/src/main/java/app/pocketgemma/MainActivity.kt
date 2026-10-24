@@ -9,6 +9,11 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.UtteranceProgressListener
 import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.RecognitionListener
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.provider.OpenableColumns
@@ -209,8 +214,13 @@ private fun PocketGemmaApp() {
     var speakTutorReplies by remember { mutableStateOf(prefs.readCardTutorSpeech()) }
     var tutoringThisChat by remember { mutableStateOf(lines.firstOrNull()?.displayText?.startsWith("Study card:") == true) }
     var tutorCard by remember { mutableStateOf<ClaraStudyCard?>(null) }
+    var activeTutorCardId by rememberSaveable { mutableStateOf("") }
+    var activeTutorSessionId by rememberSaveable { mutableStateOf("") }
     var showTutorControls by remember { mutableStateOf(false) }
     var listening by remember { mutableStateOf(false) }
+    var recognitionBusy by remember { mutableStateOf(false) }
+    var voiceCaptureId by remember { mutableIntStateOf(0) }
+    var voiceRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     var stopRequested by remember { mutableStateOf(false) }
     var speech by remember { mutableStateOf(ClaraSpeech()) }
     var speechRate by remember { mutableFloatStateOf(prefs.readSpeechRate()) }
@@ -241,6 +251,11 @@ private fun PocketGemmaApp() {
     var verifiedModelSignature by remember { mutableStateOf<String?>(null) }
     var notificationTool by remember { mutableStateOf<ListNotificationsTool?>(null) }
 
+    fun cancelVoiceCapture() {
+        voiceCaptureId += 1
+        recognitionBusy = false; listening = false
+        voiceRecognizer?.cancel()
+    }
     fun stopSpeech() {
         speechChunks.clear()
         lastSpeechId = ""
@@ -291,27 +306,89 @@ private fun PocketGemmaApp() {
             catch (e: Exception) { status = "Could not attach audio: ${e.message}" }
         }
     }
-    val spokenAnswerPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        listening = false
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val transcript = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
-            if (!transcript.isNullOrBlank()) {
-                input = transcript
-                if (tutoringThisChat) pendingSpokenAnswer = transcript
-            }
+    fun beginVoiceCapture() {
+        if (generating || loading) return
+        if (listening) {
+            listening = false
+            voiceRecognizer?.stopListening()
+            status = "Recognising your reply…"
+            return
+        }
+        if (recognitionBusy) return
+        stopSpeech()
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            status = "No speech recognition service is installed. You can type your reply below."
+            return
+        }
+        try {
+            voiceCaptureId += 1
+            val captureId = voiceCaptureId
+            voiceRecognizer?.destroy()
+            val recognizer = if (android.os.Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context))
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(context) else SpeechRecognizer.createSpeechRecognizer(context)
+            voiceRecognizer = recognizer
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) { if (captureId != voiceCaptureId) return; listening = true; status = "Listening… tap the microphone to finish." }
+                override fun onBeginningOfSpeech() { if (captureId == voiceCaptureId) listening = true }
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() { if (captureId != voiceCaptureId) return; listening = false; status = "Recognising your reply…" }
+                override fun onError(error: Int) {
+                    if (!recognitionBusy || captureId != voiceCaptureId) return
+                    listening = false; recognitionBusy = false
+                    status = when (error) {
+                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech heard. Tap the microphone to try again."
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is needed for voice replies."
+                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "The installed recognizer needs a connection or an offline language pack."
+                        else -> "Voice recognition stopped ($error). Tap the microphone to try again."
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {
+                    if (!recognitionBusy || captureId != voiceCaptureId) return
+                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let { input = it }
+                }
+                override fun onResults(results: Bundle?) {
+                    if (!recognitionBusy || captureId != voiceCaptureId) return
+                    listening = false; recognitionBusy = false
+                    val transcript = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim()
+                    if (!transcript.isNullOrBlank()) {
+                        input = transcript
+                        status = "Reply heard."
+                        if (tutoringThisChat) pendingSpokenAnswer = transcript
+                    } else status = "No speech heard. Tap the microphone to try again."
+                }
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+            recognitionBusy = true
+            recognizer.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB")
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            })
+        } catch (e: Exception) {
+            listening = false; recognitionBusy = false
+            status = "Could not start speech recognition: ${e.message}"
         }
     }
+    val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) beginVoiceCapture() else status = "Allow microphone access to speak, or type your reply below."
+    }
     fun startMicReply() {
-        if (generating || loading || listening) return
-        stopSpeech()
-        val request = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB")
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Reply to Clara's card question")
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+            beginVoiceCapture() else microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+    // Cancel capture when Clara leaves the foreground, and ignore late results.
+    DisposableEffect(Unit) {
+        val lifecycle = (context as? ComponentActivity)?.lifecycle
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                cancelVoiceCapture()
+            }
         }
-        try { listening = true; spokenAnswerPicker.launch(request) }
-        catch (e: Exception) { listening = false; status = "No speech recognition service is installed: ${e.message}" }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer); voiceCaptureId += 1; voiceRecognizer?.destroy(); voiceRecognizer = null }
     }
 
     val deckExportPicker = rememberLauncherForActivityResult(
@@ -608,6 +685,7 @@ private fun PocketGemmaApp() {
     }
     fun submitMessage(rawPrompt: String, attachments: List<ChatAttachment> = emptyList(), displayText: String = "") {
         if (generating || loading) return
+        cancelVoiceCapture()
         stopSpeech()
         stopRequested = false
         input = ""
@@ -705,7 +783,7 @@ $entered""".trimIndent()
             } finally {
                 // LiteRT-LM cancellation invalidates conversation state. Rebuild it
                 // from saved turns before another request, never reuse a cancelled session.
-                if (stopRequested) { conv.close(); if (conversation === conv) conversation = null }
+                if (stopRequested) { runCatching { conv.close() }; if (conversation === conv) conversation = null }
                 persist()
                 generating = false
             }
@@ -801,7 +879,7 @@ $entered""".trimIndent()
                     speechReady = ttsReady,
                     speechMessage = ttsProblem,
                     onStopSpeech = { stopSpeech() },
-                    onVoiceSettings = { showSpeechSettings = true },
+                    onVoiceSettings = { cancelVoiceCapture(); showSpeechSettings = true },
                     onModelSettings = { if (!generating && !loading) showSettings = true },
                     modelStatus = status,
                     modelBusy = loading || generating,
@@ -809,10 +887,13 @@ $entered""".trimIndent()
                         if (!generating && !loading) {
                             stopSpeech()
                             tutorCard = card
+                            val resume = tutoringThisChat && activeTutorCardId == card.id && activeTutorSessionId == activeId && lines.isNotEmpty()
+                            if (!resume) {
                             persist()
                             activeId = java.util.UUID.randomUUID().toString()
                             lines = emptyList(); input = ""; pendingAttachments = emptyList()
                             tutoringThisChat = true
+                            activeTutorCardId = card.id; activeTutorSessionId = activeId
                             if (!modelFile.isFile || modelFile.length() != MODEL_SIZE) {
                                 status = "Model needed. Open Clara chat to download Gemma, then return to this card."
                             } else {
@@ -836,6 +917,7 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
                                     createEngine()
                                     if (conversation != null) submitMessage(tutorMessage, displayText = "Study card: ${question.take(100)}")
                                 }
+                            }
                             }
                         }
                     },
@@ -964,7 +1046,7 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
             input = input, onInput = { input = it }, onSend = { submitMessage(it) },
             modelAvailable = modelFile.isFile && modelFile.length() == MODEL_SIZE,
             onOpenChat = { stopSpeech(); tutorCard = null; showFlashcards = false },
-            onMic = { startMicReply() }, listening = listening,
+            onMic = { startMicReply() }, listening = listening, recognitionBusy = recognitionBusy,
             loading = loading, generating = generating, status = ttsProblem.ifBlank { status },
             speech = speech, speakReplies = speakTutorReplies,
             onSpeakReplies = { speakTutorReplies = it; prefs.writeCardTutorSpeech(it); if (!it) stopSpeech() },
@@ -977,9 +1059,11 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
                     runCatching { conversation?.cancelProcess() }
                 }
             },
-            onVoiceSettings = { showSpeechSettings = true },
-            onModelSettings = { showTutorControls = true },
-            onDismiss = { stopSpeech(); tutorCard = null }
+            onVoiceSettings = { cancelVoiceCapture(); showSpeechSettings = true },
+            onModelSettings = { cancelVoiceCapture(); showTutorControls = true },
+            onDismiss = {
+                stopSpeech(); cancelVoiceCapture(); tutorCard = null
+            }
         )
     }
     if (showTutorControls) AlertDialog(

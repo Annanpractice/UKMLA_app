@@ -154,6 +154,7 @@ fun ClaraTutorPanel(
     onOpenChat: () -> Unit,
     onMic: () -> Unit,
     listening: Boolean,
+    recognitionBusy: Boolean,
     loading: Boolean,
     generating: Boolean,
     status: String,
@@ -196,7 +197,7 @@ fun ClaraTutorPanel(
                 !listState.canScrollForward || (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= listState.layoutInfo.totalItemsCount-1
             } }
             LaunchedEffect(turns.size,turns.lastOrNull()?.text?.length,generating) {
-                if (nearBottom && turns.isNotEmpty()) listState.animateScrollToItem(turns.lastIndex + if (loading || generating || speech.speaking) 1 else 0)
+                if (nearBottom && turns.isNotEmpty()) listState.animateScrollToItem(turns.lastIndex + if (loading || generating || speech.speaking || recognitionBusy) 1 else 0)
             }
             LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),
                 contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
@@ -231,7 +232,9 @@ fun ClaraTutorPanel(
                         }
                     }
                 }
-                if(loading||generating||speech.speaking) item { SpeechIndicator(when {
+                if(loading||generating||speech.speaking||recognitionBusy) item { SpeechIndicator(when {
+                    listening -> "Listening to you…"
+                    recognitionBusy -> "Recognising your reply…"
                     speech.speaking -> "Clara is speaking"
                     loading -> "Preparing your tutor…"
                     else -> "Clara is thinking…"
@@ -247,7 +250,7 @@ fun ClaraTutorPanel(
                 listOf("Give me a hint" to "Give me one small hint from this card without revealing the full answer.",
                     "Explain" to "Please explain this card's reference answer using only its stated points.",
                     "Quiz me" to "Ask me one focused question based on this card's reference answer.").forEach { (label,prompt) ->
-                    AssistChip(onClick={onSend(prompt)},enabled=modelAvailable&&!generating&&!loading,label={Text(label,fontSize=11.sp)})
+                    AssistChip(onClick={onSend(prompt)},enabled=modelAvailable&&!generating&&!loading&&!recognitionBusy,label={Text(label,fontSize=11.sp)})
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -256,16 +259,16 @@ fun ClaraTutorPanel(
                 if(generating||speech.speaking) TextButton(onClick=onStop) { Text(if(generating) "Stop" else "Stop voice") }
             }
             Row(Modifier.fillMaxWidth().padding(start=12.dp,end=16.dp,bottom=12.dp,top=4.dp),verticalAlignment=Alignment.CenterVertically) {
-                FilledIconButton(onClick=onMic,enabled=modelAvailable&&!generating&&!loading&&!listening,
+                FilledIconButton(onClick=onMic,enabled=modelAvailable&&!generating&&!loading&&(!recognitionBusy||listening),
                     modifier=Modifier.size(48.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=ClaraColors.surface)) {
-                    ClaraGlyph("mic",if(listening) "Listening" else "Speak your reply",tint=ClaraColors.accent)
+                    ClaraGlyph(if(listening) "stop" else "mic",if(listening) "Finish speaking" else "Speak your reply",tint=ClaraColors.accent)
                 }
                 Spacer(Modifier.width(8.dp))
                 OutlinedTextField(value=input,onValueChange=onInput,modifier=Modifier.weight(1f),
                     placeholder={Text("Talk it through…",fontSize=14.sp)},maxLines=4,shape=RoundedCornerShape(22.dp),
-                    enabled=modelAvailable&&!loading&&!generating)
+                    enabled=modelAvailable&&!loading&&!generating&&!recognitionBusy)
                 Spacer(Modifier.width(8.dp))
-                FilledIconButton(onClick={onSend(input)},enabled=modelAvailable&&input.isNotBlank()&&!generating&&!loading,
+                FilledIconButton(onClick={onSend(input)},enabled=modelAvailable&&input.isNotBlank()&&!generating&&!loading&&!recognitionBusy,
                     modifier=Modifier.size(44.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=ClaraColors.accent)) {
                     ClaraGlyph("send","Send message",tint=ClaraColors.background)
                 }
