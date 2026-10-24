@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
@@ -111,17 +110,6 @@ private fun pastelColour(hex: String): Color = runCatching {
     Color(android.graphics.Color.parseColor(hex))
 }.getOrElse { Color(0xFFF7F9FF) }
 
-private fun lightenCardColour(hex: String): String = runCatching {
-    val color = android.graphics.Color.parseColor(hex)
-    fun channel(component: Int): String {
-        val lighter = (component + (255 - component) * 0.08f).toInt().coerceIn(0, 255)
-        return lighter.toString(16).padStart(2, '0')
-    }
-    "#"+channel(android.graphics.Color.red(color)) +
-        channel(android.graphics.Color.green(color)) +
-        channel(android.graphics.Color.blue(color))
-}.getOrDefault("#eef2ff")
-
 private val CARD_COLORS = listOf("#FFEBEE","#E8F5E9","#E3F2FD","#FFFDE7","#F3E5F5",
     "#EFEBE9","#E8EAF6","#FBE9E7","#ECEFF1","#f7f9ff")
 
@@ -134,25 +122,6 @@ private fun applyRichTag(field: TextFieldValue, tag: String): TextFieldValue {
     val text = field.text.replaceRange(start,end,open + content + close)
     return field.copy(text=text, selection=TextRange(start + open.length, end + open.length))
 }
-
-@Composable
-private fun RowScope.LegacyFooterButton(label: String, shade: Color, active: Boolean = true, action: () -> Unit) {
-        Box(
-            modifier = Modifier.weight(1f).fillMaxHeight()
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (active) shade else Color(0xFF4A5276))
-                .clickable(enabled = active) { action() }
-                .padding(horizontal = 2.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                label, maxLines = 1, softWrap = false,
-                fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                color = if (shade == Color(0xFFF1C40F)) Color.Black else Color.White,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -284,7 +253,7 @@ fun ClaraFlashcardScreen(
     val muted = ClaraColors.muted
     val blue = ClaraColors.accent
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(
-        listOf(ClaraColors.background, Color(0xFF101827), ClaraColors.background))))) {
+        listOf(ClaraColors.background, Color(0xFF101827), ClaraColors.background)))) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { topicsOpen = true }) { ClaraGlyph("menu", "Topics and learning progress") }
@@ -313,7 +282,7 @@ fun ClaraFlashcardScreen(
                     HorizontalDivider()
                     action("Tutor instructions") { settingsOpen = true }
                     action("Voice and reading speed") { onVoiceSettings() }
-                    action("Model settings") { onModelSettings() }
+                    action("Model settings", !modelBusy) { onModelSettings() }
                     action("Shuffle cards", deck.cards.isNotEmpty()) { changeView("random") }
                     action("Open Clara chat") { onBack() }
                     action("Undo last deletion", lastDeleted != null) {

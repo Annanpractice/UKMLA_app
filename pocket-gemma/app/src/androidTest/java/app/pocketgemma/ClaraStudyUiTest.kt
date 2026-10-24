@@ -32,7 +32,7 @@ class ClaraStudyUiTest {
                     modelStatus="Ready",modelBusy=false,tutorPrompt="",onTutorPromptChange={},speakTutorReplies=true,onSpeakTutorRepliesChange={})
             }
         }
-        ui.waitUntil(10000) { ui.onAllNodesWithText("Read aloud",substring=true).fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(10000) { ui.onAllNodesWithText("QUESTION").fetchSemanticsNodes().isNotEmpty() }
         ui.onNodeWithText("Read aloud",substring=true).performClick()
         ui.runOnIdle { assertEquals(cardPlainText(card.question),spoken) }
         screenshot("01-study-question")

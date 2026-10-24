@@ -197,6 +197,7 @@ private fun PocketGemmaApp() {
     var showSettings by remember { mutableStateOf(false) }
     var showSpeechSettings by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    var chatMenu by remember { mutableStateOf(false) }
     var pendingChatDeletion by remember { mutableStateOf<SavedChat?>(null) }
     var confirmClearAll by remember { mutableStateOf(false) }
     var showFlashcards by rememberSaveable { mutableStateOf(context.packageName.endsWith(".cards")) }
@@ -640,6 +641,9 @@ $entered""".trimIndent()
         scope.launch {
             if (conversation == null && modelFile.exists()) createEngine(excludePendingUser = true)
             val conv = conversation
+            if (stopRequested) {
+                conv?.close(); conversation = null; generating = false; status = "Response stopped."; return@launch
+            }
             if (conv == null) { generating = false; status = "Download the model and load it first"; return@launch }
             generating = true
             var answer = ""; var thought = ""
@@ -693,7 +697,7 @@ $entered""".trimIndent()
                     }
                 }
                 persist()
-                if (tutoringThisChat && speakTutorReplies && ttsReady && answer.isNotBlank()) {
+                if (tutoringThisChat && speakTutorReplies && ttsReady && answer.isNotBlank() && (tutorCard != null || !showFlashcards)) {
                     if (!stopRequested) speakText(answer)
                 }
             } catch (e: Exception) {
@@ -724,25 +728,34 @@ $entered""".trimIndent()
     )) {
         Scaffold(topBar = {
             if (!showFlashcards) {
-            TopAppBar(title = { Text("Clara") }, actions = {
-                TextButton(onClick = { showSettings = true }) { Text("Settings") }
-                TextButton(onClick = { showSpeechSettings = true }) { Text("Voice") }
-                TextButton(onClick = { persist(); showHistory = true }) { Text("History") }
-                TextButton(onClick = { showFlashcards = true }) { Text("Cards") }
-                TextButton(onClick = {
-                    notificationAccess = hasPocketGemmaNotificationAccess(context)
-                    notificationSources = ActiveNotificationStore.currentSources()
-                    showBriefingSettings = true
-                }) { Text("Briefing") }
-                TextButton(onClick = {
-                    persist()
-                    activeId = java.util.UUID.randomUUID().toString()
-                    lines = emptyList()
-                    tutoringThisChat = false
-                    showFlashcards = false
-                    prefs.writeSavedChats(activeId, sessions)
-                    scope.launch { conversation?.close(); conversation = null; if (modelFile.exists()) createEngine() }
-                }, enabled = !generating && !loading) { Text("New chat") }
+            TopAppBar(title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ClaraOrb(active = generating || speech.speaking, modifier = Modifier.size(34.dp))
+                    Text("Clara", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
+                }
+            }, colors = TopAppBarDefaults.topAppBarColors(containerColor = ClaraColors.background), actions = {
+                TextButton(onClick = { stopSpeech(); showFlashcards = true }) { Text("Study cards") }
+                Box {
+                    IconButton(onClick = { chatMenu = true }) { ClaraGlyph("more", "Clara menu") }
+                    DropdownMenu(expanded = chatMenu, onDismissRequest = { chatMenu = false }) {
+                        DropdownMenuItem(text = { Text("New conversation") }, enabled = !generating && !loading, onClick = {
+                            chatMenu = false; stopSpeech(); persist()
+                            activeId = java.util.UUID.randomUUID().toString()
+                            lines = emptyList(); tutoringThisChat = false; pendingAttachments = emptyList(); input = ""
+                            prefs.writeSavedChats(activeId, sessions)
+                            scope.launch { conversation?.close(); conversation = null; if (modelFile.exists()) createEngine() }
+                        })
+                        DropdownMenuItem(text = { Text("Conversations") }, onClick = { chatMenu = false; persist(); showHistory = true })
+                        DropdownMenuItem(text = { Text("Voice and reading speed") }, onClick = { chatMenu = false; showSpeechSettings = true })
+                        DropdownMenuItem(text = { Text("Model settings") }, enabled = !generating && !loading,
+                            onClick = { chatMenu = false; showSettings = true })
+                        DropdownMenuItem(text = { Text("Notification briefing") }, onClick = {
+                            chatMenu = false
+                            notificationAccess = hasPocketGemmaNotificationAccess(context)
+                            notificationSources = ActiveNotificationStore.currentSources(); showBriefingSettings = true
+                        })
+                    }
+                }
             })
             }
         }) { padding ->
@@ -789,7 +802,7 @@ $entered""".trimIndent()
                     speechMessage = ttsProblem,
                     onStopSpeech = { stopSpeech() },
                     onVoiceSettings = { showSpeechSettings = true },
-                    onModelSettings = { showSettings = true },
+                    onModelSettings = { if (!generating && !loading) showSettings = true },
                     modelStatus = status,
                     modelBusy = loading || generating,
                     onDiscuss = { card ->
@@ -858,9 +871,10 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     itemsIndexed(lines) { index, line ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(if (line.role == "user") "You" else "Gemma", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (line.role == "user") Color(0xFF293845) else ClaraColors.surface)) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(if (line.role == "user") "You" else "Clara", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 line.attachments.forEach { attachment ->
                                     Text(if (attachment.kind == "image") "📷 ${attachment.name}" else "🎧 ${attachment.name}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                                 }
@@ -959,6 +973,7 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
                 stopSpeech()
                 if (generating) {
                     stopRequested = true
+                    status = "Stopping response…"
                     runCatching { conversation?.cancelProcess() }
                 }
             },

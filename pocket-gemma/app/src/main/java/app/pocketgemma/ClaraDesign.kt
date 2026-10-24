@@ -193,10 +193,10 @@ fun ClaraTutorPanel(
             val listState=rememberLazyListState()
             // Follow streaming output only while the reader is already near the bottom.
             val nearBottom by remember { derivedStateOf {
-                !listState.canScrollForward || (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= turns.lastIndex-1
+                !listState.canScrollForward || (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= listState.layoutInfo.totalItemsCount-1
             } }
             LaunchedEffect(turns.size,turns.lastOrNull()?.text?.length,generating) {
-                if (nearBottom && turns.isNotEmpty()) listState.animateScrollToItem(turns.lastIndex)
+                if (nearBottom && turns.isNotEmpty()) listState.animateScrollToItem(turns.lastIndex + if (loading || generating || speech.speaking) 1 else 0)
             }
             LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),
                 contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
