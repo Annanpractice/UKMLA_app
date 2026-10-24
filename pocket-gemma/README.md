@@ -1,4 +1,4 @@
-# Clara v1.9 — conversation deletion and offline voice selection
+# Clara v2.0 — offline flashcards with Socratic tutoring
 
 Standalone Android chat app using the official LiteRT-LM 0.17.1 runtime and the Gemma 4 E4B LiteRT-LM model.
 
@@ -33,6 +33,19 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - Destructive chat actions are disabled while model loading or generating is in progress.
 - The empty current chat is not saved automatically. This prevents a cleared history from immediately repopulating with a placeholder.
 
+## Offline UKMLA flashcards and Socratic tutor
+
+- **Cards** opens a native Compose study screen within Clara; this is the existing `app.clara.assistant` app, not a new app identity.
+- Import a local `.json` or `.cards` export from the legacy [flashcard-app](https://github.com/Annanpractice/flashcard-app). Handles `{cards,understood,mastered}` and `seen`, or an array of cards. Existing topics, HTML formatting, data-URI images and progress categories are retained offline.
+- Cards and mastery changes are persisted as `clara-flashcards.json` in Clara's private files, separate from the 3.66 GB Gemma model and chat history. A new import intentionally replaces the prior deck; a failed import does not.
+- Each card can be revealed, read aloud by the selected offline TTS engine, marked understood/mastered/again, or discussed with Clara.
+- **Discuss this card** creates a dedicated Gemma conversation containing the question and reference answer as tutoring context; the visible user message is a brief card label, while the actual prompt preserves context across chat reopening.
+- The in-app tutoring prompt is editable and stored locally; the default asks one targeted Socratic question at a time and withholds the full answer until appropriate.
+- Tutor replies can be spoken aloud with Clara's selected TTS engine. Replies are also visible in chat, where the user can respond in text.
+- Imported JSON and rich card content are not automatically treated as instructions by the app. The card viewer blocks JavaScript and external file/network access.
+- Imports support up to 100 MB and 20,000 cards. This is an initial integration requiring device testing, particularly very large image decks.
+- This update retains the Android application ID, but in-place installation also requires the same signing certificate as the installed version. GitHub's current debug build has no persistent signing key, so an update may be rejected without recovering the original certificate.
+
 ## Build
 
 Open the project in Android Studio, allow Gradle sync, and build the `app` debug variant. The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
@@ -41,7 +54,7 @@ Requirements: Android SDK platform 36, Java 17, Kotlin 2.4.0, Android Gradle Plu
 
 ## Install and test
 
-Clara v1.9 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
+Clara v2.0 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
 
 On first run, download the model, wait for completion, then tap **Load model**. GPU is attempted by default; switch to CPU in Settings if initialization fails. GPU inference, multimodal decoding, notification tool calling and offline TTS voice availability require testing on the target phone.
 
