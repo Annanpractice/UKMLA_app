@@ -1,4 +1,4 @@
-# Clara v2.0.1 — offline flashcards with visible import control
+# Clara v2.0.3 — flashcard JSON import feedback and automatic GitHub APK builds
 
 Standalone Android chat app using the official LiteRT-LM 0.17.1 runtime and the Gemma 4 E4B LiteRT-LM model.
 
@@ -47,7 +47,8 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - Dictation requests an offline English recognizer, but Android notes that recognition providers may ignore that preference or use the network. Fully offline speech recognition requires a separately verified local recognizer.
 - Imported JSON and rich card content are not automatically treated as instructions by the app. The card viewer blocks JavaScript and external file/network access.
 - Imports support up to 100 MB and 20,000 cards. This is an initial integration requiring device testing, particularly very large image decks.
-- This update retains the Android application ID, but in-place installation also requires the same signing certificate as the installed version. GitHub's current debug build has no persistent signing key, so an update may be rejected without recovering the original certificate.
+- **Import fix (2.0.3):** The Cards screen remains visible after Android's file picker returns and displays an import confirmation or parsing error. Common front/back, flashcards and items JSON exports are supported in addition to the legacy format.
+- GitHub Actions now consistently reuses one **public test-only signing key** for experimental builds and publishes direct APK links under Releases without repository secrets. This is not a production-safe signing strategy. Existing installations signed with earlier random debug certificates still cannot update in place.
 
 ## Build
 
@@ -57,7 +58,7 @@ Requirements: Android SDK platform 36, Java 17, Kotlin 2.4.0, Android Gradle Plu
 
 ## Install and test
 
-Clara v2.0 retains the application ID (`app.clara.assistant`) and installs separately from Pocket Gemma, with its own model and chat storage.
+Clara v2.0.3 regular retains `app.clara.assistant`. Clara Study uses `app.clara.assistant.study` and installs beside it, with separate model and chat storage.
 
 On first run, download the model, wait for completion, then tap **Load model**. GPU is attempted by default; switch to CPU in Settings if initialization fails. GPU inference, multimodal decoding, notification tool calling and offline TTS voice availability require testing on the target phone.
 
