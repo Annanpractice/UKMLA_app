@@ -1,0 +1,42 @@
+name: Verify Clara 2.0.8 to 2.1 Android 16 upgrade
+on:
+  push:
+    branches: [codex/pocketgemma-apk]
+    paths: ['.github/workflows/clara-upgrade-check.yml', '.github/scripts/clara-check-upgrade.sh']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Annanpractice/UKMLA_app
+          run-id: 40140931607
+          name: Clara-v2.1.0-Cards-separate-install-apk
+          path: verified-apk
+      - name: Fetch the exact original APK
+        run: curl -fL --retry 2 -o baseline.apk https://github.com/Annanpractice/UKMLA_app/releases/download/clara-study-v2.0.8/Clara-v2.0.8-Cards.apk
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install old APK, preserve its data, update and launch
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash .github/scripts/clara-check-upgrade.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Clara-Android16-upgrade-diagnosis
+          path: upgrade-review/
