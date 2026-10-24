@@ -93,7 +93,7 @@ object ClaraDeckStorage {
         when (root) {
             is JSONArray -> read(root, "remaining")
             is JSONObject -> {
-                read(root.optJSONArray("cards"), "remaining")
+                read(root.optJSONArray("cards") ?: root.optJSONArray("flashcards") ?: root.optJSONArray("items"), "remaining")
                 read(root.optJSONArray("understood") ?: root.optJSONArray("seen"), "understood")
                 read(root.optJSONArray("mastered"), "mastered")
             }
