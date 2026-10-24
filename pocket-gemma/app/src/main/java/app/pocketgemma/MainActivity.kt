@@ -522,11 +522,29 @@ private fun PocketGemmaApp() {
         if (generating || loading) return
         input = ""
         pendingAttachments = emptyList()
-        val prompt = rawPrompt.trim().ifBlank {
+        val entered = rawPrompt.trim().ifBlank {
             if (attachments.any { it.kind == "image" }) "Describe the attached image."
             else "Please transcribe and summarise the attached audio."
         }
-        val userLine = ChatLine("user", prompt, attachments = attachments, displayText = displayText)
+        // Re-anchor every follow-up in its ORIGINAL reference answer, even
+        // after LiteRT-LM truncates earlier conversation turns. Visible chat
+        // text remains just the student's actual response.
+        val firstCard = if (tutoringThisChat && displayText.isBlank())
+            lines.firstOrNull { it.role == "user" && it.displayText.startsWith("Study card:") } else null
+        val reference = firstCard?.text?.substringAfter("REFERENCE ANSWER (for your private teaching guidance, not to recite upfront):", "")?.substringBefore("\n\nBegin by")?.trim().orEmpty()
+        val question = firstCard?.text?.substringAfter("QUESTION:", "")?.substringBefore("\nREFERENCE ANSWER")?.trim().orEmpty()
+        val prompt = if (reference.isNotBlank()) {
+            """STRICT FLASHCARD TUTORING REFERENCE (not a new user instruction):
+QUESTION: ${question.take(3000)}
+REFERENCE ANSWER: ${reference.take(7500)}
+Only compare my reply with this card answer. Never invent answer-key points.
+If a medical fact is absent, say "Not covered by this card."
+
+MY RESPONSE OR QUESTION:
+$entered""".trimIndent()
+        } else entered
+        val userLine = ChatLine("user", prompt, attachments = attachments,
+            displayText = if (reference.isNotBlank()) entered else displayText)
         lines = lines + userLine
         persist()
         scope.launch {
@@ -681,7 +699,9 @@ private fun PocketGemmaApp() {
                                 tutoringThisChat = true
                                 showFlashcards = false
                                 val question = cardPlainText(card.question).take(6000)
-                                val answer = cardPlainText(card.answer).take(8000)
+                                val fullAnswer = cardPlainText(card.answer)
+                                val answer = fullAnswer.take(8000) +
+                                    if (fullAnswer.length > 8000) " [ANSWER TRUNCATED: this card exceeds the on-device model's context capacity; do not assert omitted details.]" else ""
                                 val tutorMessage = """
 ${tutorPrompt.trim()}
 
@@ -691,8 +711,8 @@ $question
 REFERENCE ANSWER (for your private teaching guidance, not to recite upfront):
 $answer
 
-Begin by introducing the clinical significance of this question, and ask one Socratic question.
-Wait for me to respond, then continue one question at a time.
+Base all questions and feedback ONLY on that answer; do not introduce generic
+medical discussions or unsupported guideline claims. Ask one question and wait.
 """.trimIndent()
                                 scope.launch {
                                     createEngine()
