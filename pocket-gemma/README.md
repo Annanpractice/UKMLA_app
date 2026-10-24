@@ -41,7 +41,8 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - Each card can be revealed, read aloud by the selected offline TTS engine, marked understood/mastered/again, or discussed with Clara.
 - **Discuss this card** creates a dedicated Gemma conversation containing the question and reference answer as tutoring context; the visible user message is a brief card label, while the actual prompt preserves context across chat reopening.
 - The in-app tutoring prompt is editable and stored locally; the default asks one targeted Socratic question at a time and withholds the full answer until appropriate.
-- Tutor replies can be spoken aloud with Clara's selected TTS engine. Replies are also visible in chat, where the user can respond in text.
+- Tutor replies can be spoken aloud with Clara's selected TTS engine. Replies are also visible in chat. A **Mic reply** button requests spoken dictation through an installed Android recognition app and automatically submits the transcript to local Gemma.
+- Dictation requests an offline English recognizer, but Android notes that recognition providers may ignore that preference or use the network. Fully offline speech recognition requires a separately verified local recognizer.
 - Imported JSON and rich card content are not automatically treated as instructions by the app. The card viewer blocks JavaScript and external file/network access.
 - Imports support up to 100 MB and 20,000 cards. This is an initial integration requiring device testing, particularly very large image decks.
 - This update retains the Android application ID, but in-place installation also requires the same signing certificate as the installed version. GitHub's current debug build has no persistent signing key, so an update may be rejected without recovering the original certificate.
