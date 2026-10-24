@@ -622,6 +622,7 @@ $entered""".trimIndent()
 
     MaterialTheme(colorScheme = darkColorScheme()) {
         Scaffold(topBar = {
+            if (!showFlashcards) {
             TopAppBar(title = { Text("Clara") }, actions = {
                 TextButton(onClick = { showSettings = true }) { Text("Settings") }
                 TextButton(onClick = { showSpeechSettings = true }) { Text("Voice") }
@@ -642,6 +643,7 @@ $entered""".trimIndent()
                     scope.launch { conversation?.close(); conversation = null; if (modelFile.exists()) createEngine() }
                 }, enabled = !generating && !loading) { Text("New chat") }
             })
+            }
         }) { padding ->
             if (showFlashcards) {
                 // Respect Scaffold's top-bar insets; otherwise the toolbar overlaps
