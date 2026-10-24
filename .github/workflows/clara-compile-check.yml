@@ -1,0 +1,29 @@
+name: Clara Kotlin compilation check
+on:
+  push:
+    branches: [codex/pocketgemma-apk]
+    paths:
+      - 'pocket-gemma/**'
+      - '.github/workflows/clara-compile-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Check Clara and Clara Study Kotlin source
+        working-directory: pocket-gemma
+        run: gradle :app:compileStudyDebugKotlin :app:compileRegularDebugKotlin --no-daemon
