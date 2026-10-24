@@ -15,8 +15,11 @@ class ClaraStudyUiTest {
     @get:Rule val ui = createComposeRule()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private fun screenshot(name: String) {
-        val folder=File(context.getExternalFilesDir(null),"ui-review").apply { mkdirs() }
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(File(folder,"$name.png"))
+        val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        device.waitForIdle(2000)
+        device.executeShellCommand("mkdir -p /data/local/tmp/clara-ui-review")
+        device.executeShellCommand("screencap -p /data/local/tmp/clara-ui-review/$name.png")
+        org.junit.Assert.assertTrue(device.executeShellCommand("stat -c %s /data/local/tmp/clara-ui-review/$name.png").trim().toLong() > 0)
     }
     @Test fun readAloudUsesVisibleSideAndNavigationResetsAnswer() {
         val card=ClaraStudyCard("ui-review-1","<h2>What are the major categories of genomic damage?</h2>",

@@ -110,7 +110,7 @@ jobs:
           script: |
             gradle -p pocket-gemma :app:connectedCardsDebugAndroidTest --no-daemon
             mkdir -p pocket-gemma/ui-review
-            adb pull /sdcard/Android/data/app.clara.assistant.cards/files/ui-review/. pocket-gemma/ui-review/
+            adb pull /data/local/tmp/clara-ui-review/. pocket-gemma/ui-review/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
