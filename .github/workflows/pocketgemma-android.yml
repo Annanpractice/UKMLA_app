@@ -30,17 +30,17 @@ jobs:
         run: gradle :app:assembleRegularDebug :app:assembleStudyDebug --no-daemon
       - name: Name the APKs
         run: |
-          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.apk
-          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0-Study.apk
+          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.1.apk
+          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0.1-Study.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0-debug-apk
-          path: Clara-v2.0.apk
+          name: Clara-v2.0.1-debug-apk
+          path: Clara-v2.0.1.apk
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0-Study-installable-apk
-          path: Clara-v2.0-Study.apk
+          name: Clara-v2.0.1-Study-installable-apk
+          path: Clara-v2.0.1-Study.apk
           if-no-files-found: error
           retention-days: 14
