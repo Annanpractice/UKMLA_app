@@ -12,8 +12,8 @@ android {
         applicationId = "app.clara.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.0.1"
+        versionCode = 13
+        versionName = "2.0.2"
     }
 
     // Build the original package and an independently installable companion.
@@ -31,8 +31,22 @@ android {
             resValue("string", "clara_app_name", "Clara Study")
         }
     }
+    // All GitHub debug APKs must use the SAME dedicated keystore.
+    // Never fall back to the randomly generated Android debug certificate.
+    signingConfigs {
+        create("claraStable") {
+            storeFile = rootProject.file("clara-signing.p12")
+            storeType = "pkcs12"
+            storePassword = System.getenv("CLARA_SIGNING_PASSWORD") ?: ""
+            keyAlias = "clara-dev"
+            keyPassword = System.getenv("CLARA_SIGNING_PASSWORD") ?: ""
+        }
+    }
     buildTypes {
-        release {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("claraStable")
+        }
+        getByName("release") {
             isMinifyEnabled = false
         }
     }
