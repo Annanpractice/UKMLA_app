@@ -253,7 +253,14 @@ object ClaraDeckStorage {
     // Add/edit a card while preserving its images and original rich HTML.
     fun saveCard(context: Context, card: ClaraStudyCard) {
         val file = primary(context)
-        require(file.exists()) { "Import a deck before editing or adding cards." }
+        if (!file.exists()) {
+            SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
+                db.execSQL("CREATE TABLE cards (" +
+                    "id TEXT PRIMARY KEY, position INTEGER NOT NULL, q TEXT NOT NULL, a TEXT NOT NULL, " +
+                    "topic TEXT NOT NULL, qimg TEXT NOT NULL, aimg TEXT NOT NULL, color TEXT NOT NULL, status TEXT NOT NULL)")
+                db.execSQL("CREATE INDEX cards_topic_status ON cards(topic, status)")
+            }
+        }
         SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             addColorIfNeeded(db)
             val position = db.rawQuery("SELECT position FROM cards WHERE id = ?", arrayOf(card.id)).use { c ->
@@ -338,7 +345,7 @@ object ClaraDeckStorage {
     }
 
     fun updateStatus(context: Context, id: String, status: String) {
-        require(status in listOf("remaining", "understood", "mastered"))
+        require(status in listOf("remaining", "understood", "mastered", "deleted"))
         val file = primary(context)
         require(file.isFile) { "No flashcard deck is loaded." }
         SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
