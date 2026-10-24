@@ -39,14 +39,14 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 
 - **Cards** opens a native Compose study screen within Clara; this is the existing `app.clara.assistant` app, not a new app identity.
 - Import a local `.json` or `.cards` export from the legacy [flashcard-app](https://github.com/Annanpractice/flashcard-app). Handles `{cards,understood,mastered}` and `seen`, or an array of cards. Existing topics, HTML formatting, data-URI images and progress categories are retained offline.
-- Cards and mastery changes are persisted as `clara-flashcards.json` in Clara's private files, separate from the 3.66 GB Gemma model and chat history. A new import intentionally replaces the prior deck; a failed import does not.
+- Cards and mastery changes are stored in `clara-flashcards.sqlite` in Clara's private files, separate from the 3.66 GB Gemma model and chat history. Existing saved `clara-flashcards.json` decks are migrated when the new database is missing. A new import intentionally replaces the prior deck; a failed import does not.
 - Each card can be revealed, read aloud by the selected offline TTS engine, marked understood/mastered/again, or discussed with Clara.
 - **Discuss this card** creates a dedicated Gemma conversation containing the question and reference answer as tutoring context; the visible user message is a brief card label, while the actual prompt preserves context across chat reopening.
 - The in-app tutoring prompt is editable and stored locally; the default asks one targeted Socratic question at a time and withholds the full answer until appropriate.
 - Tutor replies can be spoken aloud with Clara's selected TTS engine. Replies are also visible in chat. A **Mic reply** button requests spoken dictation through an installed Android recognition app and automatically submits the transcript to local Gemma.
 - Dictation requests an offline English recognizer, but Android notes that recognition providers may ignore that preference or use the network. Fully offline speech recognition requires a separately verified local recognizer.
 - Imported JSON and rich card content are not automatically treated as instructions by the app. The card viewer blocks JavaScript and external file/network access.
-- Imports support up to 100 MB and 20,000 cards. This is an initial integration requiring device testing, particularly very large image decks.
+- JSON import streams into a local SQLite database, with no fixed 100 MB file-size cap or 20,000-card limit. Only the selected card's rich text and embedded images are loaded into memory. Available device storage, individual card size and SQLite/device limits still apply; extremely large decks require testing on a physical phone.
 - **Import fix (2.0.3):** The Cards screen remains visible after Android's file picker returns and displays an import confirmation or parsing error. Common front/back, flashcards and items JSON exports are supported in addition to the legacy format.
 - GitHub Actions now consistently reuses one **public test-only signing key** for experimental builds and publishes direct APK links under Releases without repository secrets. This is not a production-safe signing strategy. Existing installations signed with earlier random debug certificates still cannot update in place.
 
