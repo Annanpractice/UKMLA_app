@@ -597,6 +597,8 @@ private fun PocketGemmaApp() {
                     deck = studyDeck,
                     onBack = { showFlashcards = false },
                     onImport = { studyDeckPicker.launch("*/*") },
+                    importMessage = deckImportMessage,
+                    importError = deckImportError,
                     onMark = { id, cardStatus ->
                         val updated = studyDeck.copy(cards = studyDeck.cards.map {
                             if (it.id == id) it.copy(status = cardStatus) else it
