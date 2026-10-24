@@ -178,6 +178,9 @@ private fun PocketGemmaApp() {
     var confirmClearAll by remember { mutableStateOf(false) }
     var showFlashcards by rememberSaveable { mutableStateOf(false) }
     var studyDeck by remember { mutableStateOf(ClaraDeckStorage.load(context)) }
+    var deckImportMessage by rememberSaveable { mutableStateOf("") }
+    var deckImportError by rememberSaveable { mutableStateOf(false) }
+    var deckImportBusy by remember { mutableStateOf(false) }
     var tutorPrompt by remember { mutableStateOf(prefs.readCardTutorPrompt()) }
     var speakTutorReplies by remember { mutableStateOf(prefs.readCardTutorSpeech()) }
     var tutoringThisChat by remember { mutableStateOf(lines.firstOrNull()?.displayText?.startsWith("Study card:") == true) }
