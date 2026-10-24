@@ -246,7 +246,9 @@ private fun PocketGemmaApp() {
                 status = deckImportMessage
                 showFlashcards = true
             } catch (e: Exception) {
-                status = "Deck import failed: ${e.message ?: "invalid file"}"
+                deckImportError = true
+                deckImportMessage = "Deck import failed: ${e.message ?: "Unrecognised JSON file."}"
+                status = deckImportMessage
             }
         }
     }
