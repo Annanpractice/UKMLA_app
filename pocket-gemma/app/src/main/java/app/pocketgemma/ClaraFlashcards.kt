@@ -25,6 +25,7 @@ data class ClaraStudyCard(
     val topic: String,
     val qImage: String = "",
     val aImage: String = "",
+    val color: String = "#f7f9ff",
     val status: String = "remaining"
 )
 
