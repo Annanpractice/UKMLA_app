@@ -73,8 +73,8 @@ object ClaraDeckStorage {
             require(array.length() <= 20000) { "Deck exceeds 20,000 cards." }
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
-                val q = obj.optString("q", obj.optString("Question", obj.optString("question", "")))
-                val a = obj.optString("a", obj.optString("Answer", obj.optString("answer", "")))
+                val q = listOf("q", "Question", "question", "front", "Front", "prompt").firstNotNullOfOrNull { obj.optString(it).takeIf(String::isNotBlank) } ?: ""
+                val a = listOf("a", "Answer", "answer", "back", "Back", "response").firstNotNullOfOrNull { obj.optString(it).takeIf(String::isNotBlank) } ?: ""
                 if (q.isBlank() && a.isBlank()) continue
                 val originalId = obj.optString("id", "").ifBlank { UUID.randomUUID().toString() }
                 val uniqueId = if (ids.add(originalId)) originalId else UUID.randomUUID().toString().also { ids.add(it) }
