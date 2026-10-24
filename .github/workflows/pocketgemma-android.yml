@@ -23,6 +23,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
+          cache-read-only: false
       - uses: android-actions/setup-android@v4
         with:
           packages: ''
@@ -107,10 +108,9 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            cd pocket-gemma
-            gradle :app:connectedCardsDebugAndroidTest --no-daemon
-            mkdir -p ui-review
-            adb pull /sdcard/Android/data/app.clara.assistant.cards/files/ui-review/. ui-review/
+            gradle -p pocket-gemma :app:connectedCardsDebugAndroidTest --no-daemon
+            mkdir -p pocket-gemma/ui-review
+            adb pull /sdcard/Android/data/app.clara.assistant.cards/files/ui-review/. pocket-gemma/ui-review/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
