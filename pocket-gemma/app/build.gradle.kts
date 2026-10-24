@@ -16,6 +16,21 @@ android {
         versionName = "2.0"
     }
 
+    // Build the original package and an independently installable companion.
+    // The companion keeps the currently installed Clara's data untouched.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("regular") {
+            dimension = "edition"
+            resValue("string", "clara_app_name", "Clara")
+        }
+        create("study") {
+            dimension = "edition"
+            applicationIdSuffix = ".study"
+            versionNameSuffix = "-study"
+            resValue("string", "clara_app_name", "Clara Study")
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
