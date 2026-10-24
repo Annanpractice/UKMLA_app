@@ -98,7 +98,18 @@ fun ClaraFlashcardScreen(
         if (index < 0) index = 0
         showAnswer = false
     }
-    val card = shown.getOrNull(index)
+    // The deck list contains metadata only; do not load thousands of large
+    // image data-URIs into the Java heap. Retrieve just the visible card.
+    val selected = shown.getOrNull(index)
+    val context = LocalContext.current
+    val card by produceState<ClaraStudyCard?>(initialValue = null, key1 = selected?.id) {
+        value = null
+        if (selected != null) {
+            value = withContext(Dispatchers.IO) {
+                ClaraDeckStorage.readCard(context, selected.id)
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onBack) { Text("Back to Clara") }
@@ -125,7 +136,7 @@ fun ClaraFlashcardScreen(
                 }
             }
         }
-        if (card == null) {
+        if (selected == null) {
             if (deck.cards.isEmpty()) {
                 Text("No flashcards imported yet.", style = MaterialTheme.typography.titleMedium)
                 Text("Choose your original flashcards.json or .cards file from this phone. The deck is saved locally.")
@@ -139,6 +150,8 @@ fun ClaraFlashcardScreen(
                     Text("Show all cards")
                 }
             }
+        } else if (card == null) {
+            Text("Loading card from local storage…")
         } else {
             Text("Card ${index+1} / ${shown.size} · ${card.topic.ifBlank { "Uncategorised" }}",
                 style = MaterialTheme.typography.labelMedium)
