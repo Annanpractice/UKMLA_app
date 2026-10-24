@@ -56,12 +56,28 @@ import java.security.MessageDigest
 import java.util.Locale
 
 private val DEFAULT_CARD_TUTOR_PROMPT = """
-Act as a patient, encouraging UK clinical Socratic tutor. Explain the clinical scenario briefly, then ask one targeted
-question at a time and wait for my reply. Do not reveal the flashcard's model answer at the outset.
-Probe my reasoning, differential diagnosis, investigations, management, red flags and prescribing safety where relevant.
-After I attempt an answer, provide precise feedback, correct misconceptions and relate your explanation to the supplied
-card answer. If I ask for the answer, state it directly. Distinguish information present in the card from your own
-general clinical knowledge; avoid inventing guidelines or certainty. Keep each reply short and conversational.
+Act as a reference-grounded Socratic tutor for UKMLA revision. The current flashcard's
+provided answer is the authoritative marking scheme for THIS study exercise.
+Ask one narrow question at a time, based only on points explicitly stated in that answer.
+After each of my responses, compare it against exact points in the provided answer:
+identify what I got right, missed or contradicted. Do not invent further investigations,
+management steps, drug doses, contraindications, thresholds or NICE/CKS recommendations.
+If something is not explicitly in the card answer, say "Not covered by this card."
+If I request broader medical context, label it separately as UNVERIFIED ADDITIONAL CONTEXT
+and do not treat it as an answer-key point. Never claim the card has been externally verified.
+Do not reveal the full answer before I attempt it unless I ask. Keep replies focused and brief.
+""".trimIndent()
+
+private val STRICT_CARD_SYSTEM = """
+You are in STRICT REFERENCE-GROUNDED FLASHCARD MODE, not general-purpose medical chat.
+Treat the supplied FLASHCARD REFERENCE ANSWER as the ONLY source for marking answers.
+Never fill gaps with plausible sounding medical details. If missing, explicitly say
+"Not covered by this card." Base each tutor question on the reference answer, never
+on a speculative extension. Score only reference-answer points, and differentiate
+verbatim source points from paraphrases. Do not fabricate guideline sources or doses.
+An answer in the deck may itself be outdated: do not assert it is verified current
+guidance. If asked to go beyond the card, distinguish unverified extra context clearly.
+Keep responses short, one teaching question at a time.
 """.trimIndent()
 
 private const val MODEL_NAME = "gemma-4-E4B-it.litertlm"
@@ -437,11 +453,12 @@ private fun PocketGemmaApp() {
             }
             val newNotificationTool = ListNotificationsTool(context.applicationContext, demoNotifications, allowedNotificationPackages)
             val conv = newEngine.createConversation(ConversationConfig(
-                systemInstruction = Contents.of(selected.systemPrompt + "\n\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
+                systemInstruction = Contents.of(if (tutoringThisChat) STRICT_CARD_SYSTEM
+                    else selected.systemPrompt + "\n\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
                 initialMessages = initial,
-                samplerConfig = SamplerConfig(topK = selected.topK, topP = selected.topP.toDouble(), temperature = selected.temperature.toDouble()),
+                samplerConfig = SamplerConfig(topK = selected.topK, topP = if (tutoringThisChat) 0.85 else selected.topP.toDouble(), temperature = if (tutoringThisChat) 0.15 else selected.temperature.toDouble()),
                 thinkingConfig = ThinkingConfig(enableThinking = selected.thinking),
-                tools = listOf(tool(newNotificationTool)),
+                tools = if (tutoringThisChat) emptyList() else listOf(tool(newNotificationTool)),
                 automaticToolCalling = false
             ))
             engine = newEngine
