@@ -15,7 +15,7 @@ android {
         // Every GitHub workflow run receives a higher Android versionCode;
         // users can install future builds as upgrades rather than downgrades.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 13
-        versionName = "2.0.4"
+        versionName = "2.0.5"
     }
 
     // Build the original package and an independently installable companion.
@@ -31,6 +31,14 @@ android {
             applicationIdSuffix = ".study"
             versionNameSuffix = "-study"
             resValue("string", "clara_app_name", "Clara Study")
+        }
+        // Rescue installation for users with earlier, differently signed Clara
+        // Study builds. This is a NEW package, not an in-place data migration.
+        create("cards") {
+            dimension = "edition"
+            applicationIdSuffix = ".cards"
+            versionNameSuffix = "-cards"
+            resValue("string", "clara_app_name", "Clara Cards")
         }
     }
     // Use the standard Android development signing configuration. GitHub
