@@ -44,31 +44,41 @@ jobs:
 
       - name: Build Clara and Clara Study
         working-directory: pocket-gemma
-        run: gradle :app:assembleRegularDebug :app:assembleStudyDebug --no-daemon
+        run: gradle :app:assembleRegularDebug :app:assembleStudyDebug :app:assembleCardsDebug --no-daemon
 
       - name: Verify and name APKs
         run: |
           set -euo pipefail
-          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.4.apk
-          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0.4-Study.apk
-          for apk in Clara-v2.0.4.apk Clara-v2.0.4-Study.apk; do
+          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.5.apk
+          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0.5-Study.apk
+          cp pocket-gemma/app/build/outputs/apk/cards/debug/app-cards-debug.apk Clara-v2.0.5-Cards.apk
+          for apk in Clara-v2.0.5.apk Clara-v2.0.5-Study.apk Clara-v2.0.5-Cards.apk; do
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
           done
-          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.4.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.4-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.5.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.5-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          cards=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.5-Cards.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
           test "$regular" = "$study"
-          echo "Both experimental builds share the same stable debug certificate."
+          test "$study" = "$cards"
+          echo "All experimental builds share the same stable debug certificate."
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0.4-debug-apk
-          path: Clara-v2.0.4.apk
+          name: Clara-v2.0.5-debug-apk
+          path: Clara-v2.0.5.apk
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0.4-Study-installable-apk
-          path: Clara-v2.0.4-Study.apk
+          name: Clara-v2.0.5-Study-installable-apk
+          path: Clara-v2.0.5-Study.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Clara-v2.0.5-Cards-separate-install-apk
+          path: Clara-v2.0.5-Cards.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -78,12 +88,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="clara-study-v2.0.4"
+          tag="clara-study-v2.0.5"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Clara-v2.0.4.apk Clara-v2.0.4-Study.apk --clobber
+            gh release upload "$tag" Clara-v2.0.5.apk Clara-v2.0.5-Study.apk Clara-v2.0.5-Cards.apk --clobber
           else
-            gh release create "$tag" Clara-v2.0.4.apk Clara-v2.0.4-Study.apk \
+            gh release create "$tag" Clara-v2.0.5.apk Clara-v2.0.5-Study.apk Clara-v2.0.5-Cards.apk \
               --target "$GITHUB_SHA" \
-              --title "Clara Study v2.0.4 — large offline JSON flashcard decks" \
-              --notes "Streams large JSON decks to on-device SQLite without a 100 MB or 20,000 card limit, lazily retrieves card images, and gives visible import feedback. This is a TEST-ONLY development build with a public debug signing identity, not a production Android signing key. It will NOT update an already installed Clara Study signed with a different certificate. Back up any necessary data before removing older versions."
+              --title "Clara v2.0.5 — large flashcards and separate-install Cards APK" \
+              --notes "Streams large JSON decks to on-device SQLite without a 100 MB or 20,000 card limit, lazily retrieves card images, and gives visible import feedback. Clara-v2.0.5-Cards.apk is a new package (app.clara.assistant.cards) that installs alongside old Clara Study without affecting its stored data. This is a TEST-ONLY development build with a public debug signing identity, not a production Android signing key. It will NOT update an already installed Clara Study signed with a different certificate. Back up any necessary data before removing older versions."
           fi
