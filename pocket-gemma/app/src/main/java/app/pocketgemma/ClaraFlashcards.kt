@@ -65,7 +65,7 @@ object ClaraDeckStorage {
     }
 
     private fun parse(json: String): ClaraStudyDeck {
-        val root = JSONTokener(json).nextValue()
+        val root = JSONTokener(json.trimStart('\uFEFF')).nextValue()
         val collected = mutableListOf<ClaraStudyCard>()
         val ids = mutableSetOf<String>()
         fun read(array: JSONArray?, status: String) {
