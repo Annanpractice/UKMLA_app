@@ -585,6 +585,9 @@ private fun PocketGemmaApp() {
             })
         }) { padding ->
             if (showFlashcards) {
+                // Respect Scaffold's top-bar insets; otherwise the toolbar overlaps
+                // the Cards header, hiding Back / title / Import on real phones.
+                Box(Modifier.fillMaxSize().padding(padding)) {
                 ClaraFlashcardScreen(
                     deck = studyDeck,
                     onBack = { showFlashcards = false },
@@ -645,6 +648,7 @@ Wait for me to respond, then continue one question at a time.
                     speakTutorReplies = speakTutorReplies,
                     onSpeakTutorRepliesChange = { speakTutorReplies = it; prefs.writeCardTutorSpeech(it) }
                 )
+                }
             } else {
             Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp)) {
                 Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
