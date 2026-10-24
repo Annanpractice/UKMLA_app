@@ -4,7 +4,6 @@ on:
     branches: [codex/pocketgemma-apk]
     paths:
       - 'pocket-gemma/**'
-      - '.github/workflows/pocketgemma-android.yml'
   workflow_dispatch:
 permissions:
   contents: write
@@ -134,3 +133,4 @@ jobs:
               --target "$GITHUB_SHA" \
               --title "Clara v2.1.0 — redesigned study and voice tutor" \
               --notes "Redesigned native study screen with graphite surfaces, mint and violet accents, readable scrolling cards, visible read-aloud and an in-study Clara conversation panel. Includes microphone replies, streaming bubbles, speech highlighting, reading-speed controls and stop controls. Retains imported decks, progress, model storage, package IDs and the pinned development certificate from v2.0.8. Development build using the existing public test-only signing identity."
+          fi
