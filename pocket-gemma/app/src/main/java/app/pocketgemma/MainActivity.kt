@@ -236,6 +236,7 @@ private fun PocketGemmaApp() {
         }
     }
     val studyDeckPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        showFlashcards = true
         if (uri != null) scope.launch {
             try {
                 val imported = withContext(Dispatchers.IO) { ClaraDeckStorage.importLocal(context, uri) }
