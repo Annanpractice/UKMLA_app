@@ -162,6 +162,8 @@ fun ClaraFlashcardScreen(
     deck: ClaraStudyDeck,
     onBack: () -> Unit,
     onImport: () -> Unit,
+    importMessage: String,
+    importError: Boolean,
     onMark: (String, String) -> Unit,
     onSpeak: (String) -> Unit,
     onDiscuss: (ClaraStudyCard) -> Unit,
