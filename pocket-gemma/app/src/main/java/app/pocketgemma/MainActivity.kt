@@ -610,7 +610,7 @@ private fun PocketGemmaApp() {
                         })
                         studyDeck = updated
                         scope.launch {
-                            try { withContext(Dispatchers.IO) { ClaraDeckStorage.save(context, updated) } }
+                            try { withContext(Dispatchers.IO) { ClaraDeckStorage.updateStatus(context, id, cardStatus) } }
                             catch (e: Exception) { status = "Could not save card progress: ${e.message}" }
                         }
                     },
