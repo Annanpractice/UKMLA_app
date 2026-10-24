@@ -132,6 +132,25 @@ private fun applyRichTag(field: TextFieldValue, tag: String): TextFieldValue {
     return field.copy(text=text, selection=TextRange(start + open.length, end + open.length))
 }
 
+@Composable
+private fun RowScope.LegacyFooterButton(label: String, shade: Color, active: Boolean = true, action: () -> Unit) {
+        Box(
+            modifier = Modifier.weight(1f).fillMaxHeight()
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (active) shade else Color(0xFF4A5276))
+                .clickable(enabled = active) { action() }
+                .padding(horizontal = 2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                label, maxLines = 1, softWrap = false,
+                fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                color = if (shade == Color(0xFFF1C40F)) Color.Black else Color.White,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClaraFlashcardScreen(
@@ -519,34 +538,17 @@ fun ClaraFlashcardScreen(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            @Composable
-            fun footer(label: String, shade: Color, active: Boolean = true, action: () -> Unit) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (active) shade else Color(0xFF4A5276))
-                        .clickable(enabled = active) { action() }
-                        .padding(horizontal = 2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        label, maxLines = 1, softWrap = false,
-                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                        color = if (shade == Color(0xFFF1C40F)) Color.Black else Color.White,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            footer("Understood", Color(0xFF2DBF6E), card != null) {
+
+            LegacyFooterButton("Understood", Color(0xFF2DBF6E), card != null) {
                 card?.let { onMark(it.id, "understood") }
             }
-            footer("Mastered", Color(0xFF2DBF6E), card != null) {
+            LegacyFooterButton("Mastered", Color(0xFF2DBF6E), card != null) {
                 card?.let { onMark(it.id, "mastered") }
             }
-            footer("Delete", Color(0xFFE74C3C), card != null) {
+            LegacyFooterButton("Delete", Color(0xFFE74C3C), card != null) {
                 card?.let { lastDeleted = it.id to it.status; onMark(it.id, "deleted") }
             }
-            footer("Undo", Color(0xFFF1C40F), lastDeleted != null) {
+            LegacyFooterButton("Undo", Color(0xFFF1C40F), lastDeleted != null) {
                 lastDeleted?.let { (id, status) ->
                     onMark(id, status)
                     lastDeleted = null
