@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.UtteranceProgressListener
+import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.provider.OpenableColumns
@@ -179,6 +180,7 @@ private fun PocketGemmaApp() {
     var tutorPrompt by remember { mutableStateOf(prefs.readCardTutorPrompt()) }
     var speakTutorReplies by remember { mutableStateOf(prefs.readCardTutorSpeech()) }
     var tutoringThisChat by remember { mutableStateOf(lines.firstOrNull()?.displayText?.startsWith("Study card:") == true) }
+    var pendingSpokenAnswer by remember { mutableStateOf<String?>(null) }
     var showBriefingSettings by remember { mutableStateOf(false) }
     var demoNotifications by remember { mutableStateOf(prefs.readDemoNotifications()) }
     var allowedNotificationPackages by remember { mutableStateOf(prefs.readAllowedNotificationPackages()) }
@@ -218,6 +220,15 @@ private fun PocketGemmaApp() {
         if (uri != null) scope.launch {
             try { pendingAttachments = pendingAttachments + stageAttachment(context, uri, "audio") }
             catch (e: Exception) { status = "Could not attach audio: ${e.message}" }
+        }
+    }
+    val spokenAnswerPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val transcript = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
+            if (!transcript.isNullOrBlank()) {
+                input = transcript
+                if (tutoringThisChat) pendingSpokenAnswer = transcript
+            }
         }
     }
     val studyDeckPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -542,6 +553,14 @@ private fun PocketGemmaApp() {
         }
     }
 
+    LaunchedEffect(pendingSpokenAnswer) {
+        val spoken = pendingSpokenAnswer
+        if (!spoken.isNullOrBlank() && tutoringThisChat && !generating && !loading) {
+            pendingSpokenAnswer = null
+            submitMessage(spoken)
+        }
+    }
+
     MaterialTheme(colorScheme = darkColorScheme()) {
         Scaffold(topBar = {
             TopAppBar(title = { Text("Clara") }, actions = {
@@ -694,6 +713,16 @@ Wait for me to respond, then continue one question at a time.
                         TextButton(onClick = { imagePicker.launch("image/*") }, enabled = !generating) { Text("+ Photo") }
                         TextButton(onClick = { audioPicker.launch("audio/*") }, enabled = !generating) { Text("+ Audio") }
                         if (pendingAttachments.isNotEmpty()) Text("${pendingAttachments.size} attached", style = MaterialTheme.typography.labelSmall)
+                        if (tutoringThisChat) TextButton(onClick = {
+                            val request = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB")
+                                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Reply to Clara's card question")
+                            }
+                            try { spokenAnswerPicker.launch(request) }
+                            catch (e: Exception) { status = "No speech recognition service is installed: ${e.message}" }
+                        }, enabled = !generating && !loading) { Text("Mic reply") }
                     }
                     pendingAttachments.forEachIndexed { index, attachment ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
