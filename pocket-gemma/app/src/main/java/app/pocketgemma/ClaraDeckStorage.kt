@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
+import android.util.JsonWriter
 import android.util.JsonReader
 import android.util.JsonToken
 import java.io.File
@@ -43,7 +44,7 @@ object ClaraDeckStorage {
         if (!file.isFile) return ClaraStudyDeck()
         return SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             val result = ArrayList<ClaraStudyCard>()
-            db.rawQuery("SELECT id, topic, status FROM cards ORDER BY position ASC", null).use { cursor ->
+            db.rawQuery("SELECT id, topic, status FROM cards WHERE status != 'deleted' ORDER BY position ASC", null).use { cursor ->
                 while (cursor.moveToNext()) {
                     result.add(ClaraStudyCard(
                         id = cursor.getString(0),
@@ -78,7 +79,7 @@ object ClaraDeckStorage {
             database = db
             db.execSQL("CREATE TABLE cards (" +
                 "id TEXT PRIMARY KEY, position INTEGER NOT NULL, q TEXT NOT NULL, a TEXT NOT NULL, " +
-                "topic TEXT NOT NULL, qimg TEXT NOT NULL, aimg TEXT NOT NULL, status TEXT NOT NULL)")
+                "topic TEXT NOT NULL, qimg TEXT NOT NULL, aimg TEXT NOT NULL, color TEXT NOT NULL, status TEXT NOT NULL)")
             db.execSQL("CREATE INDEX cards_topic_status ON cards(topic, status)")
             db.beginTransaction()
 
@@ -100,6 +101,7 @@ object ClaraDeckStorage {
                 var topic = ""
                 var qImg = ""
                 var aImg = ""
+                var color = "#f7f9ff"
                 var status = category
                 reader.beginObject()
                 while (reader.hasNext()) {
@@ -116,6 +118,7 @@ object ClaraDeckStorage {
                         "topic", "subject" -> topic = readValue(reader)
                         "qimg", "qimage" -> qImg = readValue(reader)
                         "aimg", "aimage" -> aImg = readValue(reader)
+                        "color", "colour" -> color = readValue(reader)
                         "status" -> {
                             val declared = readValue(reader)
                             if (category == "remaining") status = declared
@@ -135,6 +138,7 @@ object ClaraDeckStorage {
                     put("topic", topic)
                     put("qimg", qImg)
                     put("aimg", aImg)
+                    put("color", color.takeIf { it.matches(Regex("#[0-9A-Fa-f]{6}")) } ?: "#f7f9ff")
                     put("status", status)
                 }
                 val inserted = db.insertWithOnConflict("cards", null, values, SQLiteDatabase.CONFLICT_IGNORE)
@@ -213,7 +217,14 @@ object ClaraDeckStorage {
         val dbFile = primary(context)
         if (!dbFile.isFile) return null
         return SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-            db.rawQuery("SELECT id, q, a, topic, qimg, aimg, status FROM cards WHERE id = ? LIMIT 1", arrayOf(id))
+            val hasColor = db.rawQuery("PRAGMA table_info(cards)", null).use { c ->
+                var present = false
+                while (c.moveToNext()) if (c.getString(1) == "color") present = true
+                present
+            }
+            val query = if (hasColor) "SELECT id, q, a, topic, qimg, aimg, status, color FROM cards WHERE id = ? LIMIT 1"
+                else "SELECT id, q, a, topic, qimg, aimg, status FROM cards WHERE id = ? LIMIT 1"
+            db.rawQuery(query, arrayOf(id))
                 .use { cursor ->
                     if (!cursor.moveToFirst()) null
                     else ClaraStudyCard(
@@ -223,9 +234,106 @@ object ClaraDeckStorage {
                         topic = cursor.getString(3) ?: "",
                         qImage = cursor.getString(4) ?: "",
                         aImage = cursor.getString(5) ?: "",
+                        color = if (hasColor) cursor.getString(7) ?: "#f7f9ff" else "#f7f9ff",
                         status = cursor.getString(6) ?: "remaining"
                     )
                 }
+        }
+    }
+
+    private fun addColorIfNeeded(db: SQLiteDatabase) {
+        val exists = db.rawQuery("PRAGMA table_info(cards)", null).use { c ->
+            var found = false
+            while (c.moveToNext()) if (c.getString(1) == "color") found = true
+            found
+        }
+        if (!exists) db.execSQL("ALTER TABLE cards ADD COLUMN color TEXT NOT NULL DEFAULT '#f7f9ff'")
+    }
+
+    // Add/edit a card while preserving its images and original rich HTML.
+    fun saveCard(context: Context, card: ClaraStudyCard) {
+        val file = primary(context)
+        require(file.exists()) { "Import a deck before editing or adding cards." }
+        SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            addColorIfNeeded(db)
+            val position = db.rawQuery("SELECT position FROM cards WHERE id = ?", arrayOf(card.id)).use { c ->
+                if (c.moveToFirst()) c.getLong(0)
+                else db.rawQuery("SELECT COALESCE(MAX(position), -1) + 1 FROM cards", null).use { it.moveToFirst(); it.getLong(0) }
+            }
+            val values = ContentValues().apply {
+                put("id", card.id)
+                put("position", position)
+                put("q", card.question)
+                put("a", card.answer)
+                put("topic", card.topic)
+                put("qimg", card.qImage)
+                put("aimg", card.aImage)
+                put("color", card.color)
+                put("status", card.status)
+            }
+            db.insertWithOnConflict("cards", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        }
+    }
+
+    // Soft-delete is reversible; it avoids copying image-heavy card content
+    // into Compose memory merely to support Undo.
+    fun deleteCard(context: Context, id: String) {
+        val file = primary(context)
+        SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("UPDATE cards SET status = 'deleted' WHERE id = ?", arrayOf(id))
+        }
+    }
+
+    fun searchIds(context: Context, term: String): Set<String> {
+        if (term.isBlank()) return emptySet()
+        val file = primary(context)
+        if (!file.exists()) return emptySet()
+        SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            val pattern = "%${term.trim()}%"
+            return db.rawQuery(
+                "SELECT id FROM cards WHERE status != 'deleted' AND (q LIKE ? OR a LIKE ? OR topic LIKE ?)",
+                arrayOf(pattern, pattern, pattern)
+            ).use { c ->
+                buildSet {
+                    while (c.moveToNext()) add(c.getString(0))
+                }
+            }
+        }
+    }
+
+    // Stream the full original-compatible format without serialising the deck
+    // into one giant String or holding images for every card in memory.
+    fun exportJson(context: Context, uri: Uri) {
+        val file = primary(context)
+        require(file.exists()) { "Import a deck before exporting." }
+        val output = context.contentResolver.openOutputStream(uri) ?: error("Unable to write destination")
+        SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            val hasColor = db.rawQuery("PRAGMA table_info(cards)", null).use { c ->
+                var found = false
+                while (c.moveToNext()) if (c.getString(1) == "color") found = true
+                found
+            }
+            JsonWriter(output.bufferedWriter(Charsets.UTF_8)).use { writer ->
+                writer.beginObject()
+                for ((key, status) in listOf("cards" to "remaining", "understood" to "understood", "mastered" to "mastered")) {
+                    writer.name(key).beginArray()
+                    db.rawQuery(
+                        "SELECT id,q,a,topic,qimg,aimg,${if (hasColor) "color" else "'#f7f9ff'"} FROM cards WHERE status = ? ORDER BY position",
+                        arrayOf(status)
+                    ).use { c ->
+                        while (c.moveToNext()) {
+                            writer.beginObject()
+                            for ((field, index) in listOf("id" to 0, "q" to 1, "a" to 2, "topic" to 3,
+                                "qImg" to 4, "aImg" to 5, "color" to 6)) {
+                                writer.name(field).value(c.getString(index) ?: "")
+                            }
+                            writer.endObject()
+                        }
+                    }
+                    writer.endArray()
+                }
+                writer.endObject()
+            }
         }
     }
 
