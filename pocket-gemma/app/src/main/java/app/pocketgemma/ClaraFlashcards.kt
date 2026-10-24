@@ -213,8 +213,19 @@ fun ClaraFlashcardScreen(
             }
         }
         if (card == null) {
-            Text(if (deck.cards.isEmpty()) "Import your original flashcards.json or .cards file. Everything stays on the phone."
-                else "No cards match this filter. Try All or another topic.")
+            if (deck.cards.isEmpty()) {
+                Text("No flashcards imported yet.", style = MaterialTheme.typography.titleMedium)
+                Text("Choose your original flashcards.json or .cards file from this phone. The deck is saved locally.")
+                Button(
+                    onClick = onImport,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Import flashcard deck") }
+            } else {
+                Text("No cards match this filter. Try All or another topic.")
+                OutlinedButton(onClick = { filter = "all"; selectedTopic = "All topics"; index = 0 }) {
+                    Text("Show all cards")
+                }
+            }
         } else {
             Text("Card ${index+1} / ${shown.size} · ${card.topic.ifBlank { "Uncategorised" }}",
                 style = MaterialTheme.typography.labelMedium)
