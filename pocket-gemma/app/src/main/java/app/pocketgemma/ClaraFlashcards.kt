@@ -195,6 +195,7 @@ fun ClaraFlashcardScreen(
             Text("Study cards", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = onImport) { Text("Import") }
         }
+        if (importMessage.isNotEmpty()) Text(importMessage)
         Text("${deck.cards.size} cards · ${deck.cards.count { it.status == "remaining" }} remaining · ${deck.cards.count { it.status == "understood" }} understood · ${deck.cards.count { it.status == "mastered" }} mastered",
             style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
