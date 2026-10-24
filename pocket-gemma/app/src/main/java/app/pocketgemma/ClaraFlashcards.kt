@@ -49,7 +49,7 @@ data class ClaraStudyCard(
     val status: String = "remaining"
 )
 
-data class ClaraStudyDeck(val cards: List<ClaraStudyCard> = emptyList())
+data class ClaraStudyDeck(val cards: List<ClaraStudyCard> = emptyList(), val revision: Long = System.nanoTime())
 
 fun cardPlainText(html: String): String =
     Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString().replace(Regex("\\s+"), " ").trim()
@@ -196,7 +196,7 @@ fun ClaraFlashcardScreen(
         locked = false
     }
     val selected = shown.getOrNull(index)
-    val cardState = produceState<ClaraStudyCard?>(initialValue = null, key1 = selected?.id) {
+    val cardState = produceState<ClaraStudyCard?>(initialValue = null, key1 = selected?.id, key2 = deck.revision) {
         value = null
         if (selected != null) value = withContext(Dispatchers.IO) {
             ClaraDeckStorage.readCard(context, selected.id)
