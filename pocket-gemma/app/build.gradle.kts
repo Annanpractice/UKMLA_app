@@ -33,21 +33,9 @@ android {
             resValue("string", "clara_app_name", "Clara Study")
         }
     }
-    // All GitHub debug APKs must use the SAME dedicated keystore.
-    // Never fall back to the randomly generated Android debug certificate.
-    signingConfigs {
-        create("claraStable") {
-            storeFile = rootProject.file("clara-signing.p12")
-            storeType = "pkcs12"
-            storePassword = System.getenv("CLARA_SIGNING_PASSWORD") ?: ""
-            keyAlias = "clara-dev"
-            keyPassword = System.getenv("CLARA_SIGNING_PASSWORD") ?: ""
-        }
-    }
+    // Use the standard Android development signing configuration. GitHub
+    // restores the same fixed test-only debug keystore for each build.
     buildTypes {
-        getByName("debug") {
-            signingConfig = signingConfigs.getByName("claraStable")
-        }
         getByName("release") {
             isMinifyEnabled = false
         }
