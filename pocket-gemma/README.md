@@ -1,4 +1,4 @@
-# Clara v2.0 — offline flashcards with Socratic tutoring
+# Clara v2.0.1 — offline flashcards with visible import control
 
 Standalone Android chat app using the official LiteRT-LM 0.17.1 runtime and the Gemma 4 E4B LiteRT-LM model.
 
@@ -34,6 +34,8 @@ The remaining phone test is to run a structured synthetic prompt set (the design
 - The empty current chat is not saved automatically. This prevents a cleared history from immediately repopulating with a placeholder.
 
 ## Offline UKMLA flashcards and Socratic tutor
+
+- **Layout fix (2.0.1):** Cards content now respects Scaffold insets, keeping Back, Study cards and Import visible beneath the app toolbar. An additional **Import flashcard deck** button appears prominently on an empty deck.
 
 - **Cards** opens a native Compose study screen within Clara; this is the existing `app.clara.assistant` app, not a new app identity.
 - Import a local `.json` or `.cards` export from the legacy [flashcard-app](https://github.com/Annanpractice/flashcard-app). Handles `{cards,understood,mastered}` and `seen`, or an array of cards. Existing topics, HTML formatting, data-URI images and progress categories are retained offline.
