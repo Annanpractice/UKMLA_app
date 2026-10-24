@@ -600,7 +600,7 @@ private fun PocketGemmaApp() {
                 ClaraFlashcardScreen(
                     deck = studyDeck,
                     onBack = { showFlashcards = false },
-                    onImport = { studyDeckPicker.launch("*/*") },
+                    onImport = { deckImportError = false; deckImportMessage = "Choose a local JSON card deck."; studyDeckPicker.launch("*/*") },
                     importMessage = deckImportMessage,
                     importError = deckImportError,
                     onMark = { id, cardStatus ->
