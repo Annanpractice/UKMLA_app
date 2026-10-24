@@ -235,6 +235,20 @@ private fun PocketGemmaApp() {
             }
         }
     }
+    val deckExportPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) scope.launch {
+            try {
+                withContext(Dispatchers.IO) { ClaraDeckStorage.exportJson(context, uri) }
+                deckImportError = false
+                deckImportMessage = "Export completed. Your HTML, images, topics and progress are preserved."
+            } catch (e: Exception) {
+                deckImportError = true
+                deckImportMessage = "Export failed: ${e.message}"
+            }
+        }
+    }
     val studyDeckPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         showFlashcards = true
         if (uri == null) deckImportMessage = "No file selected."
@@ -602,16 +616,33 @@ private fun PocketGemmaApp() {
                     deck = studyDeck,
                     onBack = { showFlashcards = false },
                     onImport = { deckImportError = false; deckImportMessage = "Choose a local JSON card deck."; studyDeckPicker.launch("*/*") },
+                    onExport = { deckExportPicker.launch("clara-flashcards.json") },
+                    onSaveCard = { edited ->
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) { ClaraDeckStorage.saveCard(context, edited) }
+                                studyDeck = withContext(Dispatchers.IO) { ClaraDeckStorage.load(context) }
+                                deckImportError = false
+                                deckImportMessage = "Card saved."
+                            } catch (e: Exception) {
+                                deckImportError = true
+                                deckImportMessage = "Could not save card: ${e.message}"
+                            }
+                        }
+                    },
                     importMessage = deckImportMessage,
                     importError = deckImportError,
                     onMark = { id, cardStatus ->
-                        val updated = studyDeck.copy(cards = studyDeck.cards.map {
-                            if (it.id == id) it.copy(status = cardStatus) else it
-                        })
-                        studyDeck = updated
                         scope.launch {
-                            try { withContext(Dispatchers.IO) { ClaraDeckStorage.updateStatus(context, id, cardStatus) } }
-                            catch (e: Exception) { status = "Could not save card progress: ${e.message}" }
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    ClaraDeckStorage.updateStatus(context, id, cardStatus)
+                                }
+                                studyDeck = withContext(Dispatchers.IO) { ClaraDeckStorage.load(context) }
+                            } catch (e: Exception) {
+                                deckImportError = true
+                                deckImportMessage = "Could not update card: ${e.message}"
+                            }
                         }
                     },
                     onSpeak = { text ->
