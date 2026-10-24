@@ -130,7 +130,7 @@ private fun StudyCardFace(html: String, imageData: String) {
     val context = LocalContext.current
     val document = remember(html, imageData) {
         val safeImg = if (imageData.startsWith("data:image/") && imageData.length <= 12_000_000)
-            "<p><img src=\\\"" + imageData.replace("\\\"", "") + "\\\" /></p>" else ""
+            "<p><img src=\"" + imageData.replace("\"", "") + "\" /></p>" else ""
         """<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
 <style>html,body{background:#21252b;color:#f1f4f7;font:17px system-ui,sans-serif;line-height:1.5;margin:0;padding:4px}
