@@ -12,10 +12,11 @@ android {
         applicationId = "app.clara.assistant"
         minSdk = 26
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every GitHub workflow run receives a higher Android versionCode;
         // users can install future builds as upgrades rather than downgrades.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 13
-        versionName = "2.0.8"
+        versionName = "2.1.0"
     }
 
     // Build the original package and an independently installable companion.
@@ -70,6 +71,11 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.9.2")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.9.2")
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.2")

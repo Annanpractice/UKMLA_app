@@ -38,6 +38,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
@@ -73,8 +76,8 @@ private fun StudyCardFace(html: String, imageData: String, faceColor: String) {
         """<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
 <style>
-html,body{height:100%;min-height:100%;box-sizing:border-box;margin:0;background:$safeColor;color:#101321}
-body{font:19px system-ui,Roboto,sans-serif;line-height:1.42;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 14px;overflow-wrap:anywhere}
+html,body{min-height:100%;box-sizing:border-box;margin:0;background:$safeColor;color:#171C2C}html{height:100%}
+body{font:18px system-ui,Roboto,sans-serif;line-height:1.6;text-align:left;padding:24px 22px;overflow-wrap:anywhere}h1,h2,h3{font-size:1.25em;line-height:1.4}b,strong{font-weight:650}*{box-sizing:border-box}
 body>*{max-width:100%}img{max-width:94%;height:auto;max-height:360px;object-fit:contain;border-radius:9px}
 table{max-width:100%;display:block;overflow-x:auto}figure{margin:12px 0}ul,ol{text-align:left}p{margin:8px 0}
 </style></head><body>""" + html + image + "</body></html>"
@@ -164,6 +167,14 @@ fun ClaraFlashcardScreen(
     onMark: (String, String) -> Unit,
     onSpeak: (String) -> Unit,
     onDiscuss: (ClaraStudyCard) -> Unit,
+    isSpeaking: Boolean,
+    speechReady: Boolean,
+    speechMessage: String,
+    onStopSpeech: () -> Unit,
+    onVoiceSettings: () -> Unit,
+    onModelSettings: () -> Unit,
+    modelStatus: String,
+    modelBusy: Boolean,
     tutorPrompt: String,
     onTutorPromptChange: (String) -> Unit,
     speakTutorReplies: Boolean,
@@ -171,14 +182,15 @@ fun ClaraFlashcardScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var view by remember { mutableStateOf("remaining") }
-    var topic by remember { mutableStateOf("All topics") }
-    var keyword by remember { mutableStateOf("") }
-    var keywordEnabled by remember { mutableStateOf(false) }
-    var index by remember { mutableIntStateOf(0) }
-    var number by remember { mutableStateOf("1") }
-    var showingAnswer by remember { mutableStateOf(false) }
-    var locked by remember { mutableStateOf(false) }
+    var view by rememberSaveable { mutableStateOf("remaining") }
+    var topic by rememberSaveable { mutableStateOf("All topics") }
+    var keyword by rememberSaveable { mutableStateOf("") }
+    var keywordEnabled by rememberSaveable { mutableStateOf(false) }
+    var index by rememberSaveable { mutableIntStateOf(0) }
+    var number by rememberSaveable { mutableStateOf("1") }
+    var showingAnswer by rememberSaveable { mutableStateOf(false) }
+    var locked by rememberSaveable { mutableStateOf(false) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
     var optionsOpen by remember { mutableStateOf(false) }
     var topicsOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -235,6 +247,7 @@ fun ClaraFlashcardScreen(
         locked = false
     }
     val selected = shown.getOrNull(index)
+    LaunchedEffect(selected?.id, showingAnswer) { onStopSpeech() }
     val cardState = produceState<ClaraStudyCard?>(initialValue = null, key1 = selected?.id, key2 = deck.revision) {
         value = null
         if (selected != null) value = withContext(Dispatchers.IO) {
@@ -267,293 +280,169 @@ fun ClaraFlashcardScreen(
     fun changeView(to: String) { view = to; topic = "All topics"; index = 0; showingAnswer = false }
     fun changeTopic(to: String) { topic = to; index = 0; showingAnswer = false }
 
-    // This screen follows the original Annanpractice/flashcard-app
-    // flashcards.html mobile layout. Fixed header/filter/footer are outside
-    // the card, so no action button can overlap the reading surface.
-    val darkPanel = Color(0xFF0B1024)
-    val panel = Color(0xFF202842)
-    val pale = Color(0xFFF4F6FB)
-    val muted = Color(0xFFC5CBE0)
-    val blue = Color(0xFF0072CE)
-
-    Column(Modifier.fillMaxSize().background(
-        Brush.verticalGradient(listOf(Color(0xFF0B1330), Color(0xFF0E1222))))) {
-
-        // Equivalent of original .topbar, .drawer-toggle and .counter.
-        Row(
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-                .background(darkPanel).padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
-                    .background(panel).clickable { topicsOpen = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("☰", fontSize = 23.sp, color = pale)
+    val pale = ClaraColors.text
+    val muted = ClaraColors.muted
+    val blue = ClaraColors.accent
+    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(
+        listOf(ClaraColors.background, Color(0xFF101827), ClaraColors.background))))) {
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { topicsOpen = true }) { ClaraGlyph("menu", "Topics and learning progress") }
+            ClaraOrb(active = isSpeaking, modifier = Modifier.size(32.dp))
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text("Clara", color = pale, fontSize = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-.6).sp)
+                Text("YOUR STUDY COMPANION", color = muted, fontSize = 9.sp, letterSpacing = 1.4.sp)
             }
-            Row(
-                modifier = Modifier.weight(1f).height(40.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(1.dp, Color(0xFF4A5276), RoundedCornerShape(24.dp))
-                    .background(panel).padding(horizontal = 9.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box {
-                    Box(
-                        Modifier.size(29.dp).clip(RoundedCornerShape(50))
-                            .background(Color.White).clickable { optionsOpen = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⋮", color = Color(0xFF161B2E), fontSize = 20.sp)
+            IconButton(onClick = { searchOpen = !searchOpen }) { ClaraGlyph("search", "Search cards") }
+            Box {
+                IconButton(onClick = { optionsOpen = true }) { ClaraGlyph("more", "Card options") }
+                DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
+                    @Composable fun action(name: String, enabled: Boolean = true, block: () -> Unit) {
+                        DropdownMenuItem(text = { Text(name) }, enabled = enabled,
+                            onClick = { optionsOpen = false; block() })
                     }
-                    DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
-                        @Composable
-                        fun action(name: String, enabled: Boolean = true, onClick: () -> Unit) {
-                            DropdownMenuItem(
-                                text = { Text(name) },
-                                enabled = enabled,
-                                onClick = { optionsOpen = false; onClick() }
-                            )
-                        }
-                        action("Import JSON") { onImport() }
-                        action("Export JSON", deck.cards.isNotEmpty()) { onExport() }
-                        action("Add flashcard") {
-                            editingCard = null
-                            draftQImage = ""
-                            draftAImage = ""
-                            editorOpen = true
-                        }
-                        action("Edit this card", card != null) {
-                            editingCard = card
-                            draftQImage = card?.qImage.orEmpty()
-                            draftAImage = card?.aImage.orEmpty()
-                            editorOpen = true
-                        }
-                        HorizontalDivider()
-                        action("Discuss with Clara", card != null) { card?.let(onDiscuss) }
-                        action("Speak question", card != null) {
-                            card?.let { onSpeak(cardPlainText(it.question)) }
-                        }
-                        action("Speak answer", card != null) {
-                            card?.let { onSpeak(cardPlainText(it.answer)) }
-                        }
-                        action("Socratic tutor settings") { settingsOpen = true }
-                        action("Shuffle cards", deck.cards.isNotEmpty()) { changeView("random") }
-                        HorizontalDivider()
-                        action("Back to Clara") { onBack() }
+                    action("Import JSON") { onImport() }
+                    action("Export JSON", deck.cards.isNotEmpty()) { onExport() }
+                    action("Add flashcard") {
+                        editingCard = null; draftQImage = ""; draftAImage = ""; editorOpen = true
+                    }
+                    action("Edit this card", card != null) {
+                        editingCard = card; draftQImage = card?.qImage.orEmpty()
+                        draftAImage = card?.aImage.orEmpty(); editorOpen = true
+                    }
+                    HorizontalDivider()
+                    action("Tutor instructions") { settingsOpen = true }
+                    action("Voice and reading speed") { onVoiceSettings() }
+                    action("Model settings") { onModelSettings() }
+                    action("Shuffle cards", deck.cards.isNotEmpty()) { changeView("random") }
+                    action("Open Clara chat") { onBack() }
+                    action("Undo last deletion", lastDeleted != null) {
+                        lastDeleted?.let { (id, status) -> onMark(id, status); lastDeleted = null }
+                    }
+                    action("Delete this card", card != null) {
+                        card?.let { lastDeleted = it.id to it.status; onMark(it.id, "deleted") }
                     }
                 }
-                Spacer(Modifier.width(11.dp))
-                BasicTextField(
-                    value = number,
-                    onValueChange = { jumpTo(it) },
-                    modifier = Modifier.width(53.dp).height(28.dp)
-                        .border(1.dp, Color(0xFF4A5276), RoundedCornerShape(8.dp))
-                        .background(Color(0xFF161B2E), RoundedCornerShape(8.dp))
-                        .wrapContentHeight(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textStyle = TextStyle(
-                        color = pale, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    ),
-                )
-                Spacer(Modifier.width(9.dp))
-                Text("/  ${shown.size}", color = pale, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            }
-            TextButton(
-                onClick = onBack,
-                contentPadding = PaddingValues(horizontal = 5.dp)
-            ) {
-                Text("Clara", color = muted, fontSize = 13.sp)
             }
         }
-
-        // The original .filterbar with an optional keyword enable switch.
-        Row(
-            modifier = Modifier.fillMaxWidth().height(60.dp)
-                .background(darkPanel).padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier.weight(1f).height(44.dp)
-                    .border(1.dp, Color(0xFF4A5276), RoundedCornerShape(10.dp))
-                    .background(Color(0xFF161B2E), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (keyword.isBlank()) {
-                    Text("Keyword filter question, answer, or topic…",
-                        color = Color(0xFF8993AC), fontSize = 13.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                BasicTextField(
-                    value = keyword,
-                    onValueChange = { keyword = it; index = 0 },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    textStyle = TextStyle(color = pale, fontSize = 14.sp)
-                )
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { topicsOpen = true }, contentPadding = PaddingValues(end = 8.dp)) {
+                Text(topic, maxLines = 1, overflow = TextOverflow.Ellipsis, color = muted, fontSize = 13.sp,
+                    modifier = Modifier.widthIn(max = 190.dp))
+                Text("  ⌄", color = muted)
             }
-            Checkbox(
-                checked = keywordEnabled,
-                onCheckedChange = { keywordEnabled = it; index = 0 },
-                modifier = Modifier.size(28.dp),
-                colors = CheckboxDefaults.colors(checkedColor = blue)
-            )
-            Text("Enable", color = muted, fontSize = 12.sp)
+            Spacer(Modifier.weight(1f))
+            BasicTextField(value = number, onValueChange = { jumpTo(it) },
+                modifier = Modifier.width(44.dp).heightIn(min = 36.dp)
+                    .background(ClaraColors.surface, RoundedCornerShape(10.dp)).padding(vertical = 8.dp)
+                    .semantics { contentDescription = "Jump to card number" },
+                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = TextStyle(color = pale, fontSize = 13.sp, textAlign = TextAlign.Center))
+            Text(" / ${shown.size}", color = muted, fontSize = 12.sp)
         }
-
-        if (importError || (deck.cards.isEmpty() && importMessage.isNotBlank())) {
-            Text(
-                importMessage, color = if (importError) Color(0xFFFFB0B0) else muted,
-                fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp)
-            )
+        androidx.compose.animation.AnimatedVisibility(visible = searchOpen) {
+            Row(Modifier.padding(horizontal = 18.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(value = keyword, onValueChange = { keyword = it; keywordEnabled = true; index = 0 },
+                    modifier = Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(16.dp),
+                    placeholder = { Text("Search question, answer or topic", fontSize = 12.sp) },
+                    trailingIcon = { if (keyword.isNotEmpty()) IconButton(onClick = { keyword = "" }) {
+                        ClaraGlyph("close", "Clear search")
+                    } })
+            }
         }
-
-        // Original .wrap / .flashcard, constrained by the space left between
-        // the header and fixed action bars, never allowed to obscure either.
-        BoxWithConstraints(
-            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
+        if (keywordEnabled && keyword.isNotBlank() && !searchOpen) TextButton(
+            onClick = { keyword = ""; keywordEnabled = false }, modifier = Modifier.padding(horizontal = 18.dp)) {
+            Text("Search: $keyword  ×", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (importMessage.isNotBlank()) {
+            Text(importMessage, color = if (importError) Color(0xFFFFB4AB) else muted, fontSize = 11.sp,
+                maxLines = 3, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+        }
+        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)) {
             if (selected == null) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        if (deck.cards.isEmpty()) "No flashcards loaded" else "No cards match this filter",
-                        color = pale, fontSize = 18.sp
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = if (deck.cards.isEmpty()) onImport
-                            else { { keyword = ""; keywordEnabled = false; changeView("all") } }
-                    ) {
-                        Text(if (deck.cards.isEmpty()) "Import JSON" else "Show all cards")
-                    }
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center) {
+                    ClaraOrb(active = false, modifier = Modifier.size(58.dp))
+                    Spacer(Modifier.height(18.dp))
+                    Text(if (deck.cards.isEmpty()) "Your next discovery starts here" else "No cards in this view", color = pale,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(if (deck.cards.isEmpty()) "Import your deck to study with Clara." else "Choose another topic or clear your search.",
+                        color = muted, modifier = Modifier.padding(12.dp), textAlign = TextAlign.Center)
+                    Button(onClick = if (deck.cards.isEmpty()) onImport else { {
+                        keyword = ""; keywordEnabled = false; changeView("all")
+                    } }) { Text(if (deck.cards.isEmpty()) "Import a deck" else "Show all cards") }
                 }
             } else if (card == null) {
-                CircularProgressIndicator(color = blue)
+                CircularProgressIndicator(Modifier.align(Alignment.Center), color = blue)
             } else {
-                val faceWidth = minOf(maxWidth - 15.dp, (maxHeight - 6.dp) * 0.75f)
-                val faceHeight = minOf(maxHeight - 6.dp, faceWidth * (4f / 3f))
-                Box(
-                    modifier = Modifier.width(faceWidth).height(faceHeight)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(pastelColour(card.color))
-                ) {
-                    Crossfade(targetState = showingAnswer, label = "Card question and answer") { back ->
-                        val markup = if (back) card.answer else card.question
-                        val media = if (back) card.aImage else card.qImage
-                        StudyCardFace(
-                            markup, media,
-                            if (back) lightenCardColour(card.color) else card.color
-                        )
+                Column(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color(0xFFF4F5FA))) {
+                    // A separate header reserves real space for the topic; it never overlays the question.
+                    Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 13.dp, end = 8.dp, bottom = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(card.topic.ifBlank { "Flashcard" }, color = Color(0xFF525C74), fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f))
+                        Text(if (showingAnswer) "ANSWER" else "QUESTION", color = Color(0xFF68728B),
+                            fontSize = 9.sp, letterSpacing = 1.sp)
+                        IconButton(onClick = {
+                            if (isSpeaking) onStopSpeech() else onSpeak(cardPlainText(if (showingAnswer) card.answer else card.question))
+                        }) { ClaraGlyph(if (isSpeaking) "stop" else "speaker", if (isSpeaking) "Stop reading" else "Read visible side",
+                            tint = Color(0xFF425268)) }
                     }
-                    if (card.topic.isNotBlank()) {
-                        Text(
-                            card.topic, color = Color(0xFF101321), fontSize = 11.sp,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
-                                .clip(RoundedCornerShape(30.dp))
-                                .background(Color.White.copy(alpha = 0.68f))
-                                .padding(horizontal = 9.dp, vertical = 4.dp)
-                        )
+                    Crossfade(targetState = "${card.id}:$showingAnswer", modifier = Modifier.weight(1f), label = "Card face") {
+                        val back = it.endsWith(":true")
+                        StudyCardFace(if (back) card.answer else card.question, if (back) card.aImage else card.qImage, "#F4F5FA")
                     }
-                }
-                // Original .arrow.left and .arrow.right, floating half-way up
-                // the card rather than occupying a separate horizontal row.
-                Box(
-                    modifier = Modifier.align(Alignment.CenterStart).size(36.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.Black.copy(alpha = 0.36f))
-                        .clickable { move(-1) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("◀", color = Color.White, fontSize = 16.sp)
-                }
-                Box(
-                    modifier = Modifier.align(Alignment.CenterEnd).size(36.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.Black.copy(alpha = 0.36f))
-                        .clickable { move(1) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("▶", color = Color.White, fontSize = 16.sp)
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { move(-1) }) { ClaraGlyph("left", "Previous card", tint = Color(0xFF525C74)) }
+                        Text("Take a moment to recall", color = Color(0xFF68728B), fontSize = 11.sp,
+                            textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { move(1) }) { ClaraGlyph("right", "Next card", tint = Color(0xFF525C74)) }
+                    }
                 }
             }
         }
-
-        // Original blue .show button: answer visible only while pressed.
-        // A quick tap additionally locks/unlocks the answer for accessibility.
-        Box(
-            modifier = Modifier.fillMaxWidth().height(70.dp)
-                .padding(horizontal = 30.dp, vertical = 9.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier.widthIn(max = 225.dp).fillMaxWidth().height(51.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(if (selected != null) blue else Color(0xFF4A5276))
-                    .pointerInput(selected?.id, locked) {
-                        detectTapGestures(
-                            onPress = {
-                                if (selected != null) {
-                                    showingAnswer = true
-                                    tryAwaitRelease()
-                                    if (!locked) showingAnswer = false
-                                }
-                            },
-                            onLongPress = { /* keep the answer visible until release */ },
-                            onTap = {
-                                if (selected != null) {
-                                    locked = !locked
-                                    showingAnswer = locked
-                                }
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (locked) "Answer locked — tap to hide"
-                    else "Hold to Show Answer",
-                    color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold
-                )
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalButton(onClick = { locked = !locked; showingAnswer = locked }, enabled = card != null,
+                shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(containerColor = ClaraColors.accent, contentColor = ClaraColors.background)) {
+                Text(if (showingAnswer) "Hide answer" else "Reveal answer", fontWeight = FontWeight.SemiBold)
+            }
+            OutlinedButton(onClick = { if (isSpeaking) onStopSpeech() else card?.let {
+                onSpeak(cardPlainText(if (showingAnswer) it.answer else it.question))
+            } }, enabled = card != null, shape = RoundedCornerShape(16.dp), modifier = Modifier.heightIn(min = 48.dp)) {
+                ClaraGlyph(if (isSpeaking) "stop" else "speaker", null, modifier = Modifier.size(18.dp))
+                Text(if (isSpeaking) "  Stop" else "  Read aloud", fontSize = 12.sp)
             }
         }
-
-        // The original four fixed bottom buttons. A single row with stable
-        // heights and no Material button minimums that wrap the labels.
-        Row(
-            modifier = Modifier.fillMaxWidth().height(65.dp)
-                .background(darkPanel)
-                .padding(horizontal = 8.dp, vertical = 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            LegacyFooterButton("Understood", Color(0xFF2DBF6E), card != null) {
-                card?.let { onMark(it.id, "understood") }
-            }
-            LegacyFooterButton("Mastered", Color(0xFF2DBF6E), card != null) {
-                card?.let { onMark(it.id, "mastered") }
-            }
-            LegacyFooterButton("Delete", Color(0xFFE74C3C), card != null) {
-                card?.let { lastDeleted = it.id to it.status; onMark(it.id, "deleted") }
-            }
-            LegacyFooterButton("Undo", Color(0xFFF1C40F), lastDeleted != null) {
-                lastDeleted?.let { (id, status) ->
-                    onMark(id, status)
-                    lastDeleted = null
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("understood" to "Understood", "mastered" to "Mastered").forEach { (key, label) ->
+                TextButton(onClick = { card?.let { onMark(it.id, key) } }, enabled = card != null,
+                    modifier = Modifier.weight(1f).heightIn(min = 42.dp)) {
+                    ClaraGlyph("check", null, modifier = Modifier.size(15.dp), tint = ClaraColors.accent)
+                    Text("  $label", color = muted, fontSize = 12.sp)
                 }
             }
+        }
+        Surface(onClick = { card?.let { onDiscuss(it) } }, enabled = card != null && !modelBusy,
+            shape = RoundedCornerShape(20.dp), color = ClaraColors.surface,
+            border = BorderStroke(1.dp, ClaraColors.accent.copy(alpha = .22f)),
+            modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 10.dp)) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                ClaraOrb(active = modelBusy, modifier = Modifier.size(34.dp))
+                Column(Modifier.weight(1f).padding(start = 11.dp)) {
+                    Text("Talk to Clara", color = pale, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(if (modelBusy) modelStatus else "Quiz me · discuss this card", color = muted, fontSize = 11.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                ClaraGlyph("right", "Open Clara conversation", modifier = Modifier.size(18.dp))
+            }
+        }
+        if (speechMessage.isNotBlank() || !speechReady) TextButton(onClick = onVoiceSettings,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp)) {
+            Text(speechMessage.ifBlank { "Set up Clara's voice" }, fontSize = 11.sp, maxLines = 2)
         }
     }
 

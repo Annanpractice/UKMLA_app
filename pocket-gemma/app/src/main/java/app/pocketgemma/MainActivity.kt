@@ -27,6 +27,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,7 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.ThinkingConfig
 import com.google.ai.edge.litertlm.ToolCall
 import com.google.ai.edge.litertlm.tool
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -170,6 +173,10 @@ private suspend fun stageAttachment(context: Context, uri: Uri, kind: String): C
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
         setContent { PocketGemmaApp() }
     }
 }
@@ -192,7 +199,7 @@ private fun PocketGemmaApp() {
     var showHistory by remember { mutableStateOf(false) }
     var pendingChatDeletion by remember { mutableStateOf<SavedChat?>(null) }
     var confirmClearAll by remember { mutableStateOf(false) }
-    var showFlashcards by rememberSaveable { mutableStateOf(false) }
+    var showFlashcards by rememberSaveable { mutableStateOf(context.packageName.endsWith(".cards")) }
     var studyDeck by remember { mutableStateOf(ClaraDeckStorage.load(context)) }
     var deckImportMessage by rememberSaveable { mutableStateOf("") }
     var deckImportError by rememberSaveable { mutableStateOf(false) }
@@ -200,6 +207,14 @@ private fun PocketGemmaApp() {
     var tutorPrompt by remember { mutableStateOf(prefs.readCardTutorPrompt()) }
     var speakTutorReplies by remember { mutableStateOf(prefs.readCardTutorSpeech()) }
     var tutoringThisChat by remember { mutableStateOf(lines.firstOrNull()?.displayText?.startsWith("Study card:") == true) }
+    var tutorCard by remember { mutableStateOf<ClaraStudyCard?>(null) }
+    var showTutorControls by remember { mutableStateOf(false) }
+    var listening by remember { mutableStateOf(false) }
+    var stopRequested by remember { mutableStateOf(false) }
+    var speech by remember { mutableStateOf(ClaraSpeech()) }
+    var speechRate by remember { mutableFloatStateOf(prefs.readSpeechRate()) }
+    val speechChunks = remember { mutableMapOf<String, IntRange>() }
+    var lastSpeechId by remember { mutableStateOf("") }
     var pendingSpokenAnswer by remember { mutableStateOf<String?>(null) }
     var showBriefingSettings by remember { mutableStateOf(false) }
     var demoNotifications by remember { mutableStateOf(prefs.readDemoNotifications()) }
@@ -225,6 +240,39 @@ private fun PocketGemmaApp() {
     var verifiedModelSignature by remember { mutableStateOf<String?>(null) }
     var notificationTool by remember { mutableStateOf<ListNotificationsTool?>(null) }
 
+    fun stopSpeech() {
+        speechChunks.clear()
+        lastSpeechId = ""
+        speech = speech.copy(speaking = false)
+        tts?.stop()
+    }
+    fun speakText(raw: String) {
+        val spoken = claraSpokenText(raw)
+        if (spoken.isBlank()) return
+        stopSpeech()
+        if (!ttsReady) {
+            ttsProblem = ttsProblem.ifBlank { "Choose an installed offline voice to hear Clara." }
+            showSpeechSettings = true
+            return
+        }
+        val chunks = claraSpeechChunks(spoken)
+        val session = System.nanoTime().toString()
+        speech = ClaraSpeech(text = spoken, speaking = true)
+        tts?.setSpeechRate(speechRate)
+        ttsProblem = ""
+        chunks.forEachIndexed { i, range ->
+            val id = "clara-$session-$i"
+            speechChunks[id] = range
+            if (i == chunks.lastIndex) lastSpeechId = id
+            val rc = tts?.speak(spoken.substring(range), if (i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, id)
+            if (rc != TextToSpeech.SUCCESS) {
+                stopSpeech()
+                ttsProblem = "The selected voice could not start playback."
+                return
+            }
+        }
+    }
+
     val notificationAccessSettings = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         notificationAccess = hasPocketGemmaNotificationAccess(context)
         notificationSources = ActiveNotificationStore.currentSources()
@@ -243,6 +291,7 @@ private fun PocketGemmaApp() {
         }
     }
     val spokenAnswerPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        listening = false
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val transcript = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
             if (!transcript.isNullOrBlank()) {
@@ -251,6 +300,19 @@ private fun PocketGemmaApp() {
             }
         }
     }
+    fun startMicReply() {
+        if (generating || loading || listening) return
+        stopSpeech()
+        val request = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB")
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Reply to Clara's card question")
+        }
+        try { listening = true; spokenAnswerPicker.launch(request) }
+        catch (e: Exception) { listening = false; status = "No speech recognition service is installed: ${e.message}" }
+    }
+
     val deckExportPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -291,6 +353,7 @@ private fun PocketGemmaApp() {
         var disposed = false
         var instance: TextToSpeech? = null
         val requestedEngine = selectedTtsEngine
+        stopSpeech()
         ttsReady = false
         ttsVoices = emptyList()
         ttsProblem = ""
@@ -322,13 +385,37 @@ private fun PocketGemmaApp() {
                                         it.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true }
                                     .sortedWith(compareBy({ it.locale.displayName }, { it.name }))
                                 ttsVoices = offlineEnglish
-                                current.setSpeechRate(1f)
+                                current.setSpeechRate(speechRate)
                                 current.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                                    override fun onStart(utteranceId: String?) {}
-                                    override fun onDone(utteranceId: String?) {}
+                                    override fun onStart(utteranceId: String?) {
+                                        Handler(Looper.getMainLooper()).post {
+                                            val range = speechChunks[utteranceId]
+                                            if (!disposed && range != null) speech = speech.copy(start = range.first, end = range.last + 1, speaking = true)
+                                        }
+                                    }
+                                    override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                                        Handler(Looper.getMainLooper()).post {
+                                            val range = speechChunks[utteranceId]
+                                            if (!disposed && range != null) speech = speech.copy(
+                                                start = (range.first + start).coerceAtMost(range.last + 1),
+                                                end = (range.first + end).coerceAtMost(range.last + 1))
+                                        }
+                                    }
+                                    override fun onDone(utteranceId: String?) {
+                                        Handler(Looper.getMainLooper()).post {
+                                            speechChunks.remove(utteranceId)
+                                            if (!disposed && utteranceId == lastSpeechId) {
+                                                speech = speech.copy(speaking = false)
+                                                speechChunks.clear(); lastSpeechId = ""
+                                            }
+                                        }
+                                    }
                                     override fun onError(utteranceId: String?) {
                                         Handler(Looper.getMainLooper()).post {
-                                            if (!disposed) ttsProblem = "Speech synthesis failed in ${activeTtsEngine.ifBlank { "the selected engine" }}."
+                                            if (!disposed && speechChunks.containsKey(utteranceId)) {
+                                                stopSpeech()
+                                                ttsProblem = "Speech synthesis failed in ${activeTtsEngine.ifBlank { "the selected engine" }}."
+                                            }
                                         }
                                     }
                                 })
@@ -520,6 +607,8 @@ private fun PocketGemmaApp() {
     }
     fun submitMessage(rawPrompt: String, attachments: List<ChatAttachment> = emptyList(), displayText: String = "") {
         if (generating || loading) return
+        stopSpeech()
+        stopRequested = false
         input = ""
         pendingAttachments = emptyList()
         val entered = rawPrompt.trim().ifBlank {
@@ -547,10 +636,11 @@ $entered""".trimIndent()
             displayText = if (reference.isNotBlank()) entered else displayText)
         lines = lines + userLine
         persist()
+        generating = true
         scope.launch {
             if (conversation == null && modelFile.exists()) createEngine(excludePendingUser = true)
             val conv = conversation
-            if (conv == null) { status = "Download the model and load it first"; return@launch }
+            if (conv == null) { generating = false; status = "Download the model and load it first"; return@launch }
             generating = true
             var answer = ""; var thought = ""
             var citedNotificationSources: List<PocketNotification> = emptyList()
@@ -604,11 +694,17 @@ $entered""".trimIndent()
                 }
                 persist()
                 if (tutoringThisChat && speakTutorReplies && ttsReady && answer.isNotBlank()) {
-                    val spoken = answer.replace(Regex("[*#_`]+"), " ").take(3000)
-                    tts?.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "card-tutor-" + System.nanoTime())
+                    if (!stopRequested) speakText(answer)
                 }
-            } catch (e: Exception) { status = "Generation failed: ${e.message}" }
-            finally { generating = false }
+            } catch (e: Exception) {
+                status = if (stopRequested || e is CancellationException) "Response stopped." else "Generation failed: ${e.message}"
+            } finally {
+                // LiteRT-LM cancellation invalidates conversation state. Rebuild it
+                // from saved turns before another request, never reuse a cancelled session.
+                if (stopRequested) { conv.close(); if (conversation === conv) conversation = null }
+                persist()
+                generating = false
+            }
         }
     }
 
@@ -620,7 +716,12 @@ $entered""".trimIndent()
         }
     }
 
-    MaterialTheme(colorScheme = darkColorScheme()) {
+    MaterialTheme(colorScheme = darkColorScheme(
+        primary = ClaraColors.accent, onPrimary = ClaraColors.background,
+        secondary = ClaraColors.violet, background = ClaraColors.background,
+        surface = ClaraColors.background, surfaceVariant = ClaraColors.surface,
+        onSurface = ClaraColors.text, onSurfaceVariant = ClaraColors.muted
+    )) {
         Scaffold(topBar = {
             if (!showFlashcards) {
             TopAppBar(title = { Text("Clara") }, actions = {
@@ -682,28 +783,30 @@ $entered""".trimIndent()
                             }
                         }
                     },
-                    onSpeak = { text ->
-                        if (ttsReady && text.isNotBlank()) {
-                            val rc = tts?.speak(text.take(3000), TextToSpeech.QUEUE_FLUSH, null, "card-reading-" + System.nanoTime())
-                            if (rc != TextToSpeech.SUCCESS) status = "The selected speech engine could not read the card."
-                        } else status = "Open Voice to select an offline speech engine."
-                    },
+                    onSpeak = { speakText(it) },
+                    isSpeaking = speech.speaking,
+                    speechReady = ttsReady,
+                    speechMessage = ttsProblem,
+                    onStopSpeech = { stopSpeech() },
+                    onVoiceSettings = { showSpeechSettings = true },
+                    onModelSettings = { showSettings = true },
+                    modelStatus = status,
+                    modelBusy = loading || generating,
                     onDiscuss = { card ->
                         if (!generating && !loading) {
+                            stopSpeech()
+                            tutorCard = card
+                            persist()
+                            activeId = java.util.UUID.randomUUID().toString()
+                            lines = emptyList(); input = ""; pendingAttachments = emptyList()
+                            tutoringThisChat = true
                             if (!modelFile.isFile || modelFile.length() != MODEL_SIZE) {
-                                status = "Download Gemma before starting a Socratic discussion."
+                                status = "Model needed. Open Clara chat to download Gemma, then return to this card."
                             } else {
-                                persist()
-                                activeId = java.util.UUID.randomUUID().toString()
-                                lines = emptyList()
-                                input = ""
-                                pendingAttachments = emptyList()
-                                tutoringThisChat = true
-                                showFlashcards = false
                                 val question = cardPlainText(card.question).take(6000)
                                 val fullAnswer = cardPlainText(card.answer)
-                                val answer = fullAnswer.take(8000) +
-                                    if (fullAnswer.length > 8000) " [ANSWER TRUNCATED: this card exceeds the on-device model's context capacity; do not assert omitted details.]" else ""
+                                val answer = fullAnswer.take(8000) + if (fullAnswer.length > 8000)
+                                    " [ANSWER TRUNCATED: do not assert omitted details.]" else ""
                                 val tutorMessage = """
 ${tutorPrompt.trim()}
 
@@ -713,14 +816,12 @@ $question
 REFERENCE ANSWER (for your private teaching guidance, not to recite upfront):
 $answer
 
-Base all questions and feedback ONLY on that answer; do not introduce generic
-medical discussions or unsupported guideline claims. Ask one question and wait.
+Begin by asking one focused question grounded ONLY in this card's reference answer.
+Wait for my response. Do not reveal the full reference answer before I attempt it.
 """.trimIndent()
                                 scope.launch {
                                     createEngine()
-                                    if (conversation != null) {
-                                        submitMessage(tutorMessage, displayText = "Study card: ${question.take(100)}")
-                                    }
+                                    if (conversation != null) submitMessage(tutorMessage, displayText = "Study card: ${question.take(100)}")
                                 }
                             }
                         }
@@ -779,16 +880,8 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
                                     }
                                 }
                                 if (line.role == "assistant") Row {
-                                    TextButton(onClick = {
-                                        if (ttsReady) {
-                                            val result = tts?.speak(line.text, TextToSpeech.QUEUE_FLUSH, null, "reply-$index")
-                                            if (result != TextToSpeech.SUCCESS) ttsProblem = "The selected voice could not start playback."
-                                        } else {
-                                            ttsProblem = "Speech unavailable: ${ttsProblem.ifBlank { "select a working engine and voice" }}"
-                                            showSpeechSettings = true
-                                        }
-                                    }) { Text("Read aloud") }
-                                    TextButton(onClick = { tts?.stop() }) { Text("Stop") }
+                                    TextButton(onClick = { speakText(line.text) }) { Text("Read aloud") }
+                                    TextButton(onClick = { stopSpeech() }) { Text("Stop") }
                                 }
                             }
                         }
@@ -800,14 +893,7 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
                         TextButton(onClick = { audioPicker.launch("audio/*") }, enabled = !generating) { Text("+ Audio") }
                         if (pendingAttachments.isNotEmpty()) Text("${pendingAttachments.size} attached", style = MaterialTheme.typography.labelSmall)
                         if (tutoringThisChat) TextButton(onClick = {
-                            val request = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB")
-                                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Reply to Clara's card question")
-                            }
-                            try { spokenAnswerPicker.launch(request) }
-                            catch (e: Exception) { status = "No speech recognition service is installed: ${e.message}" }
+                            startMicReply()
                         }, enabled = !generating && !loading) { Text("Mic reply") }
                     }
                     pendingAttachments.forEachIndexed { index, attachment ->
@@ -828,7 +914,6 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
             }
             }
         }
-    }
 
     LaunchedEffect(downloadId) {
         if (downloadId < 0) return@LaunchedEffect
@@ -859,6 +944,41 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
         }
     }
 
+    tutorCard?.let { currentCard ->
+        ClaraTutorPanel(
+            card = currentCard, lines = if (tutoringThisChat) lines else emptyList(),
+            input = input, onInput = { input = it }, onSend = { submitMessage(it) },
+            modelAvailable = modelFile.isFile && modelFile.length() == MODEL_SIZE,
+            onOpenChat = { stopSpeech(); tutorCard = null; showFlashcards = false },
+            onMic = { startMicReply() }, listening = listening,
+            loading = loading, generating = generating, status = ttsProblem.ifBlank { status },
+            speech = speech, speakReplies = speakTutorReplies,
+            onSpeakReplies = { speakTutorReplies = it; prefs.writeCardTutorSpeech(it); if (!it) stopSpeech() },
+            onSpeak = { speakText(it) },
+            onStop = {
+                stopSpeech()
+                if (generating) {
+                    stopRequested = true
+                    runCatching { conversation?.cancelProcess() }
+                }
+            },
+            onVoiceSettings = { showSpeechSettings = true },
+            onModelSettings = { showTutorControls = true },
+            onDismiss = { stopSpeech(); tutorCard = null }
+        )
+    }
+    if (showTutorControls) AlertDialog(
+        onDismissRequest = { showTutorControls = false }, title = { Text("Clara tutor controls") },
+        text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Gemma 4 E4B · ${config.backend}", fontWeight = FontWeight.SemiBold)
+            Text("The current question and reference answer are attached. Extra medical claims are not verified by this local model.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(value = tutorPrompt, onValueChange = { tutorPrompt = it; prefs.writeCardTutorPrompt(it) },
+                label = { Text("Instructions for the next card discussion") }, minLines = 4, modifier = Modifier.fillMaxWidth())
+            OutlinedButton(onClick = { showTutorControls = false; showSettings = true }, enabled = !loading && !generating) { Text("Model and accelerator settings") }
+            OutlinedButton(onClick = { showSpeechSettings = true }) { Text("Voice and reading speed") }
+        } },
+        confirmButton = { TextButton(onClick = { showTutorControls = false }) { Text("Done") } }
+    )
     if (showSettings) SettingsDialog(config, onDismiss = { showSettings = false }, onSave = { updated ->
         config = updated; prefs.writeConfig(updated); showSettings = false
         scope.launch { if (modelFile.exists()) createEngine(updated) }
@@ -869,7 +989,11 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
         text = {
             var engineExpanded by remember { mutableStateOf(false) }
             var voiceExpanded by remember { mutableStateOf(false) }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Reading speed · ${"%.2f".format(speechRate)}×", style = MaterialTheme.typography.titleSmall)
+                Slider(value = speechRate, onValueChange = {
+                    speechRate = it; prefs.writeSpeechRate(it); tts?.setSpeechRate(it)
+                }, valueRange = .6f..1.6f, steps = 9)
                 Text("Speech engine", style = MaterialTheme.typography.titleSmall)
                 Box {
                     OutlinedButton(onClick = { engineExpanded = true }) {
@@ -938,8 +1062,7 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
                         style = MaterialTheme.typography.bodySmall)
                 }
                 OutlinedButton(onClick = {
-                    val result = tts?.speak("Hello. I'm Clara, your local assistant.", TextToSpeech.QUEUE_FLUSH, null, "clara-voice-test")
-                    if (result != TextToSpeech.SUCCESS) ttsProblem = "Voice test failed to start."
+                    speakText("Hello. I'm Clara, your study companion. Let's talk it through.")
                 }, enabled = ttsReady) { Text("Test voice") }
                 Text("Select Sherpa / Next-gen Kaldi, lock its voice, and test playback. Android does not expose a reliable active-engine identifier.",
                     style = MaterialTheme.typography.bodySmall)
@@ -1091,6 +1214,7 @@ medical discussions or unsupported guideline claims. Ask one question and wait.
         },
         dismissButton = { TextButton(onClick = { confirmClearAll = false; showHistory = true }) { Text("Cancel") } }
     )
+    } // Clara MaterialTheme
 }
 
 @Composable
@@ -1137,6 +1261,8 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
 
 private class PrefStore(context: Context) {
     private val p = context.getSharedPreferences("pocket-gemma", Context.MODE_PRIVATE)
+    fun readSpeechRate() = p.getFloat("speechRate", 1f).coerceIn(.6f, 1.6f)
+    fun writeSpeechRate(value: Float) { p.edit().putFloat("speechRate", value).apply() }
     fun readDemoNotifications() = p.getBoolean("notificationDemoMode", true)
     fun readCardTutorPrompt() = p.getString("cardTutorPrompt", DEFAULT_CARD_TUTOR_PROMPT) ?: DEFAULT_CARD_TUTOR_PROMPT
     fun writeCardTutorPrompt(text: String) { p.edit().putString("cardTutorPrompt", text).apply() }
