@@ -25,14 +25,22 @@ jobs:
           packages: ''
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-      - name: Build Clara
+      - name: Build Clara and Clara Study
         working-directory: pocket-gemma
-        run: gradle :app:assembleDebug --no-daemon
-      - name: Name the APK
-        run: cp pocket-gemma/app/build/outputs/apk/debug/app-debug.apk Clara-v2.0.apk
+        run: gradle :app:assembleRegularDebug :app:assembleStudyDebug --no-daemon
+      - name: Name the APKs
+        run: |
+          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.apk
+          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0-Study.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Clara-v2.0-debug-apk
           path: Clara-v2.0.apk
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Clara-v2.0-Study-installable-apk
+          path: Clara-v2.0-Study.apk
           if-no-files-found: error
           retention-days: 14
