@@ -7,7 +7,7 @@
     </queries>
     <application
         android:allowBackup="false"
-        android:label="Clara"
+        android:label="@string/clara_app_name"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
