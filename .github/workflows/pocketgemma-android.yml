@@ -29,18 +29,21 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      # Experimental Clara builds use Android's normal debug signing mechanism.
-      # Restoring the same development key each run prevents the previous
-      # random-signer mismatch without requiring user-managed GitHub secrets.
-      # This is a PUBLIC TEST-ONLY key. Never use it for a production build.
-      - name: Restore stable test-only debug signer
+      # PUBLIC TEST-ONLY signing identity, NOT suitable for private production
+      # keys. The Android Gradle signingConfig refers to this EXPLICIT path;
+      # merely writing ~/.android/debug.keystore did not work across runners.
+      - name: Restore and pin the experimental signing certificate
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/.android"
-          base64 --decode pocket-gemma/ci/study-debug.keystore.b64 > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
-          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > /dev/null
-          echo "The fixed experimental debug signing key was restored."
+          base64 --decode pocket-gemma/ci/study-debug.keystore.b64 > pocket-gemma/clara-fixed-debug.keystore
+          chmod 600 pocket-gemma/clara-fixed-debug.keystore
+          expected="c369f589532770ecca786978eb506e0d95400f26a77b6e6fc82cbcc377dd7579"
+          actual="$(keytool -list -v -keystore pocket-gemma/clara-fixed-debug.keystore             -storepass android -alias androiddebugkey | awk '/SHA256:/{gsub(":", "", $2); print tolower($2); exit}')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Signing key changed or failed to load. Refusing to build incompatible updates."
+            exit 1
+          fi
+          echo "Pinned Clara test signing certificate verified."
 
       - name: Build Clara and Clara Study
         working-directory: pocket-gemma
@@ -49,36 +52,41 @@ jobs:
       - name: Verify and name APKs
         run: |
           set -euo pipefail
-          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.6.apk
-          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0.6-Study.apk
-          cp pocket-gemma/app/build/outputs/apk/cards/debug/app-cards-debug.apk Clara-v2.0.6-Cards.apk
-          for apk in Clara-v2.0.6.apk Clara-v2.0.6-Study.apk Clara-v2.0.6-Cards.apk; do
+          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.0.7.apk
+          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.0.7-Study.apk
+          cp pocket-gemma/app/build/outputs/apk/cards/debug/app-cards-debug.apk Clara-v2.0.7-Cards.apk
+          for apk in Clara-v2.0.7.apk Clara-v2.0.7-Study.apk Clara-v2.0.7-Cards.apk; do
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
           done
-          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.6.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.6-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          cards=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.6-Cards.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          test "$regular" = "$study"
-          test "$study" = "$cards"
-          echo "All experimental builds share the same stable debug certificate."
+          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.7.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.7-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          cards=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.0.7-Cards.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          expected="c369f589532770ecca786978eb506e0d95400f26a77b6e6fc82cbcc377dd7579"
+          for actual in "$regular" "$study" "$cards"; do
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::APK is signed with an incorrect or newly generated certificate."
+              exit 1
+            fi
+          done
+          echo "All three APKs are verified against the pinned development certificate."
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0.6-debug-apk
-          path: Clara-v2.0.6.apk
+          name: Clara-v2.0.7-debug-apk
+          path: Clara-v2.0.7.apk
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0.6-Study-installable-apk
-          path: Clara-v2.0.6-Study.apk
+          name: Clara-v2.0.7-Study-installable-apk
+          path: Clara-v2.0.7-Study.apk
           if-no-files-found: error
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.0.6-Cards-separate-install-apk
-          path: Clara-v2.0.6-Cards.apk
+          name: Clara-v2.0.7-Cards-separate-install-apk
+          path: Clara-v2.0.7-Cards.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -88,12 +96,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="clara-study-v2.0.6"
+          tag="clara-study-v2.0.7"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Clara-v2.0.6.apk Clara-v2.0.6-Study.apk Clara-v2.0.6-Cards.apk --clobber
+            gh release upload "$tag" Clara-v2.0.7.apk Clara-v2.0.7-Study.apk Clara-v2.0.7-Cards.apk --clobber
           else
-            gh release create "$tag" Clara-v2.0.6.apk Clara-v2.0.6-Study.apk Clara-v2.0.6-Cards.apk \
+            gh release create "$tag" Clara-v2.0.7.apk Clara-v2.0.7-Study.apk Clara-v2.0.7-Cards.apk \
               --target "$GITHUB_SHA" \
-              --title "Clara v2.0.6 — restored flashcard controls and reference-grounded tutor" \
-              --notes "Restores legacy styled flashcards, topic/keyword filters, shuffle, jump, edit, delete/undo, export, and pastel colours. Tutor is strictly grounded in the imported answer. Clara-v2.0.6-Cards.apk is a new package (app.clara.assistant.cards) that installs alongside old Clara Study without affecting its stored data. This is a TEST-ONLY development build with a public debug signing identity, not a production Android signing key. It will NOT update an already installed Clara Study signed with a different certificate. Back up any necessary data before removing older versions."
+              --title "Clara v2.0.7 — pinned experimental signing identity" \
+              --notes "Restores legacy styled flashcards, topic/keyword filters, shuffle, jump, edit, delete/undo, export, and pastel colours. Tutor is strictly grounded in the imported answer. Clara Cards uses app.clara.assistant.cards. Its certificate is pinned for FUTURE updates; previously installed 2.0.5/2.0.6 copies signed with different keys cannot update directly. Back up cards before one-time migration. This is a TEST-ONLY development build with a public debug signing identity, not a production Android signing key. It will NOT update an already installed Clara Study signed with a different certificate. Back up any necessary data before removing older versions."
           fi
