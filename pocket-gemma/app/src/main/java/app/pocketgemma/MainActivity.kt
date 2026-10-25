@@ -85,7 +85,10 @@ on a speculative extension. Score only reference-answer points, and differentiat
 verbatim source points from paraphrases. Do not fabricate guideline sources or doses.
 An answer in the deck may itself be outdated: do not assert it is verified current
 guidance. If asked to go beyond the card, distinguish unverified extra context clearly.
-Keep responses short, one teaching question at a time.
+For a request to summarise selected text, give a short faithful summary of
+ONLY that selection; do not invent additional medical details or force a quiz
+question. If the selection is ambiguous, say what is unclear.
+Keep responses short, one teaching question at a time when tutoring.
 """.trimIndent()
 
 private const val MODEL_NAME = "gemma-4-E4B-it.litertlm"
@@ -918,6 +921,50 @@ Wait for my response. Do not reveal the full reference answer before I attempt i
                                     if (conversation != null) submitMessage(tutorMessage, displayText = "Study card: ${question.take(100)}")
                                 }
                             }
+                            }
+                        }
+                    },
+                    onSummariseSelection = { card, selectedText ->
+                        if (!generating && !loading && selectedText.isNotBlank()) {
+                            stopSpeech()
+                            tutorCard = card
+                            persist()
+                            activeId = java.util.UUID.randomUUID().toString()
+                            lines = emptyList()
+                            input = ""
+                            pendingAttachments = emptyList()
+                            tutoringThisChat = true
+                            activeTutorCardId = card.id
+                            activeTutorSessionId = activeId
+                            if (!modelFile.isFile || modelFile.length() != MODEL_SIZE) {
+                                status = "Gemma isn't downloaded in this app. Open Clara chat to download it, then select the passage again."
+                            } else {
+                                val excerpt = selectedText.take(3500)
+                                val reference = cardPlainText(card.answer).take(5500)
+                                val question = cardPlainText(card.question).take(2400)
+                                val task = """
+Flashcard topic: ${card.topic.ifBlank { "General medicine" }}
+QUESTION:
+$question
+REFERENCE ANSWER (for your private teaching guidance, not to recite upfront):
+$reference
+
+Begin by summarising ONLY the following passage selected by the student:
+SOURCE PASSAGE:
+\"\"\"$excerpt\"\"\"
+END SOURCE PASSAGE.
+
+Write 2–4 short, accurate points faithfully based on the selected passage.
+Use the reference answer only to resolve terms present in the selection.
+Do not invent further investigations, doses, mechanisms or recommendations.
+If the source itself is incomplete, say so explicitly. Do not start a quiz.
+""".trimIndent()
+                                scope.launch {
+                                    createEngine()
+                                    if (conversation != null) submitMessage(
+                                        task, displayText = "Study card: Summarise selected text — ${excerpt.take(80)}"
+                                    )
+                                }
                             }
                         }
                     },
