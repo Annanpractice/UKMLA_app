@@ -3,6 +3,8 @@ package app.pocketgemma
 import android.content.Context
 import android.net.Uri
 import android.content.Intent
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.text.Html
@@ -169,6 +171,13 @@ fun ClaraFlashcardScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Launching as an Activity result lets Chrome display a resizable Partial
+    // Custom Tab containing real Google results, without embedding Google
+    // into Clara's private offline card WebView.
+    val googleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { }
+
     var view by rememberSaveable { mutableStateOf("remaining") }
     var topic by rememberSaveable { mutableStateOf("All topics") }
     var keyword by rememberSaveable { mutableStateOf("") }
@@ -192,6 +201,27 @@ fun ClaraFlashcardScreen(
     var pickedImageMessage by remember { mutableStateOf("") }
     var selectedPassage by remember { mutableStateOf("") }
     var selectedPassageCard by remember { mutableStateOf<ClaraStudyCard?>(null) }
+
+    fun googleResults(text: String) {
+        if (text.isBlank()) return
+        val uri = Uri.parse("https://www.google.com/search?q=" + Uri.encode(text.take(1200)))
+        try {
+            val height = (context.resources.displayMetrics.heightPixels * 0.56f).toInt()
+            val tab = CustomTabsIntent.Builder()
+                .setInitialActivityHeightPx(height, CustomTabsIntent.ACTIVITY_HEIGHT_ADJUSTABLE)
+                .setActivitySideSheetBreakpointDp(700)
+                .setShowTitle(true)
+                .build()
+            tab.intent.data = uri
+            googleLauncher.launch(tab.intent)
+        } catch (_: Exception) {
+            // Non-Chrome browsers may not implement Partial Custom Tabs.
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+        }
+        selectedPassage = ""
+        selectedPassageCard = null
+    }
+
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
