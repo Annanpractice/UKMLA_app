@@ -602,7 +602,15 @@ fun ClaraFlashcardScreen(
                 TextButton(onClick = { changeTopic("All topics"); topicsOpen = false }) { Text("All topics") }
                 topics.forEach { name ->
                     val c = remember(deck, name) { deck.cards.count { it.topic == name } }
-                    TextButton(onClick = { changeTopic(name); topicsOpen = false }) { Text("$name · $c") }
+                    val topicColour = remember(deck, name) {
+                        deck.cards.firstOrNull { it.topic == name }?.color ?: "#f7f9ff"
+                    }
+                    TextButton(onClick = { changeTopic(name); topicsOpen = false }) {
+                        Box(Modifier.size(14.dp).background(pastelColour(topicColour),
+                            RoundedCornerShape(3.dp)))
+                        Spacer(Modifier.width(9.dp))
+                        Text("$name · $c")
+                    }
                 }
                 Spacer(Modifier.height(24.dp))
             }
