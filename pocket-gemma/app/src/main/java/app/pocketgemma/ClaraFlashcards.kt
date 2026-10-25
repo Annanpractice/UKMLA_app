@@ -36,6 +36,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.util.Base64
 import java.util.UUID
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -115,6 +116,16 @@ table{max-width:100%;display:block;overflow-x:auto}figure{margin:12px 0}ul,ol{te
 private fun pastelColour(hex: String): Color = runCatching {
     Color(android.graphics.Color.parseColor(hex))
 }.getOrElse { Color(0xFFF7F9FF) }
+
+private fun lightenCardColour(hex: String): String = runCatching {
+    val rgb = android.graphics.Color.parseColor(hex)
+    fun channel(value: Int): String =
+        (value + (255 - value) * 0.08f).roundToInt().coerceIn(0, 255)
+            .toString(16).padStart(2, '0')
+    "#" + channel(android.graphics.Color.red(rgb)) +
+        channel(android.graphics.Color.green(rgb)) +
+        channel(android.graphics.Color.blue(rgb))
+}.getOrDefault("#eef2ff")
 
 private val CARD_COLORS = listOf("#FFEBEE","#E8F5E9","#E3F2FD","#FFFDE7","#F3E5F5",
     "#EFEBE9","#E8EAF6","#FBE9E7","#ECEFF1","#f7f9ff")
@@ -354,7 +365,12 @@ fun ClaraFlashcardScreen(
             } else if (card == null) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center), color = blue)
             } else {
-                Column(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color(0xFFF4F5FA))) {
+                val questionColour = card.color.takeIf {
+                    it.matches(Regex("#[0-9a-fA-F]{6}"))
+                } ?: "#f7f9ff"
+                val faceColour = if (showingAnswer) lightenCardColour(questionColour) else questionColour
+                Column(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp))
+                    .background(pastelColour(faceColour))) {
                     // A separate header reserves real space for the topic; it never overlays the question.
                     Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 13.dp, end = 8.dp, bottom = 5.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -373,7 +389,7 @@ fun ClaraFlashcardScreen(
                         StudyCardFace(
                             if (back) card.answer else card.question,
                             if (back) card.aImage else card.qImage,
-                            "#F4F5FA",
+                            if (back) lightenCardColour(questionColour) else questionColour,
                             onPassageSelected = { chosen ->
                                 selectedPassageCard = card
                                 selectedPassage = chosen
