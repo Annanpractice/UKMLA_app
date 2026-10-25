@@ -44,13 +44,20 @@ object ClaraDeckStorage {
         if (!file.isFile) return ClaraStudyDeck()
         return SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             val result = ArrayList<ClaraStudyCard>()
-            db.rawQuery("SELECT id, topic, status FROM cards WHERE status != 'deleted' ORDER BY position ASC", null).use { cursor ->
+            val hasColour = db.rawQuery("PRAGMA table_info(cards)", null).use { info ->
+                var found = false
+                while (info.moveToNext()) if (info.getString(1) == "color") found = true
+                found
+            }
+            val columns = if (hasColour) "id, topic, status, color" else "id, topic, status"
+            db.rawQuery("SELECT $columns FROM cards WHERE status != 'deleted' ORDER BY position ASC", null).use { cursor ->
                 while (cursor.moveToNext()) {
                     result.add(ClaraStudyCard(
                         id = cursor.getString(0),
                         question = "",
                         answer = "",
                         topic = cursor.getString(1) ?: "",
+                        color = if (hasColour) cursor.getString(3) ?: "#f7f9ff" else "#f7f9ff",
                         status = cursor.getString(2) ?: "remaining"
                     ))
                 }
