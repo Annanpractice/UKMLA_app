@@ -641,6 +641,55 @@
       "sourceReview": [
         "https://www.gov.uk/guidance/cardiovascular-disorders-assessing-fitness-to-drive"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Cerebral palsy: early recognition",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess developmental history, asymmetry of spontaneous movements, posture, tone and motor milestones; consider specialist neuroimaging following assessment.",
+        "treatment": "Early multidisciplinary assessment and intervention (physiotherapy/occupational therapy) should not await a definitive cerebral palsy diagnosis.",
+        "escalation": "Refer suspected cerebral palsy urgently to a child development service for multidisciplinary assessment (NICE NG62).",
+        "mimics": "Other causes of unilateral weakness or motor delay, including peripheral nerve injury and progressive neurological disorders.",
+        "redFlags": "Hand preference before 12 months, asymmetric movements, abnormal tone, delayed head control, not sitting at 8 months (corrected age) or not walking by 18 months."
+      },
+      "sourceReview": [
+        "NICE NG62: Cerebral palsy in under 25s"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Developmental regression: recognition and escalation",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Clarify exactly which previously acquired skills were lost and the time course; assess motor, language, social and neurological findings. Consider creatine kinase in boys with motor delay/regression.",
+        "treatment": "Investigate the underlying cause; provide supportive developmental care while specialist assessment proceeds.",
+        "escalation": "Refer motor regression to paediatric neurology or neurodevelopmental services; new-onset gait abnormality requires immediate acute paediatric assessment (NICE NG127).",
+        "mimics": "Hearing impairment may resemble language regression; autism can involve language/social regression; consider neuromuscular, metabolic and neurodegenerative disease.",
+        "redFlags": "True loss of acquired skills, progressive weakness, new gait abnormality, seizures or other new neurological signs."
+      },
+      "sourceReview": [
+        "NICE NG127: Suspected neurological conditions",
+        "NICE CG128: Autism spectrum disorder in under 19s"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Delayed motor milestones: NICE referral thresholds",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess sitting and independent walking, tone, symmetry and other developmental domains; use corrected age for prematurity. Consider creatine kinase in boys with motor delay.",
+        "treatment": "Arrange appropriate developmental assessment and early physiotherapy/occupational therapy input according to findings.",
+        "escalation": "Refer children not sitting unsupported by 8 months (corrected age), not walking independently by 15 months in girls or 18 months in boys, or showing early hand asymmetry (NICE NG127).",
+        "mimics": "Normal variation, prematurity, orthopaedic disorders, neuromuscular disease and cerebral palsy.",
+        "redFlags": "Loss of motor skills, progressive weakness, asymmetric movement or new-onset gait abnormality (immediate assessment)."
+      },
+      "sourceReview": [
+        "NICE NG127: Suspected neurological conditions"
+      ]
     }
   ]
 }
