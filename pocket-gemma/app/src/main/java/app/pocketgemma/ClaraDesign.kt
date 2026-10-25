@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -172,6 +173,9 @@ fun ClaraTutorPanel(
     BackHandler { onDismiss() }
     ModalBottomSheet(onDismissRequest=onDismiss,
         sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
+        // The tutor is a fixed-height screen. Sheet swipes compete with the chat's
+        // nested scroll when the list reaches its lower boundary.
+        sheetGesturesEnabled=false,
         containerColor=ClaraColors.background, contentColor=ClaraColors.text,
         dragHandle=null) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.95f).imePadding()) {
@@ -194,20 +198,42 @@ fun ClaraTutorPanel(
             }
             val turns=lines.filterNot { it.displayText.startsWith("Study card:") }
             val listState=rememberLazyListState()
-            // Respect manual scrolling. A single, non-animated movement towards
-            // the bottom avoids the repeated animation/relayout oscillation.
+            // Only a user's scroll updates whether the tutor follows new text.
+            // Programmatic positioning must never re-arm its own scroll observer.
             var followBottom by remember { mutableStateOf(true) }
+            var positioningLatest by remember { mutableStateOf(false) }
             LaunchedEffect(listState) {
                 snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (scrolling, canGoDown) ->
-                    if (scrolling) followBottom = !canGoDown
+                    if (scrolling && !positioningLatest) followBottom = !canGoDown
                 }
             }
-            LaunchedEffect(turns.size, turns.lastOrNull()?.text?.length, loading, generating, speech.speaking, recognitionBusy) {
-                if (followBottom && !listState.isScrollInProgress && turns.isNotEmpty()) {
-                    listState.scrollBy(100000f)
+            val activityRowVisible = loading || generating || speech.speaking || recognitionBusy
+            LaunchedEffect(turns.size, turns.lastOrNull()?.text?.length, activityRowVisible) {
+                if (followBottom && !listState.isScrollInProgress && turns.isNotEmpty() && listState.canScrollForward) {
+                    positioningLatest = true
+                    try {
+                        val endIndex = listState.layoutInfo.totalItemsCount - 1
+                        if (endIndex >= 0) {
+                            if (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index != endIndex) {
+                                listState.scrollToItem(endIndex)
+                            }
+                            val geometry = listState.layoutInfo
+                            val last = geometry.visibleItemsInfo.lastOrNull()
+                            if (last != null && last.index == endIndex && listState.canScrollForward) {
+                                // Scroll only the measurable remaining distance, not an
+                                // unbounded 100,000px request that crosses the boundary.
+                                val remaining = (last.offset + last.size +
+                                    geometry.afterContentPadding - geometry.viewportEndOffset).coerceAtLeast(0)
+                                if (remaining > 1) listState.scrollBy(remaining.toFloat())
+                            }
+                        }
+                    } finally {
+                        positioningLatest = false
+                    }
                 }
             }
-            LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),
+            LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth().testTag("clara_tutor_messages"),
+                overscrollEffect=null,
                 contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                 if (turns.isEmpty()&&!loading&&!generating) item {
                     Text("Clara will use the question and reference answer from this card. Ask a question, or give your answer in your own words.",

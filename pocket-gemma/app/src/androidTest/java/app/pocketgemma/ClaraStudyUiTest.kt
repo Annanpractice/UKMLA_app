@@ -63,4 +63,26 @@ class ClaraStudyUiTest {
         ui.onNodeWithText("Speak replies").assertIsDisplayed()
         screenshot("03-clara-conversation")
     }
+    @Test fun tutorChatHasStableBottomBoundaryAfterRepeatedOverscroll() {
+        val card=ClaraStudyCard("scroll-boundary","Which services provide care?","Reference answer","Psychiatry")
+        val longReply=(1..40).joinToString("\\n") { "Clara answer line $it with further clinical discussion." }
+        ui.setContent {
+            MaterialTheme(colorScheme=darkColorScheme(primary=ClaraColors.accent,surface=ClaraColors.background)) {
+                ClaraTutorPanel(card=card,lines=listOf(ChatLine("assistant",longReply)),
+                    input="",onInput={},onSend={},modelAvailable=true,onOpenChat={},onMic={},listening=false,recognitionBusy=false,loading=false,
+                    generating=false,status="GPU backend ready",speech=ClaraSpeech(),speakReplies=false,
+                    onSpeakReplies={},onSpeak={},onStop={},onVoiceSettings={},onModelSettings={},onDismiss={})
+            }
+        }
+        val chat=ui.onNodeWithTag("clara_tutor_messages")
+        repeat(8) { chat.performTouchInput { swipeUp() } }
+        ui.waitForIdle()
+        val footerY=ui.onNodeWithText("Speak replies").fetchSemanticsNode().boundsInRoot.top
+        repeat(3) { chat.performTouchInput { swipeUp() } }
+        ui.waitForIdle()
+        val afterOverscrollY=ui.onNodeWithText("Speak replies").fetchSemanticsNode().boundsInRoot.top
+        org.junit.Assert.assertEquals("Bottom overscroll displaced the fixed tutor footer", footerY, afterOverscrollY, 1f)
+        ui.onNodeWithText("Talk it through…").assertIsDisplayed()
+    }
+
 }

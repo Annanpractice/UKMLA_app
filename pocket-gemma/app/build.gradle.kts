@@ -16,7 +16,7 @@ android {
         // Every GitHub workflow run receives a higher Android versionCode;
         // users can install future builds as upgrades rather than downgrades.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 13
-        versionName = "2.1.4"
+        versionName = "2.1.5"
     }
 
     // Build the original package and an independently installable companion.
