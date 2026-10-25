@@ -754,6 +754,22 @@
       "sourceReview": [
         "NICE/BTS/SIGN NG245: asthma pharmacological management (2024; updated 2025)"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Infantile epileptic spasms syndrome (West syndrome)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Recognise brief clustered flexor, extensor or mixed spasms (often on waking) in infancy, sometimes with developmental plateau/regression. Arrange urgent sleep and awake EEG: hypsarrhythmia is characteristic but may be absent. Specialist assessment may include brain MRI and genetic/metabolic testing.",
+        "treatment": "Urgent specialist-led treatment: high-dose oral prednisolone or ACTH-based hormonal therapy; vigabatrin is first-line for spasms associated with tuberous sclerosis complex. NICE recommends high-dose oral prednisolone with vigabatrin for infantile spasms not caused by tuberous sclerosis, with specialist monitoring.",
+        "escalation": "Suspected infantile spasms in a child under 2 years: refer urgently to a tertiary paediatric neurologist, to be seen within 24 hours (NICE NG217). Do not wait for a routine EEG or outpatient review. Assess early treatment response clinically and with repeat EEG.",
+        "mimics": "Benign sleep myoclonus, exaggerated startle/Moro reflex, reflux-related Sandifer syndrome and other epileptic seizure types.",
+        "redFlags": "Clusters of sudden head nods or jackknife movements, developmental regression or stagnation, and recurrent stereotyped spasms on waking. Delayed recognition/treatment risks poor neurodevelopmental outcomes."
+      },
+      "sourceReview": [
+        "NICE NG217: Epilepsies in children, young people and adults — infantile spasms syndrome"
+      ]
     }
   ]
 }
