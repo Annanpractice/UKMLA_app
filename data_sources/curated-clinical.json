@@ -706,6 +706,22 @@
       "sourceReview": [
         "NICE CG111: Bedwetting in under 19s"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Paediatric asthma: age-specific step-up and MART",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess daytime/night-time symptoms, reliever use, activity limitation and exacerbations; review inhaler technique, adherence, triggers and comorbidities before stepping up. In children aged 5–16, use objective tests to support diagnosis where feasible.",
+        "treatment": "Age 5–11: if uncontrolled on low-dose ICS maintenance plus as-needed SABA, consider low-dose paediatric ICS/formoterol MART if able to manage it and an appropriate licensed device is available; otherwise follow the age-specific conventional add-on pathway. MART uses the same ICS/formoterol inhaler for maintenance and relief; not all ICS/LABA inhalers are suitable.",
+        "escalation": "If uncontrolled on low-dose MART, consider moderate-dose MART according to NG245 and licensing; refer for specialist assessment if still uncontrolled. Under 5s follow a separate age-specific pathway, not routine MART. Acute severe/life-threatening features require emergency management.",
+        "mimics": "Poor technique or adherence, viral-induced wheeze, dysfunctional breathing, upper-airway disease, reflux or alternative respiratory diagnosis.",
+        "redFlags": "Recurrent severe attacks, hospital attendance, frequent reliever use, nocturnal symptoms, hypoxia, exhaustion, silent chest or inability to speak. Check device age licensing and local formulary before prescribing MART."
+      },
+      "sourceReview": [
+        "NICE/BTS/SIGN NG245: Asthma diagnosis, monitoring and chronic asthma management (2024), children aged 5–11"
+      ]
     }
   ]
 }
