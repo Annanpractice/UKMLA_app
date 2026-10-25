@@ -129,7 +129,7 @@ object ClaraMarkdown {
                 }
                 is Paragraph -> {
                     renderChildren(node, level) { child, depth -> render(child, depth) }
-                    if (node.parent !is ListItem && node.parent !is TableCell) lineBreak(blank = true)
+                    if (node.parent !is ListItem) lineBreak(blank = true)
                 }
                 is BlockQuote -> {
                     lineBreak()
