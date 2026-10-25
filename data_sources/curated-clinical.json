@@ -690,6 +690,22 @@
       "sourceReview": [
         "NICE NG127: Suspected neurological conditions"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Nocturnal enuresis: assessment and first-line management",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Ask frequency, duration and whether ever dry for ≥6 months (primary versus secondary); assess daytime urgency, frequency, dysuria, constipation, fluid intake, psychosocial factors and snoring. Urinalysis is not routine unless recent onset, daytime symptoms, illness or suspected UTI/diabetes.",
+        "treatment": "From age 5, reassure and offer practical measures: adequate daytime fluids, regular daytime and bedtime toileting, treat constipation and reward agreed behaviours (not dry nights). If treatment is desired, offer an enuresis alarm when appropriate; desmopressin if rapid/short-term dryness is needed or alarm unsuitable.",
+        "escalation": "Review alarm response after 4 weeks; continue if early improvement and assess after 3 months. Refer if red flags, significant daytime symptoms, suspected underlying disorder or failure of appropriate treatment.",
+        "mimics": "Non-monosymptomatic enuresis (daytime lower urinary tract symptoms), UTI, constipation, diabetes mellitus/insipidus, sleep-disordered breathing, and psychosocial stress.",
+        "redFlags": "New-onset bedwetting after sustained dryness, polyuria/polydipsia or weight loss, recurrent UTI, neurological signs, abnormal urinary stream or significant daytime urinary symptoms. Desmopressin requires fluid restriction from 1 hour before until 8 hours after dosing."
+      },
+      "sourceReview": [
+        "NICE CG111: Bedwetting in under 19s"
+      ]
     }
   ]
 }
