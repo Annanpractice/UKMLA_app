@@ -1069,7 +1069,7 @@ If the source itself is incomplete, say so explicitly. Do not start a quiz.
                                 line.attachments.forEach { attachment ->
                                     Text(if (attachment.kind == "image") "📷 ${attachment.name}" else "🎧 ${attachment.name}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                                 }
-                                Text(line.displayText.ifBlank { line.text }, Modifier.padding(top = 5.dp))
+                                Text(ClaraMarkdown.display(line.displayText.ifBlank { line.text }), Modifier.padding(top = 5.dp))
                                 if (line.thought.isNotBlank()) Text("Thinking: ${line.thought}", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                                 if (line.notificationSources.isNotEmpty()) {
                                     Text("Sources read by Clara", Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
@@ -1085,7 +1085,7 @@ If the source itself is incomplete, say so explicitly. Do not start a quiz.
                                     }
                                 }
                                 if (line.role == "assistant") Row {
-                                    TextButton(onClick = { speakText(line.text) }) { Text("Read aloud") }
+                                    TextButton(onClick = { speakText(line.displayText.ifBlank { line.text }) }) { Text("Read aloud") }
                                     TextButton(onClick = { stopSpeech() }) { Text("Stop") }
                                 }
                             }

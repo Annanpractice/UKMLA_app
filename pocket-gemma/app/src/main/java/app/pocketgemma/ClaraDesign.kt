@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlin.math.sin
 
 object ClaraColors {
@@ -120,7 +122,7 @@ private fun SpeechIndicator(label: String) {
 /** Speech offsets refer to the plain text submitted to TTS, including chunk offsets. */
 data class ClaraSpeech(val text: String = "", val start: Int = 0, val end: Int = 0, val speaking: Boolean = false)
 
-fun claraSpokenText(text: String) = text.replace(Regex("[*#_`]+"), " ").trim()
+fun claraSpokenText(text: String) = ClaraMarkdown.speech(text)
 
 // Sentence boundaries give third-party voices a useful highlight even when they
 // don't implement Android's word-range callbacks. Long sentences are split safely.
@@ -192,12 +194,18 @@ fun ClaraTutorPanel(
             }
             val turns=lines.filterNot { it.displayText.startsWith("Study card:") }
             val listState=rememberLazyListState()
-            // Follow streaming output only while the reader is already near the bottom.
-            val nearBottom by remember { derivedStateOf {
-                !listState.canScrollForward || (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= listState.layoutInfo.totalItemsCount-1
-            } }
-            LaunchedEffect(turns.size,turns.lastOrNull()?.text?.length,generating) {
-                if (nearBottom && turns.isNotEmpty()) listState.animateScrollToItem(turns.lastIndex + if (loading || generating || speech.speaking || recognitionBusy) 1 else 0)
+            // Respect manual scrolling. A single, non-animated movement towards
+            // the bottom avoids the repeated animation/relayout oscillation.
+            var followBottom by remember { mutableStateOf(true) }
+            LaunchedEffect(listState) {
+                snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (scrolling, canGoDown) ->
+                    if (scrolling) followBottom = !canGoDown
+                }
+            }
+            LaunchedEffect(turns.size, turns.lastOrNull()?.text?.length, loading, generating, speech.speaking, recognitionBusy) {
+                if (followBottom && !listState.isScrollInProgress && turns.isNotEmpty()) {
+                    listState.scrollBy(100000f)
+                }
             }
             LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),
                 contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
@@ -206,19 +214,22 @@ fun ClaraTutorPanel(
                         color=ClaraColors.muted,fontSize=14.sp,lineHeight=22.sp)
                 }
                 itemsIndexed(turns) { index,line ->
-                    var appeared by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) { appeared=true }
                     val assistant=line.role=="assistant"
-                    val plain=claraSpokenText(line.displayText.ifBlank { line.text })
-                    AnimatedVisibility(appeared,enter=fadeIn(tween(300))+slideInVertically(tween(300)) { it/8 }) {
-                        Column(Modifier.fillMaxWidth(),horizontalAlignment=if(assistant) Alignment.Start else Alignment.End) {
+                    val display=remember(line.displayText, line.text) {
+                        ClaraMarkdown.display(line.displayText.ifBlank { line.text })
+                    }
+                    // No height animation in a streaming list: it can tug on the
+                    // scroll offset while the user reaches the end.
+                    Column(Modifier.fillMaxWidth(),horizontalAlignment=if(assistant) Alignment.Start else Alignment.End) {
                             if(assistant) Text("CLARA",color=ClaraColors.accent,fontSize=9.sp,letterSpacing=1.5.sp,modifier=Modifier.padding(bottom=7.dp))
                             Surface(shape=RoundedCornerShape(18.dp),color=if(assistant) ClaraColors.surface else Color(0xFF293845),
                                 modifier=Modifier.widthIn(max=600.dp)) {
                                 SelectionContainer {
                                     val annotated=buildAnnotatedString {
-                                        append(plain)
-                                        if(speech.speaking&&speech.text==plain&&speech.end>speech.start) {
+                                        append(display)
+                                        // Word-range highlights are only valid where displayed
+                                        // characters exactly match those sent to the TTS engine.
+                                        if(speech.speaking&&speech.text==display.text&&speech.end>speech.start) {
                                             addStyle(SpanStyle(color=ClaraColors.accent,background=Color(0xFF30464A)),
                                                 speech.start.coerceIn(0,length),speech.end.coerceIn(0,length))
                                         }
@@ -226,11 +237,10 @@ fun ClaraTutorPanel(
                                     Text(annotated,color=ClaraColors.text,fontSize=16.sp,lineHeight=25.sp,modifier=Modifier.padding(15.dp))
                                 }
                             }
-                            if(assistant&&!(generating&&index==turns.lastIndex)) TextButton(onClick={onSpeak(line.text)},contentPadding=PaddingValues(vertical=0.dp,horizontal=4.dp)) {
+                            if(assistant&&!(generating&&index==turns.lastIndex)) TextButton(onClick={onSpeak(line.displayText.ifBlank { line.text })},contentPadding=PaddingValues(vertical=0.dp,horizontal=4.dp)) {
                                 ClaraGlyph("speaker",null,Modifier.size(14.dp)); Text("  Read aloud",fontSize=11.sp,color=ClaraColors.muted)
                             }
                         }
-                    }
                 }
                 if(loading||generating||speech.speaking||recognitionBusy) item { SpeechIndicator(when {
                     listening -> "Listening to you…"

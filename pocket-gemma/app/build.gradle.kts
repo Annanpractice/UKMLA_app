@@ -16,7 +16,7 @@ android {
         // Every GitHub workflow run receives a higher Android versionCode;
         // users can install future builds as upgrades rather than downgrades.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 13
-        versionName = "2.1.3"
+        versionName = "2.1.4"
     }
 
     // Build the original package and an independently installable companion.
@@ -80,6 +80,9 @@ dependencies {
     implementation("androidx.browser:browser:1.10.0")
     // Sanitize imported rich HTML before allowing native WebView text selection.
     implementation("org.jsoup:jsoup:1.21.2")
+    implementation("org.commonmark:commonmark:0.30.0")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.30.0")
+    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.30.0")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.2")
     implementation("androidx.compose.ui:ui-tooling-preview:1.9.2")
