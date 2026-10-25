@@ -48,7 +48,9 @@ internal class ClaraSelectionWebView(
             }
 
             override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
-                // Chromium still owns the stock Copy / Select all / Share menu.
+                // Preserve stock Copy / Select all / Share. Re-read after
+                // the user adjusts either end of the Android selection.
+                postDelayed({ readSelection() }, 100L)
                 return inner.onPrepareActionMode(mode, menu)
             }
 
@@ -62,6 +64,7 @@ internal class ClaraSelectionWebView(
             override fun onGetContentRect(mode: ActionMode, view: android.view.View, outRect: android.graphics.Rect) {
                 if (inner is ActionMode.Callback2) inner.onGetContentRect(mode, view, outRect)
                 else super.onGetContentRect(mode, view, outRect)
+                postDelayed({ readSelection() }, 100L)
             }
         }
 
