@@ -770,6 +770,42 @@
       "sourceReview": [
         "NICE NG217: Epilepsies in children, young people and adults — infantile spasms syndrome"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Duchenne muscular dystrophy (DMD)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Suspect in a boy with delayed walking, frequent falls, waddling gait, difficulty climbing stairs, Gowers' sign and calf pseudohypertrophy. Check CK (usually markedly elevated), then confirm with DMD-gene testing; assess cardiac and respiratory function.",
+        "treatment": "Refer to a specialist paediatric neuromuscular team. Corticosteroids may slow functional decline; provide physiotherapy, contracture and bone-health management, and multidisciplinary cardiac/respiratory surveillance. Consider genotype-specific treatments under specialist guidance.",
+        "escalation": "Prompt paediatric neurology referral for unexplained motor delay or proximal weakness; genetic counselling and family testing. Coordinate surveillance for cardiomyopathy, scoliosis, nocturnal hypoventilation and loss of mobility.",
+        "mimics": "Becker muscular dystrophy, limb-girdle muscular dystrophy, spinal muscular atrophy, congenital myopathy, hypothyroidism and other causes of motor delay.",
+        "redFlags": "Progressive loss of motor skills, difficulty rising from floor, falls, respiratory weakness, symptoms of cardiomyopathy or acute deterioration. X-linked dystrophinopathy, usually out-of-frame DMD variants causing absent or near-absent dystrophin."
+      },
+      "sourceReview": [
+        "NICE NG127: Suspected neurological conditions — motor delay and regression",
+        "GeneReviews: Dystrophinopathies",
+        "NHS: Muscular dystrophy"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Becker muscular dystrophy (BMD)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Suspect in a boy or young man with slowly progressive proximal weakness, calf hypertrophy or exercise intolerance, often later onset than DMD. CK is raised; confirm by DMD-gene testing. Obtain baseline ECG and echocardiography/cardiology assessment.",
+        "treatment": "Specialist neuromuscular care, physiotherapy and function-preserving exercise advice; monitor and treat cardiomyopathy, respiratory impairment and contractures as indicated. Genetic counselling and family screening.",
+        "escalation": "Refer to paediatric neurology/neuromuscular service; arrange ongoing cardiology surveillance even if weakness is mild, because cardiac involvement may be disproportionate.",
+        "mimics": "Duchenne muscular dystrophy, limb-girdle muscular dystrophy, metabolic myopathy and other causes of proximal weakness or hyperCKaemia.",
+        "redFlags": "Syncope, palpitations, breathlessness or signs of heart failure; progressive weakness or respiratory symptoms. X-linked DMD variants commonly preserve some functional dystrophin (often in-frame), resulting in a typically milder, more variable course than DMD."
+      },
+      "sourceReview": [
+        "NICE NG127: Suspected neurological conditions — motor delay and regression",
+        "GeneReviews: Dystrophinopathies",
+        "NHS: Muscular dystrophy"
+      ]
     }
   ]
 }
