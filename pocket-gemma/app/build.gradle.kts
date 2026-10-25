@@ -77,6 +77,8 @@ dependencies {
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.9.2")
     implementation("androidx.core:core-ktx:1.17.0")
+    // Sanitize imported rich HTML before allowing native WebView text selection.
+    implementation("org.jsoup:jsoup:1.21.2")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.2")
     implementation("androidx.compose.ui:ui-tooling-preview:1.9.2")
