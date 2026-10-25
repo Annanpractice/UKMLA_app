@@ -241,6 +241,9 @@ private fun PocketGemmaApp() {
     var downloadProgress by remember { mutableIntStateOf(-1) }
     var downloadId by remember { mutableLongStateOf(-1L) }
     var engine by remember { mutableStateOf<Engine?>(null) }
+    // Tracks the hardware/model configuration of the currently loaded engine.
+    // Changes to a card or conversation must NOT reinitialise Gemma.
+    var loadedEngineKey by remember { mutableStateOf<String?>(null) }
     var conversation by remember { mutableStateOf<Conversation?>(null) }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
@@ -559,9 +562,6 @@ private fun PocketGemmaApp() {
             if (tts === instance) tts = null
         }
     }
-    LaunchedEffect(Unit) {
-        if (modelFile.exists() && modelFile.length() == MODEL_SIZE) status = "Model downloaded • checksum verified when loaded"
-    }
     LaunchedEffect(demoNotifications, allowedNotificationPackages) {
         prefs.writeNotificationSettings(demoNotifications, allowedNotificationPackages)
     }
@@ -578,66 +578,119 @@ private fun PocketGemmaApp() {
         prefs.writeSavedChats(activeId, sessions)
     }
 
+    /**
+     * Keep the LiteRT-LM Engine alive for the entire app process.
+     * Conversation switching resets only the lightweight Conversation, not
+     * the GPU/CPU backend or the model weights. Explicit backend/context/
+     * speculative-decoding changes legitimately require a new Engine.
+     */
     suspend fun createEngine(selected: Preferences = config, excludePendingUser: Boolean = false) {
-        if (!modelFile.exists()) error("Model file is missing")
+        if (!modelFile.isFile) {
+            status = "Model missing. Download Gemma before using Clara."
+            return
+        }
+        if (loading) return
         loading = true
-        status = "Checking model file…"
+        val requestedKey = listOf(
+            modelFile.absolutePath,
+            modelFile.length().toString(),
+            modelFile.lastModified().toString(),
+            selected.backend,
+            selected.contextTokens.toString(),
+            selected.speculative.toString()
+        ).joinToString("|")
+        val reloadBackend = engine == null || loadedEngineKey != requestedKey
         try {
-            val signature = "${modelFile.length()}:${modelFile.lastModified()}"
-            if (signature != verifiedModelSignature) {
-                if (modelFile.length() != MODEL_SIZE) {
-                    modelFile.delete()
-                    throw ModelIntegrityException("The file size is wrong. The incomplete model was removed; download it again.")
+            if (reloadBackend) {
+                status = "Checking model file…"
+                val signature = "${modelFile.length()}:${modelFile.lastModified()}"
+                if (signature != verifiedModelSignature) {
+                    if (modelFile.length() != MODEL_SIZE) {
+                        modelFile.delete()
+                        throw ModelIntegrityException("The file size is wrong. The incomplete model was removed; download it again.")
+                    }
+                    val hash = withContext(Dispatchers.IO) { sha256(modelFile) }
+                    if (hash != MODEL_SHA256) {
+                        modelFile.delete()
+                        throw ModelIntegrityException("SHA-256 mismatch. The damaged model was removed; download it again.")
+                    }
+                    verifiedModelSignature = signature
                 }
-                val hash = withContext(Dispatchers.IO) { sha256(modelFile) }
-                if (hash != MODEL_SHA256) {
-                    modelFile.delete()
-                    throw ModelIntegrityException("SHA-256 mismatch. The damaged model was removed; download it again.")
+
+                // The only place where a previously loaded model is closed:
+                // a changed backend, model file, or engine-specific setting.
+                conversation?.close()
+                conversation = null
+                engine?.close()
+                engine = null
+                loadedEngineKey = null
+                status = "Loading ${selected.backend} backend…"
+                ExperimentalFlags.enableSpeculativeDecoding = selected.speculative
+                val newEngine = Engine(EngineConfig(
+                    modelPath = modelFile.absolutePath,
+                    backend = if (selected.backend == "GPU") Backend.GPU() else Backend.CPU(),
+                    visionBackend = if (selected.backend == "GPU") Backend.GPU() else Backend.CPU(),
+                    audioBackend = Backend.CPU(),
+                    maxNumTokens = selected.contextTokens,
+                    maxNumImages = 1,
+                    cacheDir = context.cacheDir.absolutePath
+                ))
+                try {
+                    withContext(Dispatchers.IO) { newEngine.initialize() }
+                    engine = newEngine
+                    loadedEngineKey = requestedKey
+                } catch (e: Exception) {
+                    newEngine.close()
+                    throw e
+                } finally {
+                    ExperimentalFlags.enableSpeculativeDecoding = false
                 }
-                verifiedModelSignature = signature
             }
-            status = "Loading ${selected.backend} backend…"
-            val previousConversation = conversation
-            val previousEngine = engine
+
+            // A fresh session for each card keeps old answers from contaminating
+            // the next card while reusing the already-initialized Gemma engine.
+            val currentEngine = engine ?: error("Gemma engine is not available")
+            conversation?.close()
             conversation = null
-            engine = null
-            previousConversation?.close()
-            previousEngine?.close()
-            ExperimentalFlags.enableSpeculativeDecoding = selected.speculative
-            val newEngine = Engine(EngineConfig(
-                modelPath = modelFile.absolutePath,
-                backend = if (selected.backend == "GPU") Backend.GPU() else Backend.CPU(),
-                visionBackend = if (selected.backend == "GPU") Backend.GPU() else Backend.CPU(),
-                audioBackend = Backend.CPU(),
-                maxNumTokens = selected.contextTokens,
-                maxNumImages = 1,
-                cacheDir = context.cacheDir.absolutePath
-            ))
-            withContext(Dispatchers.IO) { newEngine.initialize() }
-            ExperimentalFlags.enableSpeculativeDecoding = false
             val historyToRestore = if (excludePendingUser && lines.lastOrNull()?.role == "user") lines.dropLast(1) else lines
             val initial = historyToRestore.filter { it.role == "user" || it.role == "assistant" }.map { line ->
                 if (line.role == "user") Message.user(Contents.of(line.toContents())) else Message.model(line.text)
             }
             val newNotificationTool = ListNotificationsTool(context.applicationContext, demoNotifications, allowedNotificationPackages)
-            val conv = newEngine.createConversation(ConversationConfig(
+            val conv = currentEngine.createConversation(ConversationConfig(
                 systemInstruction = Contents.of(if (tutoringThisChat) STRICT_CARD_SYSTEM
-                    else selected.systemPrompt + "\n\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
+                    else selected.systemPrompt + "\\n\\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
                 initialMessages = initial,
-                samplerConfig = SamplerConfig(topK = selected.topK, topP = if (tutoringThisChat) 0.85 else selected.topP.toDouble(), temperature = if (tutoringThisChat) 0.15 else selected.temperature.toDouble()),
+                samplerConfig = SamplerConfig(topK = selected.topK,
+                    topP = if (tutoringThisChat) 0.85 else selected.topP.toDouble(),
+                    temperature = if (tutoringThisChat) 0.15 else selected.temperature.toDouble()),
                 thinkingConfig = ThinkingConfig(enableThinking = selected.thinking),
                 tools = if (tutoringThisChat) emptyList() else listOf(tool(newNotificationTool)),
                 automaticToolCalling = false
             ))
-            engine = newEngine
             conversation = conv
             notificationTool = newNotificationTool
-            status = "${selected.backend} backend initialized"
+            status = if (reloadBackend) "${selected.backend} backend ready"
+                else "${selected.backend} backend ready · conversation prepared"
         } catch (e: Exception) {
             ExperimentalFlags.enableSpeculativeDecoding = false
-            status = if (e is ModelIntegrityException) "Model verification failed: ${e.message}" else "${selected.backend} initialization failed: ${e.message ?: "runtime error"}"
-            if (e !is ModelIntegrityException && selected.backend == "GPU") status += " • switch to CPU in settings to retry"
-        } finally { loading = false }
+            status = if (e is ModelIntegrityException) "Model verification failed: ${e.message}"
+                else "${selected.backend} setup failed: ${e.message ?: "runtime error"}"
+            if (e !is ModelIntegrityException && selected.backend == "GPU")
+                status += " • switch to CPU in settings to retry"
+        } finally {
+            loading = false
+        }
+    }
+
+    // Initialise Gemma once when Clara is opened, rather than on the first
+    // flashcard or at every card switch. No preload if no valid model exists.
+    LaunchedEffect(modelFile.absolutePath) {
+        if (modelFile.isFile && modelFile.length() == MODEL_SIZE) {
+            createEngine()
+        } else {
+            status = "Model not downloaded"
+        }
     }
 
     fun deleteSavedConversation(chat: SavedChat) {
