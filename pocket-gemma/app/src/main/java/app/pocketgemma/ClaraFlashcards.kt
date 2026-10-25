@@ -2,6 +2,9 @@ package app.pocketgemma
 
 import android.content.Context
 import android.net.Uri
+import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.text.Html
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -67,7 +70,7 @@ fun cardPlainText(html: String): String =
 // Displays locally imported formatting and data-URI images without JavaScript,
 // disk access, Android bridges, or external network requests.
 @Composable
-private fun StudyCardFace(html: String, imageData: String, faceColor: String) {
+private fun StudyCardFace(html: String, imageData: String, faceColor: String, onPassageSelected: (String) -> Unit) {
     val document = remember(html, imageData, faceColor) {
         val safeColor = faceColor.takeIf { it.matches(Regex("#[0-9A-Fa-f]{6}")) } ?: "#f7f9ff"
         val image = if (imageData.startsWith("data:image/"))
@@ -79,13 +82,15 @@ html,body{min-height:100%;box-sizing:border-box;margin:0;background:$safeColor;c
 body{font:18px system-ui,Roboto,sans-serif;line-height:1.6;text-align:left;padding:24px 22px;overflow-wrap:anywhere}h1,h2,h3{font-size:1.25em;line-height:1.4}b,strong{font-weight:650}*{box-sizing:border-box}
 body>*{max-width:100%}img{max-width:94%;height:auto;max-height:360px;object-fit:contain;border-radius:9px}
 table{max-width:100%;display:block;overflow-x:auto}figure{margin:12px 0}ul,ol{text-align:left}p{margin:8px 0}
-</style></head><body>""" + html + image + "</body></html>"
+</style></head><body>""" + sanitizeFlashcardHtml(html) + image + "</body></html>"
     }
     AndroidView(
         factory = { ctx ->
-            WebView(ctx).apply {
+            ClaraSelectionWebView(ctx, onPassageSelected).apply {
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                settings.javaScriptEnabled = false
+                // JS is enabled solely for the native window.getSelection() query.
+                // Card HTML is sanitized and CSP blocks its scripts.
+                settings.javaScriptEnabled = true
                 settings.domStorageEnabled = false
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
@@ -97,6 +102,7 @@ table{max-width:100%;display:block;overflow-x:auto}figure{margin:12px 0}ul,ol{te
             }
         },
         update = { view ->
+            (view as ClaraSelectionWebView).onPassageSelected = onPassageSelected
             if (view.tag != document) {
                 view.tag = document
                 view.loadDataWithBaseURL(null, document, "text/html", "UTF-8", null)
@@ -136,6 +142,7 @@ fun ClaraFlashcardScreen(
     onMark: (String, String) -> Unit,
     onSpeak: (String) -> Unit,
     onDiscuss: (ClaraStudyCard) -> Unit,
+    onSummariseSelection: (ClaraStudyCard, String) -> Unit,
     isSpeaking: Boolean,
     speechReady: Boolean,
     speechMessage: String,
@@ -172,6 +179,8 @@ fun ClaraFlashcardScreen(
     var draftQImage by remember { mutableStateOf("") }
     var draftAImage by remember { mutableStateOf("") }
     var pickedImageMessage by remember { mutableStateOf("") }
+    var selectedPassage by remember { mutableStateOf("") }
+    var selectedPassageCard by remember { mutableStateOf<ClaraStudyCard?>(null) }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
@@ -361,7 +370,15 @@ fun ClaraFlashcardScreen(
                     }
                     Crossfade(targetState = "${card.id}:$showingAnswer", modifier = Modifier.weight(1f), label = "Card face") {
                         val back = it.endsWith(":true")
-                        StudyCardFace(if (back) card.answer else card.question, if (back) card.aImage else card.qImage, "#F4F5FA")
+                        StudyCardFace(
+                            if (back) card.answer else card.question,
+                            if (back) card.aImage else card.qImage,
+                            "#F4F5FA",
+                            onPassageSelected = { chosen ->
+                                selectedPassageCard = card
+                                selectedPassage = chosen
+                            }
+                        )
                     }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -412,6 +429,59 @@ fun ClaraFlashcardScreen(
         if (speechMessage.isNotBlank() || !speechReady) TextButton(onClick = onVoiceSettings,
             modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp)) {
             Text(speechMessage.ifBlank { "Set up Clara's voice" }, fontSize = 11.sp, maxLines = 2)
+        }
+    }
+
+    if (selectedPassage.isNotBlank() && selectedPassageCard != null) {
+        val excerpt = selectedPassage
+        val contextCard = selectedPassageCard!!
+        ModalBottomSheet(onDismissRequest = {
+            selectedPassage = ""
+            selectedPassageCard = null
+        }) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 30.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Selected passage", style = MaterialTheme.typography.titleMedium,
+                    color = ClaraColors.text)
+                Text(excerpt, maxLines = 5, overflow = TextOverflow.Ellipsis,
+                    color = ClaraColors.muted, style = MaterialTheme.typography.bodyMedium)
+                Button(
+                    onClick = {
+                        selectedPassage = ""
+                        selectedPassageCard = null
+                        onSummariseSelection(contextCard, excerpt)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Summarise with Clara")
+                }
+                OutlinedButton(
+                    onClick = {
+                        val uri = Uri.parse("https://www.google.com/search?q=" +
+                            Uri.encode(excerpt.take(1500)))
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                        }
+                        selectedPassage = ""
+                        selectedPassageCard = null
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Search Google")
+                }
+                Text("Google Search sends the selected text to Google. Clara uses the on-device model and the flashcard reference answer.",
+                    color = ClaraColors.muted, style = MaterialTheme.typography.labelSmall)
+                TextButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Flashcard excerpt", excerpt))
+                    selectedPassage = ""
+                    selectedPassageCard = null
+                }) {
+                    Text("Copy selected text")
+                }
+            }
         }
     }
 
