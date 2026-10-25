@@ -274,6 +274,11 @@ fun ClaraFlashcardScreen(
         }
     }
     val card = cardState.value
+    LaunchedEffect(selected?.id, showingAnswer) {
+        // Search selection belongs only to the current visible card face.
+        selectedPassage = ""
+        selectedPassageCard = null
+    }
     val topics = remember(deck) { deck.cards.map { it.topic }.filter { it.isNotBlank() }.distinct().sorted() }
     val totalRemaining = remember(deck) { deck.cards.count { it.status == "remaining" } }
     val totalUnderstood = remember(deck) { deck.cards.count { it.status == "understood" } }
