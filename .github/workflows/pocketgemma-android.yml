@@ -4,6 +4,7 @@ on:
     branches: [codex/pocketgemma-apk]
     paths:
       - 'pocket-gemma/**'
+      - '.github/workflows/pocketgemma-android.yml'
   workflow_dispatch:
 permissions:
   contents: write
