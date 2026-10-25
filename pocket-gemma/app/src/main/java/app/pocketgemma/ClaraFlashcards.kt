@@ -479,53 +479,81 @@ fun ClaraFlashcardScreen(
     }
 
     if (selectedPassage.isNotBlank() && selectedPassageCard != null) {
+        // Chrome's native Touch to Search is private to Chrome. We provide
+        // a compact in-app preview and open actual Google results in a
+        // browser-owned draggable Partial Custom Tab on tap/swipe-up.
         val excerpt = selectedPassage
-        val contextCard = selectedPassageCard!!
-        ModalBottomSheet(onDismissRequest = {
-            selectedPassage = ""
-            selectedPassageCard = null
-        }) {
-            Column(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 30.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        val selectedCard = selectedPassageCard!!
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Surface(
+                color = Color(0xFF1B1C22),
+                shape = RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp),
+                shadowElevation = 16.dp,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp)
+                    .pointerInput(excerpt) {
+                        var moved = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { moved = 0f },
+                            onVerticalDrag = { change, delta ->
+                                change.consume()
+                                moved += delta
+                            },
+                            onDragEnd = {
+                                if (moved < -50f) googleResults(excerpt)
+                                moved = 0f
+                            }
+                        )
+                    }
             ) {
-                Text("Selected passage", style = MaterialTheme.typography.titleMedium,
-                    color = ClaraColors.text)
-                Text(excerpt, maxLines = 5, overflow = TextOverflow.Ellipsis,
-                    color = ClaraColors.muted, style = MaterialTheme.typography.bodyMedium)
-                Button(
-                    onClick = {
-                        selectedPassage = ""
-                        selectedPassageCard = null
-                        onSummariseSelection(contextCard, excerpt)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Summarise with Clara")
-                }
-                OutlinedButton(
-                    onClick = {
-                        val uri = Uri.parse("https://www.google.com/search?q=" +
-                            Uri.encode(excerpt.take(1500)))
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 5.dp)) {
+                    Box(Modifier.width(44.dp).height(4.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .background(Color(0xFF696A78), RoundedCornerShape(40.dp)))
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 6.dp, start = 14.dp, end = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(50))
+                            .background(Color(0xFFE9F1FD)), contentAlignment = Alignment.Center) {
+                            Text("G", color = Color(0xFF4285F4), fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold)
                         }
-                        selectedPassage = ""
-                        selectedPassageCard = null
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Search Google")
-                }
-                Text("Google Search sends the selected text to Google. Clara uses the on-device model and the flashcard reference answer.",
-                    color = ClaraColors.muted, style = MaterialTheme.typography.labelSmall)
-                TextButton(onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Flashcard excerpt", excerpt))
-                    selectedPassage = ""
-                    selectedPassageCard = null
-                }) {
-                    Text("Copy selected text")
+                        Column(
+                            Modifier.weight(1f).clickable { googleResults(excerpt) },
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(excerpt, color = Color.White, maxLines = 1,
+                                overflow = TextOverflow.Ellipsis, fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium)
+                            Text("Google · tap or swipe up for results",
+                                color = Color(0xFFADB5CA), fontSize = 11.sp)
+                        }
+                        IconButton(onClick = {
+                            selectedPassage = ""
+                            selectedPassageCard = null
+                        }) { ClaraGlyph("close", "Dismiss selection", tint = Color.White) }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = {
+                            selectedPassage = ""
+                            selectedPassageCard = null
+                            onSummariseSelection(selectedCard, excerpt)
+                        }) { Text("Ask Clara", color = Color(0xFFBEA4FF), fontSize = 12.sp) }
+                        TextButton(onClick = { googleResults(excerpt) }) {
+                            Text("Google results", color = Color(0xFF9FBFFF), fontSize = 12.sp)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = {
+                            val board = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            board.setPrimaryClip(ClipData.newPlainText("Flashcard excerpt", excerpt))
+                            selectedPassage = ""
+                            selectedPassageCard = null
+                        }) { Text("Copy", color = Color(0xFFC9CEDB), fontSize = 12.sp) }
+                    }
                 }
             }
         }
