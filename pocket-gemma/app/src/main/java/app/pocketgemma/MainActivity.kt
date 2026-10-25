@@ -565,7 +565,16 @@ private fun PocketGemmaApp() {
     LaunchedEffect(demoNotifications, allowedNotificationPackages) {
         prefs.writeNotificationSettings(demoNotifications, allowedNotificationPackages)
     }
-    DisposableEffect(Unit) { onDispose { conversation?.close(); engine?.close() } }
+    // Dispose the most recently created resources, not the instances captured
+    // by the first composition before the asynchronous startup completed.
+    val latestConversation by rememberUpdatedState(conversation)
+    val latestEngine by rememberUpdatedState(engine)
+    DisposableEffect(Unit) {
+        onDispose {
+            latestConversation?.close()
+            latestEngine?.close()
+        }
+    }
 
     fun persist() {
         prefs.writeConfig(config)
@@ -659,7 +668,7 @@ private fun PocketGemmaApp() {
             val newNotificationTool = ListNotificationsTool(context.applicationContext, demoNotifications, allowedNotificationPackages)
             val conv = currentEngine.createConversation(ConversationConfig(
                 systemInstruction = Contents.of(if (tutoringThisChat) STRICT_CARD_SYSTEM
-                    else selected.systemPrompt + "\\n\\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
+                    else selected.systemPrompt + "\n\n" + NOTIFICATION_TOOL_INSTRUCTIONS),
                 initialMessages = initial,
                 samplerConfig = SamplerConfig(topK = selected.topK,
                     topP = if (tutoringThisChat) 0.85 else selected.topP.toDouble(),
