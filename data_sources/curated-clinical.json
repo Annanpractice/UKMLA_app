@@ -722,6 +722,38 @@
       "sourceReview": [
         "NICE/BTS/SIGN NG245: Asthma diagnosis, monitoring and chronic asthma management (2024), children aged 5–11"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Asthma under 5: ICS trial and step-up",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Diagnosis is clinical; review interval symptoms, severe wheeze episodes, alternative diagnoses, triggers, adherence and inhaler technique. Objective testing is difficult under 5; attempt if symptoms persist at age 5.",
+        "treatment": "For suspected asthma with interval symptoms or severe episodes, trial twice-daily paediatric low-dose ICS plus as-needed SABA for 8–12 weeks. If resolved, consider stopping and review after 3 months; if recurrent, restart ICS and titrate up to moderate dose as needed.",
+        "escalation": "If no response to initial trial despite checking technique, adherence, environment and diagnosis, refer. If uncontrolled on moderate-dose ICS, trial LTRA for 8–12 weeks; stop if ineffective and refer. MART is not routine under 5.",
+        "mimics": "Preschool viral wheeze, foreign body, airway malacia, reflux/aspiration, recurrent infection and other causes of wheeze.",
+        "redFlags": "Hospital admission or ≥2 ED attendances for wheeze in 12 months warrants respiratory paediatric referral; severe respiratory distress, exhaustion, cyanosis or hypoxia require emergency assessment."
+      },
+      "sourceReview": [
+        "NICE/BTS/SIGN NG245: asthma pharmacological management (2024; updated 2025)"
+      ]
+    },
+    {
+      "mode": "add",
+      "topic": "Paediatric Presentations",
+      "name": "Asthma age 12 and over: AIR to MART",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Assess symptom frequency, nocturnal waking, reliever use, exacerbations, adherence, technique and triggers; check FeNO where possible if uncontrolled.",
+        "treatment": "Newly diagnosed age ≥12: as-needed low-dose ICS/formoterol AIR. If uncontrolled, offer low-dose MART (same ICS/formoterol inhaler for maintenance and relief); if still uncontrolled, offer moderate-dose MART.",
+        "escalation": "If uncontrolled despite adherent moderate-dose MART, check FeNO and eosinophils; refer if raised. If neither raised, consider 8–12-week add-on LTRA or LAMA; refer if persistently uncontrolled or high-dose ICS required.",
+        "mimics": "Poor inhaler technique or adherence, dysfunctional breathing, inducible laryngeal obstruction, rhinitis and alternative diagnoses.",
+        "redFlags": "Exacerbation requiring oral steroids, frequent reliever use, nocturnal waking or severe attacks. AIR/MART require an appropriate ICS/formoterol device; check licensing and do not use LABA combinations without formoterol as relievers."
+      },
+      "sourceReview": [
+        "NICE/BTS/SIGN NG245: asthma pharmacological management (2024; updated 2025)"
+      ]
     }
   ]
 }
