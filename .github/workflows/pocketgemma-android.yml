@@ -56,15 +56,15 @@ jobs:
       - name: Verify and name APKs
         run: |
           set -euo pipefail
-          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.1.0.apk
-          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.1.0-Study.apk
-          cp pocket-gemma/app/build/outputs/apk/cards/debug/app-cards-debug.apk Clara-v2.1.0-Cards.apk
-          for apk in Clara-v2.1.0.apk Clara-v2.1.0-Study.apk Clara-v2.1.0-Cards.apk; do
+          cp pocket-gemma/app/build/outputs/apk/regular/debug/app-regular-debug.apk Clara-v2.1.1.apk
+          cp pocket-gemma/app/build/outputs/apk/study/debug/app-study-debug.apk Clara-v2.1.1-Study.apk
+          cp pocket-gemma/app/build/outputs/apk/cards/debug/app-cards-debug.apk Clara-v2.1.1-Cards.apk
+          for apk in Clara-v2.1.1.apk Clara-v2.1.1-Study.apk Clara-v2.1.1-Cards.apk; do
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
           done
-          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.0.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.0-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
-          cards=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.0-Cards.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          regular=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.1.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          study=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.1-Study.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
+          cards=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs Clara-v2.1.1-Cards.apk | awk '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}')
           expected="c369f589532770ecca786978eb506e0d95400f26a77b6e6fc82cbcc377dd7579"
           for actual in "$regular" "$study" "$cards"; do
             if [ "$actual" != "$expected" ]; then
@@ -76,21 +76,21 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.1.0-debug-apk
-          path: Clara-v2.1.0.apk
+          name: Clara-v2.1.1-debug-apk
+          path: Clara-v2.1.1.apk
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.1.0-Study-installable-apk
-          path: Clara-v2.1.0-Study.apk
+          name: Clara-v2.1.1-Study-installable-apk
+          path: Clara-v2.1.1-Study.apk
           if-no-files-found: error
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Clara-v2.1.0-Cards-separate-install-apk
-          path: Clara-v2.1.0-Cards.apk
+          name: Clara-v2.1.1-Cards-separate-install-apk
+          path: Clara-v2.1.1-Cards.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -113,24 +113,27 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Clara-v2.1.0-Android-review
+          name: Clara-v2.1.1-Android-review
           path: |
             pocket-gemma/ui-review/
             pocket-gemma/app/build/reports/androidTests/
             pocket-gemma/app/build/reports/tests/
 
       # Publish a direct phone-friendly APK link on success, automatically.
+      # This token may lack Releases write permission in this repository.
+      # Preserve successful APK artifact downloads even if publish returns 403.
       - name: Publish direct download on GitHub Releases
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="clara-study-v2.1.0"
+          tag="clara-study-v2.1.1"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Clara-v2.1.0.apk Clara-v2.1.0-Study.apk Clara-v2.1.0-Cards.apk --clobber
+            gh release upload "$tag" Clara-v2.1.1.apk Clara-v2.1.1-Study.apk Clara-v2.1.1-Cards.apk --clobber
           else
-            gh release create "$tag" Clara-v2.1.0.apk Clara-v2.1.0-Study.apk Clara-v2.1.0-Cards.apk \
+            gh release create "$tag" Clara-v2.1.1.apk Clara-v2.1.1-Study.apk Clara-v2.1.1-Cards.apk \
               --target "$GITHUB_SHA" \
-              --title "Clara v2.1.0 — redesigned study and voice tutor" \
-              --notes "Redesigned native study screen with graphite surfaces, mint and violet accents, readable scrolling cards, visible read-aloud and an in-study Clara conversation panel. Includes microphone replies, streaming bubbles, speech highlighting, reading-speed controls and stop controls. Retains imported decks, progress, model storage, package IDs and the pinned development certificate from v2.0.8. Development build using the existing public test-only signing identity."
+              --title "Clara v2.1.1 — redesigned study and voice tutor" \
+              --notes "Adds Chrome-style contextual text selection on card content: automatic Google Search, Copy, and offline Summarise with Clara drawer, grounded in the selected passage and reference answer. Maintains redesigned study screen and speech tutor. Retains imported decks, progress, model storage, package IDs and the pinned development certificate from v2.0.8. Development build using the existing public test-only signing identity."
           fi
