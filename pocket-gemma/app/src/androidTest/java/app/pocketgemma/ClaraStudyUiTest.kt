@@ -30,7 +30,7 @@ class ClaraStudyUiTest {
         ui.setContent {
             MaterialTheme(colorScheme=darkColorScheme(primary=ClaraColors.accent,surface=ClaraColors.background)) {
                 ClaraFlashcardScreen(deck=ClaraStudyDeck(listOf(card,next)),onBack={},onImport={},onExport={},onSaveCard={},
-                    importMessage="",importError=false,onMark={_,_->},onSpeak={spoken=it},onDiscuss={},
+                    importMessage="",importError=false,onMark={_,_->},onSpeak={spoken=it},onDiscuss={},onSummariseSelection={_,_->},
                     isSpeaking=false,speechReady=true,speechMessage="",onStopSpeech={},onVoiceSettings={},onModelSettings={},
                     modelStatus="Ready",modelBusy=false,tutorPrompt="",onTutorPromptChange={},speakTutorReplies=true,onSpeakTutorRepliesChange={})
             }
