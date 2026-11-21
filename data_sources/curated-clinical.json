@@ -806,6 +806,24 @@
         "GeneReviews: Dystrophinopathies",
         "NHS: Muscular dystrophy"
       ]
+    },
+    {
+      "mode": "add",
+      "topic": "Blood Disorders",
+      "name": "Antiphospholipid syndrome (APS)",
+      "profile": "clinical",
+      "fields": {
+        "investigations": "Acquired autoimmune thrombophilia: suspect with objectively confirmed DVT/PE, stroke/TIA or unusual-site thrombosis, recurrent miscarriage, fetal death, early severe pre-eclampsia/placental insufficiency, especially with SLE. Test lupus anticoagulant (LA), anticardiolipin IgG/IgM and anti-β2-glycoprotein-I IgG/IgM. A compatible clinical event PLUS persistent antibody positivity on 2 samples at least 12 weeks apart supports diagnosis; positive antibodies alone do not establish APS. Image suspected thrombosis as indicated. LA can prolong APTT in vitro despite a prothrombotic state; DOACs/other anticoagulants may distort LA assays, so coordinate sampling with haematology. Triple positivity confers higher risk.",
+        "treatment": "Thrombotic APS: treat acute VTE with therapeutic heparin/LMWH (example enoxaparin 1 mg/kg SC every 12 h in suitable renal function), then warfarin titrated to INR 2.0–3.0 (target 2.5); usually indefinite after unprovoked VTE. Warfarin has NO fixed maintenance dose: monitor INR, interactions and bleeding. Avoid starting DOACs, especially for triple-positive or arterial APS; if already taking one, seek specialist advice rather than abruptly stopping. Arterial/recurrent thrombosis needs specialist consideration of INR 3.0–4.0 or adjunct low-dose aspirin. Obstetric APS without prior thrombosis: aspirin 75 mg orally daily plus prophylactic LMWH (example enoxaparin 40 mg SC daily if 50–90 kg), tailored to weight/renal function and local pregnancy plan. Start early in pregnancy; consider aspirin 150 mg daily from 12 weeks when indicated for pre-eclampsia prevention. Previous thrombotic APS in pregnancy: replace warfarin with therapeutic LMWH (e.g. enoxaparin 1 mg/kg SC twice daily) under specialist care. Document delivery, interruption and postnatal anticoagulation; LMWH generally continues 6 weeks postpartum, and warfarin is compatible with breastfeeding.",
+        "escalation": "Same-day emergency pathway for suspected DVT/PE, stroke/TIA, myocardial or limb ischaemia; do not delay acute treatment while awaiting repeat antibodies. Refer confirmed/suspected APS to haematology; arrange preconception and joint obstetric-haematology care, fetal surveillance and anticoagulation plan. For recurrent events despite therapeutic warfarin, check INR reliability/adherence, interactions and specialist escalation. Catastrophic APS (rapid multiorgan microvascular thrombosis/failure) is an ICU emergency: specialist-led therapeutic IV unfractionated heparin, high-dose corticosteroids and plasma exchange and/or IVIG; treat triggers such as infection. Use anti-Xa rather than APTT monitoring for IV heparin when LA interferes.",
+        "mimics": "Inherited thrombophilia (factor V Leiden/prothrombin mutation), provoked VTE, malignancy-associated thrombosis, other causes of young stroke, and transient antiphospholipid antibodies after infection; SLE may coexist. For pregnancy loss: chromosomal/uterine/endocrine causes. For thrombocytopenia or multiorgan failure: TTP/HUS, DIC, HELLP/pre-eclampsia, heparin-induced thrombocytopenia and sepsis.",
+        "redFlags": "Sudden focal neurological deficit, severe headache or visual loss; chest pain, breathlessness, hypoxia or haemoptysis; painful swollen unilateral leg, acute limb ischaemia; severe pre-eclampsia, fetal growth restriction or recurrent pregnancy loss. Rapid kidney/lung/brain/heart dysfunction with thrombosis suggests catastrophic APS. Exam trap: 'lupus anticoagulant' may prolong APTT but signals THROMBOSIS risk, not a bleeding disorder. Antibody positivity without a clinical event is not APS."
+      },
+      "sourceReview": [
+        "British Society for Haematology, Guidelines on investigation and management of APS (July 2024): https://doi.org/10.1111/bjh.19635",
+        "RCOG Green-top Guideline No. 17, Recurrent Miscarriage (June 2023): https://doi.org/10.1111/1471-0528.17515",
+        "Scottish Government, Miscarriage care in Scotland: delivery framework, Annex F (Sept 2025): https://www.gov.scot/publications/delivery-framework-miscarriage-care-scotland/pages/18/"
+      ]
     }
   ]
 }
