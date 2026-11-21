@@ -48,6 +48,16 @@
 
   function conditionSearchText(condition){return deepText(condition,[]).join(' ');}
 
+  function conditionTitleRank(condition,terms){
+    if(!terms.included.length)return 0;
+    const title=normalise(condition.name);
+    const phrase=terms.included.join(' ');
+    if(title===phrase)return 0;
+    if(title.startsWith(phrase))return 1;
+    if(terms.included.every(term=>title.includes(term)))return 2;
+    return 3;
+  }
+
   function reviewedState(){
     const api=core();
     return api?api.loadJson(api.STORAGE.reviewed,{}):{};
@@ -112,7 +122,8 @@
     const source=currentConditionSource(select);
     const terms=parseTerms(input.value);
     const filtered=source.filter(condition=>matchesTerms(conditionSearchText(condition),terms));
-    result.textContent=`${filtered.length} of ${source.length} cards`;
+    if(terms.included.length)filtered.sort((a,b)=>conditionTitleRank(a,terms)-conditionTitleRank(b,terms)||a.name.localeCompare(b.name));
+    result.textContent=`${filtered.length} of ${source.length} cards${terms.included.length?' · title matches first':''}`;
     list.innerHTML=filtered.length?filtered.map(conditionCardHtml).join(''):'<section class="empty"><h2>No matching cards</h2></section>';
     bindEnhancedConditionCards(list);
     const expand=document.getElementById('expand-toggle');
