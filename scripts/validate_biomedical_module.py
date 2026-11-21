@@ -208,7 +208,7 @@ def validate_generated_data() -> dict[str, object]:
         raise SystemExit("APS diagnostics and repeat-testing rules are incomplete")
     if not all(term in aps_tx for term in ["INR 2.0–3.0", "enoxaparin 40 mg", "1 mg/kg", "75 mg", "warfarin", "DOAC"]):
         raise SystemExit("APS anticoagulation and obstetric dosage rules are incomplete")
-    if "catastrophic APS" not in aps["fields"]["escalation"].lower():
+    if "catastrophic aps" not in aps["fields"]["escalation"].lower():
         raise SystemExit("APS catastrophic presentation/escalation is absent")
 
     pmos = next(item for item in clinical if item["name"] == "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)")
