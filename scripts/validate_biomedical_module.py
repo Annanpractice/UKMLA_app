@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 172
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 934
+EXPECTED_TOTAL = 935
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -55,6 +55,7 @@ PHYSIOLOGY_SENTINELS = {
 }
 
 CURATED_CLINICAL_SENTINELS = {
+    "Antiphospholipid syndrome (APS)",
     "Urinary tract infection",
     "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)",
     "Severe androgen excess / postmenopausal hyperandrogenism",
@@ -199,6 +200,16 @@ def validate_generated_data() -> dict[str, object]:
         raise SystemExit("One or more curated clinical cards were not applied")
     if "Polycystic ovary syndrome" in generated_clinical_names:
         raise SystemExit("Legacy PCOS card survived the PMOS curated replacement")
+
+    aps = next(item for item in clinical if item["name"] == "Antiphospholipid syndrome (APS)")
+    aps_ix = aps["fields"]["investigations"]
+    aps_tx = aps["fields"]["treatment"]
+    if not all(term in aps_ix for term in ["lupus anticoagulant", "anticardiolipin", "anti-β2-glycoprotein-I", "12 weeks"]):
+        raise SystemExit("APS diagnostics and repeat-testing rules are incomplete")
+    if not all(term in aps_tx for term in ["INR 2.0–3.0", "enoxaparin 40 mg", "1 mg/kg", "75 mg", "warfarin", "DOAC"]):
+        raise SystemExit("APS anticoagulation and obstetric dosage rules are incomplete")
+    if "catastrophic APS" not in aps["fields"]["escalation"].lower():
+        raise SystemExit("APS catastrophic presentation/escalation is absent")
 
     pmos = next(item for item in clinical if item["name"] == "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)")
     androgen = next(item for item in clinical if item["name"] == "Severe androgen excess / postmenopausal hyperandrogenism")
