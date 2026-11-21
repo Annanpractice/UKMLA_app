@@ -15,7 +15,7 @@ APP = ROOT / "v2" / "app.html"
 
 EXPECTED_ANATOMY = 172
 EXPECTED_PHYSIOLOGY = 215
-EXPECTED_TOTAL = 945
+EXPECTED_TOTAL = 946
 EXPECTED_TOPICS = 26
 
 ANATOMY_SENTINELS = {
@@ -55,6 +55,7 @@ PHYSIOLOGY_SENTINELS = {
 }
 
 CURATED_CLINICAL_SENTINELS = {
+    "Pancreatitis (acute and chronic)",
     "Antiphospholipid syndrome (APS)",
     "Urinary tract infection",
     "Polyendocrine metabolic ovarian syndrome (PMOS; formerly PCOS)",
@@ -200,6 +201,17 @@ def validate_generated_data() -> dict[str, object]:
         raise SystemExit("One or more curated clinical cards were not applied")
     if "Polycystic ovary syndrome" in generated_clinical_names:
         raise SystemExit("Legacy PCOS card survived the PMOS curated replacement")
+
+    pancreatitis = next(item for item in clinical if item["name"] == "Pancreatitis (acute and chronic)")
+    pan_ix = pancreatitis["fields"]["investigations"]
+    pan_tx = pancreatitis["fields"]["treatment"]
+    pan_escalation = pancreatitis["fields"]["escalation"]
+    if not all(marker in pan_ix for marker in ["≥3×", "48 h", "faecal elastase", "triglycerides"]):
+        raise SystemExit("Pancreatitis diagnostic/severity assessment is incomplete")
+    if not all(marker in pan_tx for marker in ["500 mL", "paracetamol 1 g", "morphine", "50,000 units", "25,000", "prophylactic antibiotics", "ERCP"]):
+        raise SystemExit("Pancreatitis management, treatment doses or precautions are incomplete")
+    if not all(marker in pan_escalation for marker in ["ARDS", "cholangitis", "HbA1c"]):
+        raise SystemExit("Pancreatitis emergency escalation or chronic follow-up is incomplete")
 
     aps = next(item for item in clinical if item["name"] == "Antiphospholipid syndrome (APS)")
     aps_ix = aps["fields"]["investigations"]
